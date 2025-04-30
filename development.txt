@@ -1,0 +1,18 @@
+1. Create class to collect price data from Polygon (DONE)
+2. Create class to store data into local SQL databases (DONE)
+3. Create class to calculate indicator values on stored price data and store in database (DONE)
+4. Create class to backtest strategies on stored price data (WIP)
+    - Performance metrics (DONE)
+    - Save results to database (WIP)
+        - Define Backtesting main database
+            -Tables for forex pairs, timeframes, strategy configurations, backtest runs, and trades (DONE)
+    - Create basic visualization (DONE)
+5. Create fundamental strategy pieces
+    - ATR stop loss, risk, position sizing (NNFX) (DONE)
+    - Calculate margin required for number of units in a position, keep track of free margin (WIP)
+6. Create 'Strategy' base class for different strategies (WIP)
+7. Create class to analyze price data to make predictions via machine learning(?)
+
+Final Testing
+-First, test each strategy configuration on individual pairs.
+-Second, identify highest performing for each pair and test simultaneously, simulating real-world margin usage

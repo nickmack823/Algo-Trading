@@ -1,0 +1,432 @@
+indicators = [
+    # Chaikin A/D Line: Measures cumulative flow of money in and out of an asset
+    {"name": "AD", "function": lambda df: ta.AD(df['High'], df['Low'], df['Close'], df['Volume'])},
+
+    # Chaikin A/D Oscillator: Difference between short-term and long-term A/D Line
+    {"name": "ADOSC", "function": lambda df: ta.ADOSC(df['High'], df['Low'], df['Close'], df['Volume'])},
+
+    # Average Directional Movement Index: Measures trend strength (14-period)
+    {"name": "ADX", "function": lambda df: ta.ADX(df['High'], df['Low'], df['Close'], timeperiod=14)},
+
+    # Average Directional Movement Index Rating: Smoothed ADX for trend strength
+    {"name": "ADXR", "function": lambda df: ta.ADXR(df['High'], df['Low'], df['Close'], timeperiod=14)},
+
+    # Absolute Price Oscillator: Shows momentum based on price difference between short and long EMA
+    {"name": "APO", "function": lambda df: ta.APO(df['Close'], fastperiod=12, slowperiod=26)},
+
+    # Aroon Indicator: Measures how recently a high/low occurred to detect trends
+    {"name": "AROON_down", "function": lambda df: ta.AROON(df['High'], df['Low'])[0]},
+    {"name": "AROON_up", "function": lambda df: ta.AROON(df['High'], df['Low'])[1]},
+
+    # Aroon Oscillator: Difference between Aroon Up and Aroon Down, showing trend direction and strength
+    {"name": "AROONOSC", "function": lambda df: ta.AROONOSC(df['High'], df['Low'])},
+
+    # Average True Range: Measures market volatility by averaging true ranges
+    {"name": "ATR", "function": lambda df: ta.ATR(df['High'], df['Low'], df['Close'], timeperiod=14)},
+
+    # Average Price: Average of open, high, low, and close prices
+    {"name": "AVGPRICE", "function": lambda df: ta.AVGPRICE(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Bollinger Bands: Measures volatility and identifies price extremes
+    {"name": "Bollinger_upper", "function": lambda df: ta.BBANDS(df['Close'])[0]},
+    {"name": "Bollinger_middle", "function": lambda df: ta.BBANDS(df['Close'])[1]},
+    {"name": "Bollinger_lower", "function": lambda df: ta.BBANDS(df['Close'])[2]},
+
+    # Beta: Measures the volatility of an asset compared to the market
+    {"name": "BETA", "function": lambda df: ta.BETA(df['High'], df['Low'], timeperiod=5)},
+
+    # Balance Of Power: Indicates market sentiment by evaluating price movements
+    {"name": "BOP", "function": lambda df: ta.BOP(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Commodity Channel Index: Identifies cyclical turns in commodities and stocks
+    {"name": "CCI", "function": lambda df: ta.CCI(df['High'], df['Low'], df['Close'], timeperiod=14)},
+
+    # Candlestick Patterns
+    # Two Crows: Bearish reversal pattern
+    {"name": "CANDLE_2CROWS", "function": lambda df: ta.CDL2CROWS(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Three Black Crows: Bearish reversal pattern
+    {"name": "CANDLE_3BLACKCROWS", "function": lambda df: ta.CDL3BLACKCROWS(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Three Inside Up/Down: Signals possible reversal
+    {"name": "CANDLE_3INSIDE", "function": lambda df: ta.CDL3INSIDE(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Three Line Strike: Continuation or reversal
+    {"name": "CANDLE_3LINESTRIKE", "function": lambda df: ta.CDL3LINESTRIKE(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Three Stars In The South: Bullish reversal
+    {"name": "CANDLE_3STARSINSOUTH", "function": lambda df: ta.CDL3STARSINSOUTH(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Three Advancing White Soldiers: Bullish reversal pattern
+    {"name": "CANDLE_3WHITESOLDIERS", "function": lambda df: ta.CDL3WHITESOLDIERS(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Abandoned Baby: Strong reversal pattern
+    {"name": "CANDLE_ABANDONEDBABY", "function": lambda df: ta.CDLABANDONEDBABY(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Advance Block: Potential bearish reversal
+    {"name": "CANDLE_ADVANCEBLOCK", "function": lambda df: ta.CDLADVANCEBLOCK(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Belt-hold: Potential reversal signal
+    {"name": "CANDLE_BELTHOLD", "function": lambda df: ta.CDLBELTHOLD(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Breakaway: Potential reversal after strong trend
+    {"name": "CANDLE_BREAKAWAY", "function": lambda df: ta.CDLBREAKAWAY(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Closing Marubozu: Indicates strong momentum
+    {"name": "CANDLE_CLOSINGMARUBOZU", "function": lambda df: ta.CDLCLOSINGMARUBOZU(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Concealing Baby Swallow: Bullish reversal pattern
+    {"name": "CANDLE_CONCEALBABYSWALL", "function": lambda df: ta.CDLCONCEALBABYSWALL(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Counterattack: Potential reversal pattern
+    {"name": "CANDLE_COUNTERATTACK", "function": lambda df: ta.CDLCOUNTERATTACK(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Dark Cloud Cover: Bearish reversal pattern
+    {"name": "CANDLE_DARKCLOUDCOVER", "function": lambda df: ta.CDLDARKCLOUDCOVER(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Doji: Indecision in the market
+    {"name": "CANDLE_DOJI", "function": lambda df: ta.CDLDOJI(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Doji Star: Potential reversal
+    {"name": "CANDLE_DOJISTAR", "function": lambda df: ta.CDLDOJISTAR(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Dragonfly Doji: Potential bullish reversal
+    {"name": "CANDLE_DRAGONFLYDOJI", "function": lambda df: ta.CDLDRAGONFLYDOJI(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Engulfing Pattern: Strong reversal signal
+    {"name": "CANDLE_ENGULFING", "function": lambda df: ta.CDLENGULFING(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Evening Doji Star: Bearish reversal
+    {"name": "CANDLE_EVENINGDOJISTAR", "function": lambda df: ta.CDLEVENINGDOJISTAR(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Evening Star: Bearish reversal
+    {"name": "CANDLE_EVENINGSTAR", "function": lambda df: ta.CDLEVENINGSTAR(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Up/Down-gap side-by-side white lines: Continuation pattern
+    {"name": "CANDLE_GAPSIDESIDEWHITE", "function": lambda df: ta.CDLGAPSIDESIDEWHITE(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Gravestone Doji: Potential bearish reversal
+    {"name": "CANDLE_GRAVESTONEDOJI", "function": lambda df: ta.CDLGRAVESTONEDOJI(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Hammer: Potential bullish reversal
+    {"name": "CANDLE_HAMMER", "function": lambda df: ta.CDLHAMMER(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Hanging Man: Potential bearish reversal
+    {"name": "CANDLE_HANGINGMAN", "function": lambda df: ta.CDLHANGINGMAN(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Harami Pattern: Potential reversal
+    {"name": "CANDLE_HARAMI", "function": lambda df: ta.CDLHARAMI(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Harami Cross Pattern: Stronger reversal indication
+    {"name": "CANDLE_HARAMICROSS", "function": lambda df: ta.CDLHARAMICROSS(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # High-Wave Candle: Indicates high volatility
+    {"name": "CANDLE_HIGHWAVE", "function": lambda df: ta.CDLHIGHWAVE(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Hikkake Pattern: Indicates market indecision
+    {"name": "CANDLE_HIKKAKE", "function": lambda df: ta.CDLHIKKAKE(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Modified Hikkake Pattern: Stronger market indecision signal
+    {"name": "CANDLE_HIKKAKEMOD", "function": lambda df: ta.CDLHIKKAKEMOD(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Homing Pigeon: Bullish reversal pattern
+    {"name": "CANDLE_HOMINGPIGEON", "function": lambda df: ta.CDLHOMINGPIGEON(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Identical Three Crows: Bearish reversal pattern
+    {"name": "CANDLE_IDENTICAL3CROWS", "function": lambda df: ta.CDLIDENTICAL3CROWS(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # In-Neck Pattern: Continuation pattern during a downtrend
+    {"name": "CANDLE_INNECK", "function": lambda df: ta.CDLINNECK(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Inverted Hammer: Potential bullish reversal
+    {"name": "CANDLE_INVERTEDHAMMER", "function": lambda df: ta.CDLINVERTEDHAMMER(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Kicking: Strong reversal indication
+    {"name": "CANDLE_KICKING", "function": lambda df: ta.CDLKICKING(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Kicking - bull/bear determined by the longer marubozu: Strong directional signal
+    {"name": "CANDLE_KICKINGBYLENGTH", "function": lambda df: ta.CDLKICKINGBYLENGTH(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Ladder Bottom: Bullish reversal pattern
+    {"name": "CANDLE_LADDERBOTTOM", "function": lambda df: ta.CDLLADDERBOTTOM(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Long Legged Doji: Indicates market indecision
+    {"name": "CANDLE_LONGLEGGEDDOJI", "function": lambda df: ta.CDLLONGLEGGEDDOJI(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Long Line Candle: Indicates strong buying or selling pressure
+    {"name": "CANDLE_LONGLINE", "function": lambda df: ta.CDLLONGLINE(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Marubozu: Indicates dominance by buyers or sellers
+    {"name": "CANDLE_MARUBOZU", "function": lambda df: ta.CDLMARUBOZU(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Matching Low: Bullish reversal pattern
+    {"name": "CANDLE_MATCHINGLOW", "function": lambda df: ta.CDLMATCHINGLOW(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Mat Hold: Continuation pattern
+    {"name": "CANDLE_MATHOLD", "function": lambda df: ta.CDLMATHOLD(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Morning Doji Star: Bullish reversal pattern
+    {"name": "CANDLE_MORNINGDOJISTAR", "function": lambda df: ta.CDLMORNINGDOJISTAR(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Morning Star: Bullish reversal pattern
+    {"name": "CANDLE_MORNINGSTAR", "function": lambda df: ta.CDLMORNINGSTAR(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # On-Neck Pattern: Continuation pattern
+    {"name": "CANDLE_ONNECK", "function": lambda df: ta.CDLONNECK(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Piercing Pattern: Potential bullish reversal
+    {"name": "CANDLE_PIERCING", "function": lambda df: ta.CDLPIERCING(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    {"name": "CANDLE_RANGE", "function": lambda df: (df['High'] - df['Low'])},
+    {"name": "CANDLE_BODYPERCENT", "function": lambda df: ((df['Close'] - df['Open']) / (df['High'] - df['Low'])) * 100},
+
+    # Rickshaw Man: Potential bullish reversal
+    {"name": "CANDLE_RICKSHAWMAN", "function": lambda df: ta.CDLRICKSHAWMAN(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Rising/Falling Three Methods: Continuation pattern
+    {"name": "CANDLE_RISEFALL3METHODS", "function": lambda df: ta.CDLRISEFALL3METHODS(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Separating Lines: Continuation pattern
+    {"name": "CANDLE_SEPARATINGLINES", "function": lambda df: ta.CDLSEPARATINGLINES(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Shooting Star: Potential bullish reversal
+    {"name": "CANDLE_SHOOTINGSTAR", "function": lambda df: ta.CDLSHOOTINGSTAR(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Short Line Candle: Indicates strong selling pressure
+    {"name": "CANDLE_SHORTLINE", "function": lambda df: ta.CDLSHORTLINE(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Spinning Top: Potential bullish reversal
+    {"name": "CANDLE_SPINNINGTOP", "function": lambda df: ta.CDLSPINNINGTOP(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Stalled Pattern: Continuation pattern
+    {"name": "CANDLE_STALLEDPATTERN", "function": lambda df: ta.CDLSTALLEDPATTERN(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Stick Sandwich: Continuation pattern
+    {"name": "CANDLE_STICKSANDWICH", "function": lambda df: ta.CDLSTICKSANDWICH(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Takuri (Dragonfly Doji with very long lower shadow): Continuation pattern
+    {"name": "CANDLE_TAKURI", "function": lambda df: ta.CDLTAKURI(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Tasuki Gap: Continuation pattern
+    {"name": "CANDLE_TASUKIGAP", "function": lambda df: ta.CDLTASUKIGAP(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Thrusting Pattern: Continuation pattern
+    {"name": "CANDLE_TASUKIGAP", "function": lambda df: ta.CDLTHRUSTING(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Tristar Pattern: Continuation pattern
+    {"name": "CANDLE_TRISTAR", "function": lambda df: ta.CDLTRISTAR(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Unique 3 River: Continuation pattern
+    {"name": "CANDLE_UNIQUE3RIVER", "function": lambda df: ta.CDLUNIQUE3RIVER(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Upside Gap Two Crows: Continuation pattern
+    {"name": "CANDLE_UPSIDEGAP2CROWS", "function": lambda df: ta.CDLUPSIDEGAP2CROWS(df['Open'], df['High'], df['Low'], df['Close'])},
+
+    # Up/Down-gap side-by-side white lines: Continuation pattern
+    {"name": "CANDLE_XSIDEGAP3METHODS", "function": lambda df: ta.CDLXSIDEGAP3METHODS(df['Open'], df['High'], df['Low'], df['Close'])},
+
+        # Chande Momentum Oscillator: Measures momentum relative to price volatility
+    {"name": "CMO", "function": lambda df: ta.CMO(df['Close'], timeperiod=14)},
+
+    # Pearson's Correlation Coefficient: Measures linear correlation between two series (here, High and Low prices)
+    {"name": "CORREL", "function": lambda df: ta.CORREL(df['High'], df['Low'], timeperiod=30)},
+
+    # Double Exponential Moving Average: A moving average that reduces lag
+    {"name": "DEMA", "function": lambda df: ta.DEMA(df['Close'], timeperiod=30)},
+
+    # Directional Movement Index (DX): Measures the strength of the price trend (directional movement)
+    {"name": "DX", "function": lambda df: ta.DX(df['High'], df['Low'], df['Close'], timeperiod=14)},
+
+    # Exponential Moving Average (EMA): Weighted moving average, prioritizes recent prices
+    {"name": "EMA_9", "function": lambda df: ta.EMA(df['Close'], timeperiod=9)},
+    {"name": "EMA_21", "function": lambda df: ta.EMA(df['Close'], timeperiod=21)},
+    {"name": "EMA_50", "function": lambda df: ta.EMA(df['Close'], timeperiod=50)},
+    {"name": "EMA_200", "function": lambda df: ta.EMA(df['Close'], timeperiod=200)},
+
+    # Hilbert Transform - Dominant Cycle Period: Estimates dominant market cycle period
+    {"name": "HT_DCPERIOD", "function": lambda df: ta.HT_DCPERIOD(df['Close'])},
+
+    # Hilbert Transform - Dominant Cycle Phase: Identifies the phase within the dominant cycle
+    {"name": "HT_DCPHASE", "function": lambda df: ta.HT_DCPHASE(df['Close'])},
+
+    # Hilbert Transform - Phasor Components: Provides in-phase and quadrature components of the dominant cycle
+    {"name": "HT_PHASOR_inphase", "function": lambda df: ta.HT_PHASOR(df['Close'])[0]},
+    {"name": "HT_PHASOR_quadrature", "function": lambda df: ta.HT_PHASOR(df['Close'])[1]},
+
+    # Hilbert Transform - SineWave: Cyclical sine and lead sine components of price
+    {"name": "HT_SINE", "function": lambda df: ta.HT_SINE(df['Close'])[0]},
+    {"name": "HT_LEADSINE", "function": lambda df: ta.HT_SINE(df['Close'])[1]},
+
+    # Hilbert Transform - Instantaneous Trendline: Smooth price trendline extraction
+    {"name": "HT_TRENDLINE", "function": lambda df: ta.HT_TRENDLINE(df['Close'])},
+
+    # Hilbert Transform - Trend Mode: Indicates if market is trending (1) or cycling (0)
+    {"name": "HT_TRENDMODE", "function": lambda df: ta.HT_TRENDMODE(df['Close'])},
+
+    # Kaufman's Adaptive Moving Average (KAMA): Adaptive moving average responsive to volatility
+    {"name": "KAMA", "function": lambda df: ta.KAMA(df['Close'], timeperiod=10)},
+
+    # Linear Regression: Projected values from linear regression of closing prices
+    {"name": "LINEARREG", "function": lambda df: ta.LINEARREG(df['Close'], timeperiod=14)},
+
+    # Linear Regression Angle: Angle (in degrees) of the linear regression slope
+    {"name": "LINEARREG_ANGLE", "function": lambda df: ta.LINEARREG_ANGLE(df['Close'], timeperiod=14)},
+
+    # Linear Regression Intercept: Intercept of the linear regression line
+    {"name": "LINEARREG_INTERCEPT", "function": lambda df: ta.LINEARREG_INTERCEPT(df['Close'], timeperiod=14)},
+
+    # Linear Regression Slope: Slope of linear regression line
+    {"name": "LINEARREG_SLOPE", "function": lambda df: ta.LINEARREG_SLOPE(df['Close'], timeperiod=14)},
+
+    # MACD (Moving Average Convergence/Divergence): Trend-following momentum indicator
+    {"name": "MACD", "function": lambda df: ta.MACD(df['Close'], fastperiod=12, slowperiod=26, signalperiod=9)[0]},
+    {"name": "MACD_Signal", "function": lambda df: ta.MACD(df['Close'], fastperiod=12, slowperiod=26, signalperiod=9)[1]},
+    {"name": "MACD_Hist", "function": lambda df: ta.MACD(df['Close'], fastperiod=12, slowperiod=26, signalperiod=9)[2]},
+
+    # MACD Extended (MACDEXT): MACD indicator with customizable moving average types
+    {"name": "MACDEXT", "function": lambda df: ta.MACDEXT(df['Close'])[0]},
+    {"name": "MACDEXT_Signal", "function": lambda df: ta.MACDEXT(df['Close'])[1]},
+    {"name": "MACDEXT_Hist", "function": lambda df: ta.MACDEXT(df['Close'])[2]},
+
+    # MACD Fix: MACD with fixed periods (12, 26)
+    {"name": "MACDFIX", "function": lambda df: ta.MACDFIX(df['Close'])[0]},
+    {"name": "MACDFIX_Signal", "function": lambda df: ta.MACDFIX(df['Close'])[1]},
+    {"name": "MACDFIX_Hist", "function": lambda df: ta.MACDFIX(df['Close'])[2]},
+
+    # MESA Adaptive Moving Average (MAMA): Adaptive moving average developed by John Ehlers
+    {"name": "MAMA", "function": lambda df: ta.MAMA(df['Close'])[0]},
+
+    # Highest value over specified period
+    {"name": "MAX", "function": lambda df: ta.MAX(df['Close'], timeperiod=14)},
+
+    # Index of highest value over specified period
+    {"name": "MAXINDEX", "function": lambda df: ta.MAXINDEX(df['Close'], timeperiod=14)},
+
+    # Median Price: (High + Low) / 2
+    {"name": "MEDPRICE", "function": lambda df: ta.MEDPRICE(df['High'], df['Low'])},
+
+    # Money Flow Index (MFI): Volume-weighted RSI indicating money flow
+    {"name": "MFI", "function": lambda df: ta.MFI(df['High'], df['Low'], df['Close'], df['Volume'], timeperiod=14)},
+
+    # MidPoint: midpoint of highest and lowest closing prices over period
+    {"name": "MIDPOINT", "function": lambda df: ta.MIDPOINT(df['Close'], timeperiod=14)},
+
+    # Midpoint Price: midpoint between highest high and lowest low over period
+    {"name": "MIDPRICE", "function": lambda df: ta.MIDPRICE(df['High'], df['Low'], timeperiod=14)},
+
+    # Lowest value over a specified period
+    {"name": "MIN", "function": lambda df: ta.MIN(df['Close'], timeperiod=14)},
+
+    # Index of lowest value over specified period
+    {"name": "MININDEX", "function": lambda df: ta.MININDEX(df['Close'], timeperiod=14)},
+
+    # Lowest and highest values over specified period (returns tuple)
+    {"name": "MINMAX_min", "function": lambda df: ta.MINMAX(df['Close'], timeperiod=14)[0]},
+    {"name": "MINMAX_max", "function": lambda df: ta.MINMAX(df['Close'], timeperiod=14)[1]},
+
+    # Money Flow Index (MFI): volume-weighted RSI for price trend strength
+    {"name": "MINMAXINDEX_Min", "function": lambda df: ta.MINMAXINDEX(df['Close'], timeperiod=14)[0]},
+    {"name": "MINMAXINDEX_Max", "function": lambda df: ta.MINMAXINDEX(df['Close'], timeperiod=14)[1]},
+
+    # Minus Directional Indicator: indicates downward trend strength
+    {"name": "MINUS_DI", "function": lambda df: ta.MINUS_DI(df['High'], df['Low'], df['Close'], timeperiod=14)},
+
+    # Minus Directional Movement: measures strength of downward movement
+    {"name": "MINUS_DM", "function": lambda df: ta.MINUS_DM(df['High'], df['Low'], timeperiod=14)},
+
+    # Momentum (MOM): price change over a specified period
+    {"name": "MOM", "function": lambda df: ta.MOM(df['Close'], timeperiod=10)},
+
+    # Normalized Average True Range (NATR): volatility relative to price
+    {"name": "NATR", "function": lambda df: ta.NATR(df['High'], df['Low'], df['Close'], timeperiod=14)},
+
+    # On-Balance Volume (OBV): cumulative volume based on price movements
+    {"name": "OBV", "function": lambda df: ta.OBV(df['Close'], df['Volume'])},
+
+    # Plus Directional Indicator: indicates upward trend strength
+    {"name": "PLUS_DI", "function": lambda df: ta.PLUS_DI(df['High'], df['Low'], df['Close'], timeperiod=14)},
+
+    # Plus Directional Movement: measures strength of upward moves
+    {"name": "PLUS_DM", "function": lambda df: ta.PLUS_DM(df['High'], df['Low'], timeperiod=14)},
+
+    # Percentage Price Oscillator (PPO): shows momentum as percentage difference between EMAs
+    {"name": "PPO", "function": lambda df: ta.PPO(df['Close'])},
+
+    # Rate of Change (ROC): percentage price change from previous price
+    {"name": "ROC", "function": lambda df: ta.ROC(df['Close'], timeperiod=12)},
+
+    # Rate of Change Percentage (ROCP): (price-prevPrice)/prevPrice
+    {"name": "ROCP", "function": lambda df: ta.ROCP(df['Close'], timeperiod=12)},
+
+        # Rate of Change Ratio (ROCR): Measures the ratio of current price to previous price
+    {"name": "ROCR", "function": lambda df: ta.ROCR(df['Close'], timeperiod=12)},
+
+    # Rate of Change Ratio 100 Scale (ROCR100): Same as ROCR but scaled to 100
+    {"name": "ROCR100", "function": lambda df: ta.ROCR100(df['Close'], timeperiod=12)},
+
+    # Relative Strength Index (RSI): Measures overbought/oversold conditions
+    {"name": "RSI", "function": lambda df: ta.RSI(df['Close'], timeperiod=14)},
+
+    # Parabolic SAR: Stop-and-reverse indicator for trend following
+    {"name": "SAR", "function": lambda df: ta.SAR(df['High'], df['Low'], acceleration=0.02, maximum=0.2)},
+
+    # Parabolic SAR Extended: More configurable SAR with additional parameters
+    {"name": "SAREXT", "function": lambda df: ta.SAREXT(df['High'], df['Low'])},
+
+    # Simple Moving Average (SMA): Basic moving average over time period
+    {"name": "SMA", "function": lambda df: ta.SMA(df['Close'], timeperiod=14)},
+
+    # Standard Deviation: Measures price volatility
+    {"name": "STDDEV", "function": lambda df: ta.STDDEV(df['Close'], timeperiod=14, nbdev=1)},
+
+    # Stochastic Oscillator: Measures momentum relative to price range
+    {"name": "STOCH_Slow_K", "function": lambda df: ta.STOCH(df['High'], df['Low'], df['Close'])[0]},
+    {"name": "STOCH_Slow_D", "function": lambda df: ta.STOCH(df['High'], df['Low'], df['Close'])[1]},
+
+    # Stochastic Fast: Faster version of the Stochastic Oscillator
+    {"name": "STOCHF_Fast_K", "function": lambda df: ta.STOCHF(df['High'], df['Low'], df['Close'])[0]},
+    {"name": "STOCHF_Fast_D", "function": lambda df: ta.STOCHF(df['High'], df['Low'], df['Close'])[1]},
+
+    # Stochastic RSI: Applies Stochastic formula to RSI
+    {"name": "STOCHRSI_Fast_K", "function": lambda df: ta.STOCHRSI(df['Close'], timeperiod=14)[0]},
+    {"name": "STOCHRSI_Fast_D", "function": lambda df: ta.STOCHRSI(df['Close'], timeperiod=14)[1]},
+
+    # Summation: Sum of values over a period
+    {"name": "SUM", "function": lambda df: ta.SUM(df['Close'], timeperiod=14)},
+
+    # Triple Exponential Moving Average (T3): Smoothed moving average
+    {"name": "T3", "function": lambda df: ta.T3(df['Close'], timeperiod=5, vfactor=0.7)},
+
+    # Triple Exponential Moving Average (TEMA): Faster-moving average
+    {"name": "TEMA", "function": lambda df: ta.TEMA(df['Close'], timeperiod=14)},
+
+    # True Range (TRANGE): Measures daily price movement range
+    {"name": "TRANGE", "function": lambda df: ta.TRANGE(df['High'], df['Low'], df['Close'])},
+
+    # Triangular Moving Average (TRIMA): Weighted simple moving average
+    {"name": "TRIMA", "function": lambda df: ta.TRIMA(df['Close'], timeperiod=14)},
+
+    # TRIX: 1-day Rate of Change of a Triple Smoothed EMA
+    {"name": "TRIX", "function": lambda df: ta.TRIX(df['Close'], timeperiod=14)},
+
+    # Time Series Forecast (TSF): Linear regression projection of future price
+    {"name": "TSF", "function": lambda df: ta.TSF(df['Close'], timeperiod=14)},
+
+    # Typical Price: Average of high, low, and close prices
+    {"name": "TYPPRICE", "function": lambda df: ta.TYPPRICE(df['High'], df['Low'], df['Close'])},
+
+    # Ultimate Oscillator (ULTOSC): Combines short, medium, and long-term momentum
+    {"name": "ULTOSC", "function": lambda df: ta.ULTOSC(df['High'], df['Low'], df['Close'])},
+
+    # Variance (VAR): Measures spread of prices over a period
+    {"name": "VAR", "function": lambda df: ta.VAR(df['Close'], timeperiod=14)},
+
+    # Weighted Close Price (WCLPRICE): Weighted average of High, Low, and Close
+    {"name": "WCLPRICE", "function": lambda df: ta.WCLPRICE(df['High'], df['Low'], df['Close'])},
+
+    # Williams' %R: Momentum oscillator similar to Stochastic
+    {"name": "WILLR", "function": lambda df: ta.WILLR(df['High'], df['Low'], df['Close'], timeperiod=14)},
+
+    # Weighted Moving Average (WMA): Moving average with linearly weighted data points
+    {"name": "WMA", "function": lambda df: ta.WMA(df['Close'], timeperiod=14)},
+]

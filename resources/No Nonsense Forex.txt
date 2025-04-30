@@ -1,0 +1,132 @@
+-General Rules
+--AVOID THINGS THAT ARE POPULAR (indicators, strategies, etc)
+--FOLLOW THE TREND
+
+--The Algorithm
+
+-ATR
+
+-Baseline (tells you from the beginning that you are in a trend)
+--BASELINE BASICS
+--Never go long if price below it, never short when price above
+--Enter when price crosses and closes beyond it
+--Exit when price crosses and closes the other way
+--When price gives signal, give other indis a few candles to catch up?
+--RESEARCH: VIDYA, AMA
+
+-Confirmation Indicator 1
+
+-Volume Indicator
+
+-Confirmation Indicator 2
+
+-Exit Indicator
+
+
+
+
+--Trend Indicators: What to look for
+-Doesn't get you in too early (too choppy)
+-Doesn't get you in late (too slow)
+-Three main types: zero-line cross, two lines cross, chart indicators (go on chart w/ candles)
+-LOOK FOR ONE W/ ZERO LINE AND TWO LINE
+
+
+-Currency Pairs
+--Avoid USD (too choppy, too much control by big players)
+--Look for trenders
+
+-Indicators to Avoid (No Nonsense Forex)
+--ADX
+--Trend Lines
+--Stochastics
+--Price Levels
+--CCI
+--Support/Resistance Lines
+--Japanese Candlesticks (to easy to see)
+--Chart Patterns (to easy to see)
+--Bollinger Bands
+--MA Crossover
+--RSI (used as OB/OS)
+
+-Ideas to Avoid
+--Avoid Overbought/Oversold (doesn't work in Forex)\
+
+
+
+SUMMARY
+
+🔍
+
+No Nonsense Forex Summary & Potential Indicators
+Rated 5.00 out of 5 based on 3customer ratings(3 customer reviews)
+$0.00
+
+THIS IS FREE
+
+NB: This includes third party indicators.
+
+Quantity:
+No Nonsense Forex Summary & Potential Indicators quantity
+1
+Add to cart
+
+Description Reviews (3) Discussions
+Get our NNFX EA: http://frzsoftware.com/product/frz-nonnonsense-forex-strategy-ea/
+
+No Nonsense Forex (NNFX) method is an indicator-based, trend-following method with defined money and risk management techniques. Given here is a summary of the NNFX method.
+
+NNFX algorithm/method includes 6 types of indicators as given below:
+
+ATR Indicator
+Baseline Indicator
+1st Conformation Indicator
+2nd Confirmation Indicator
+Volume Indicator
+Exit Indicator
+In a nutshell, a trade is entered when all the 5 indicators agree with the trade. All the decisions should be taken considering the last closed candle and never based on currently forming candle. VP has never disclosed the actual indicators and their settings that he is using. So, it is the users who need to do their back testing and forward testing with different indicators & their settings combinations to decide on the final algorithm before going real money trading.
+
+Time frame to use: NNFX strictly advises to use the daily charts.
+
+Use of ATR: NNFX uses 14-period ATR for most of its measurements. You need to calculate the ATR based on the last closed candle.
+
+Stop Loss: Stop loss is set as 1.5 x ATR. For instance if ATR was 60 pips, then the stop loss would be 90 pips.
+
+Take profit: Take profit needs to be 1 x ATR
+
+Trailing stop: When a trade reaches 1 x ATR, NNFX recommends to close half of the trade and then move the stop loss to break even for the remaining half. The remaining balance can be closed by the opposite signal from base line, 1st confirmation, 2nd confirmation or exit indicator. Trailing stop is activated only after the price has moved 2 x ATR from the trade entry price.
+
+Lot size: NNFX recommends to use not more than 2% of the capital per trade based on stop loss.
+
+Related pairs: NNFX recommends to avoid concurrent trades in related pairs. For instance if you have a trade in EURUSD, you shouldn’t enter a new trade that includes USD or EUR. If you need to enter concurrent trades in related pairs, you should reduce the amount you risk for such trades (like 1% of the capital).
+
+News: NNFX recommends not to trade when there are high impact news due in next 24 hours. (Please note NNFX considers only some of the so-called high impact news which usually cause major fluctuations such as US NFP, interest rates, speeches, etc.).
+
+Indicators & concepts that NNFX method specifically avoid
+
+NNFX scraps some of the most regarded indicators and concepts in forex trading. It mentions 12 indicators and concepts that are called “dirty dozen” which much be completely avoided altogether; given below are them:
+
+ADX (Average Directional Index)
+Trend lines
+Stochastics (NNFX scraps overbought/oversold concepts altogether)
+Price levels
+CCI indicator
+Support & resistance lines
+Japanese candlesticks
+Chart patterns (E.g. double top, head & shoulder, harmonics, etc.)
+Bollinger bands
+Fibonacci
+RSI
+Moving average cross overs
+Indicators/rules Explained
+
+ATR Indicator
+ATR (Average true Range) Indicator is a built in indicator in MT4 and most others. NNFX uses 14-period ATR for all ATR uses.
+Baseline Indicator
+This is the primary decision indicator in NNFX method. Mostly some kind of line indicator (moving average or other wise) can be used. Signal is provided by the last candle closing above (for buy) or below (for sell) the based line. For instance if you use a 14-period simple moving average (SMA), and then if the last completed candle closes above the SMA line, then we have a buy signal from the base line. However, there is another condition here, that is the price cannot be more than 1 x ATR away from the baseline.
+Confirmation indicators
+You can use any indicator which does not fall into the “dirty dozen” indicators explained above. You need to test your indicators and select the best ones with best settings by back testing.
+Volume Indicator
+Volume is also a critical part of NNFX method. Since NNFX method is a trend-following method and trends need volume, we need to have enough volume in the market before we can get the clearance to go ahead with the trade. We need to use a suitable volume indicator for this purpose. In addition, NNFX recommends using EURO VIX Index; if this index is less than 8 or 7, then it means that there is no enough volume in the market. However, use of this index is completely optional.
+Exit Indicator
+Exit indicator shows when you should exit the trade. However, the base line and the two confirmation indicators can also indicate an exit. For instance, the base line, 1st confirmation or 2nd confirmation indicator shows opposite signal when you are in a trade, you are supposed to exist the trade.

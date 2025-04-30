@@ -1,0 +1,109 @@
+Metric Explanations for Backtest Run Analysis
+-----------------------------------------------
+
+1. Timeframe:
+   - Meaning: The granularity of the data used for the backtest (e.g., 1 minute, 5 minutes, 1 day). It determines the frequency of trade signals.
+   - Example: A "1 day" timeframe means that the strategy uses daily data, generating signals based on each day’s price movements.
+
+2. Data_Start_Date:
+   - Meaning: The starting date of the historical data used for the backtest.
+   - Example: If Data_Start_Date is "2020-01-01", the backtest begins on January 1, 2020.
+
+3. Data_End_Date:
+   - Meaning: The ending date of the historical data used for the backtest.
+   - Example: If Data_End_Date is "2020-12-31", the backtest concludes on December 31, 2020.
+
+4. Total_Trades:
+   - Meaning: The total number of trades executed during the backtest run.
+   - Example: A Total_Trades value of 100 means the strategy executed 100 trades over the testing period.
+
+5. Winning_Trades:
+   - Meaning: The number of trades that resulted in a profit.
+   - Example: If Winning_Trades is 60, then 60 out of 100 trades were profitable.
+
+6. Gross_Profit:
+   - Meaning: The sum of all profits from winning trades, before subtracting losses.
+   - Example: A Gross_Profit of $5,000 indicates that winning trades, combined, earned $5,000.
+
+7. Gross_Loss:
+   - Meaning: The sum of all losses from losing trades (usually a negative number).
+   - Example: A Gross_Loss of -$3,000 shows that losing trades resulted in a total loss of $3,000.
+
+8. Net_Profit:
+   - Meaning: The overall profit or loss, calculated as Final_Balance minus Initial_Balance.
+   - Example: A Net_Profit of $2,000 means that after all trades, the account grew by $2,000 from its starting balance.
+
+9. Total_Return_Pct:
+   - Meaning: The percentage return over the backtest period, computed as (Net_Profit / Initial_Balance) * 100.
+   - Example: A Total_Return_Pct of 20% indicates the account increased by 20% relative to the initial balance.
+
+10. Win_Rate:
+    - Meaning: The ratio of winning trades to total trades.
+    - Example: A Win_Rate of 0.60 (or 60%) means that 60% of the trades were winners.
+
+11. Profit_Factor:
+    - Meaning: The ratio of Gross_Profit to the absolute value of Gross_Loss, indicating the return for each unit of loss.
+    - Example: A Profit_Factor of 1.67 suggests that for every $1 lost, $1.67 was earned.
+
+12. Max_Drawdown:
+    - Meaning: The largest drop from a peak balance during the run, measuring worst-case loss scenarios.
+    - Example: A Max_Drawdown of $500 means the account experienced a peak-to-trough decline of $500 at its worst.
+
+13. Average_Trade_Duration_Minutes:
+    - Meaning: The average time (in minutes) that trades remain open.
+    - Example: An Average_Trade_Duration_Minutes of 45 means that, on average, each trade was held for 45 minutes.
+
+14. Initial_Balance:
+    - Meaning: The starting account balance at the beginning of the backtest.
+    - Example: An Initial_Balance of $10,000 is the baseline capital for the simulation.
+
+15. Final_Balance:
+    - Meaning: The ending account balance at the close of the backtest.
+    - Example: A Final_Balance of $12,000 indicates that the account grew to $12,000 after all trades.
+
+16. Sharpe_Ratio:
+    - Meaning: A risk-adjusted performance metric calculated as the average trade return divided by the standard deviation of returns. It indicates return per unit of total volatility.
+    - Example: A Sharpe_Ratio of 1.5 suggests that the strategy's returns are 1.5 times its volatility; higher is typically better.
+
+17. Sortino_Ratio:
+    - Meaning: Similar to the Sharpe Ratio, but considers only downside volatility (negative returns), offering a measure of risk-adjusted performance that penalizes harmful fluctuations.
+    - Example: A Sortino_Ratio of 2.0 implies the strategy performs well when only negative volatility is considered.
+
+18. Calmar_Ratio:
+    - Meaning: The ratio of net profit to maximum drawdown, indicating how much profit is earned per unit of drawdown risk.
+    - Example: A Calmar_Ratio of 3.0 means that for every dollar of drawdown, the strategy generated $3 in profit.
+
+19. Recovery_Factor:
+    - Meaning: Calculated as net profit divided by maximum drawdown; it reflects the strategy's ability to recover from losses.
+    - Example: A Recovery_Factor of 2.5 indicates that the net profit is 2.5 times the worst drawdown, showing strong recovery potential.
+
+20. Win_Loss_Ratio:
+    - Meaning: The ratio of the average profit from winning trades to the average loss from losing trades, providing insight into the risk/reward profile.
+    - Example: A Win_Loss_Ratio of 1.8 means that winning trades, on average, are 1.8 times as profitable as losing trades are costly.
+
+21. Trade_Expectancy_Pct:
+    - Meaning: The expected percentage return per trade, calculated as (Win_Rate × Average Win (%) - ((1 - Win_Rate) × |Average Loss (%)|)). It provides a normalized measure of profitability per trade relative to the account balance.
+    - Example: A value of 2% indicates that, on average, each trade contributes a 2% return.
+
+22. Trade_Return_Std:
+    - Meaning: The standard deviation of individual trade returns, measuring the variability in trade performance.
+    - Example: A Trade_Return_Std of 0.02 (or 2%) indicates that the returns typically deviate by about 2 percentage points from the average.
+
+23. Trades_Per_Day:
+    - Meaning: The average number of trades executed per day during the backtest period, normalizing trading activity.
+    - Example: If Trades_Per_Day is 1.5, it suggests that, on average, between 1 and 2 trades were executed each day.
+
+24. Max_Consecutive_Wins:
+    - Meaning: The highest number of winning trades in a row during the run.
+    - Example: A value of 5 means there was a streak of 5 consecutive winning trades, which may boost confidence but also indicate potential risk if expectations are too high.
+
+25. Max_Consecutive_Losses:
+    - Meaning: The highest number of losing trades in a row during the run.
+    - Example: A value of 4 indicates that at one point the strategy experienced 4 losses in a row, highlighting potential drawdown risk and psychological strain.
+
+26. Max_Pct_Margin_Required:
+    - Meaning: The maximum percentage of the account balance required as margin for any trade, showing peak capital usage and liquidity risk.
+    - Example: If Max_Pct_Margin_Required is 15%, it means that the largest trade required 15% of the account balance as margin, which is critical for evaluating risk exposure.
+
+-----------------------------------------------
+Overall, these metrics and their interpretations help you assess not only the profitability but also the risk profile, consistency, and capital efficiency of your trading strategies. They provide a comprehensive framework for comparing strategies and determining which might be optimal for live trading.
