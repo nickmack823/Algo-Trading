@@ -120,7 +120,7 @@ class Backtester:
     def __init__(
         self,
         strategy: strategies.BaseStrategy,
-        forex_pair: str,
+        forex_pair: str,  # e.g. "EURUSD" with no slashes
         timeframe: str,
         initial_balance=10_000,
         commission_per_lot=6,
@@ -148,9 +148,7 @@ class Backtester:
         self.margin_remaining = initial_balance
 
         # SQL Helpers
-        self.backtest_sqlhelper = BacktestSQLHelper(
-            f"{config.BACKTESTING_FOLDER}/{config.BACKTESTING_DB_NAME}"
-        )
+        self.backtest_sqlhelper = BacktestSQLHelper()
         self.forex_pair_id = self.backtest_sqlhelper.get_forex_pair_id(
             f"{self.base_currency}/{self.quote_currency}"
         )

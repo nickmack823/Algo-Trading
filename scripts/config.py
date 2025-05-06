@@ -46,7 +46,7 @@ MAJOR_FOREX_PAIRS = [
 ]
 
 TIMEFRAMES = [
-    "5_minute",
+    # "5_minute",
     "15_minute",
     "30_minute",
     "1_hour",

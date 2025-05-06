@@ -212,7 +212,8 @@ class HistoricalDataSQLHelper(SQLHelper):
 
 
 class BacktestSQLHelper(SQLHelper):
-    def __init__(self, db_path: str):
+    def __init__(self):
+        db_path = f"{config.BACKTESTING_FOLDER}/{config.BACKTESTING_DB_NAME}"
         super().__init__(db_path)
 
         existing_tables = self.get_database_tables()
@@ -358,6 +359,26 @@ class BacktestSQLHelper(SQLHelper):
         params_json = json.dumps(parameters)
 
         # Check if the configuration already exists
+        id = self.select_strategy_configuration(name, description, parameters)
+
+        # If it doesn't exist, insert it
+        if id is None:
+            query = "INSERT INTO StrategyConfigurations (name, description, parameters) VALUES (?, ?, ?)"
+
+            # Execute the INSERT statement
+            self.safe_execute(self.cursor, query, (name, description, params_json))
+            self.conn.commit()
+
+            id = self.cursor.lastrowid
+
+        return id
+
+    def select_strategy_configuration(
+        self, name: str, description: str, parameters: dict
+    ) -> int:
+        params_json = json.dumps(parameters)
+
+        # Check if the configuration already exists
         query = "SELECT id FROM StrategyConfigurations WHERE name = ? AND description = ? AND parameters = ?"
         self.safe_execute(self.cursor, query, (name, description, params_json))
         existing_config = self.cursor.fetchone()
@@ -366,15 +387,6 @@ class BacktestSQLHelper(SQLHelper):
         id = None
         if existing_config is not None:
             id = existing_config[0]
-        # If it doesn't exist, insert it
-        else:
-            query = "INSERT INTO StrategyConfigurations (name, description, parameters) VALUES (?, ?, ?)"
-
-            # Execute the INSERT statement
-            self.safe_execute(self.cursor, query, (name, description, params_json))
-            self.conn.commit()
-
-            id = self.cursor.lastrowid
 
         return id
 
@@ -417,6 +429,27 @@ class BacktestSQLHelper(SQLHelper):
 
         # Return the last inserted run_id.
         return self.cursor.lastrowid
+
+    def backtest_run_exists(
+        self, pair_id: int, strategy_config_id: int, timeframe: str
+    ) -> bool:
+        """Checks if a backtest run exists in the database
+
+        Args:
+            pair_id (int): The ID of the forex pair from the ForexPairs table.
+            strategy_config_id (int): The ID of the strategy configuration from the StrategyConfigurations table.
+            timeframe (str): The timeframe of the backtest
+
+        Returns:
+            bool: A boolean indicating whether the backtest run exists in the database
+        """
+        self.safe_execute(
+            self.cursor,
+            "SELECT id FROM BacktestRuns WHERE Pair_ID = ? AND Strategy_ID = ? AND Timeframe = ?",
+            (pair_id, strategy_config_id, timeframe),
+        )
+
+        return self.cursor.fetchone() is not None
 
     def insert_trades(self, trades: pd.DataFrame) -> None:
         """

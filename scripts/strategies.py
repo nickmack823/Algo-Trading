@@ -154,10 +154,22 @@ class PositionManager:
             return exit_type, exit_price, None
 
         event = None
+
+        # Before updating stop loss, store old stop loss
         old_sl = self.stop_loss
         self.update_stop_loss(current_price)
+
         if self.stop_loss != old_sl:
-            if self.stop_loss == self.entry_price:
+            # Special check: Breakeven triggers ONLY if stop moved exactly to entry price AND was BELOW entry price before
+            if (
+                old_sl < self.entry_price
+                and self.stop_loss == self.entry_price
+                and self.direction == "BUY"
+            ) or (
+                old_sl > self.entry_price
+                and self.stop_loss == self.entry_price
+                and self.direction == "SELL"
+            ):
                 event = "Breakeven Hit"
             else:
                 event = "Trailing SL Updated"
@@ -557,7 +569,7 @@ class NNFXStrategy(BaseStrategy):
         self.volume = volume
         self.exit = exit_indicator
 
-        self.parameters = {
+        parameters = {
             "atr": f"{atr['name']}_{atr['parameters']}",
             "baseline": f"{baseline['name']}_{baseline['parameters']}",
             "c1": f"{c1['name']}_{c1['parameters']}",
@@ -570,7 +582,7 @@ class NNFXStrategy(BaseStrategy):
         self.last_valid_entry_index = None
         self.last_valid_entry_direction = None
 
-        super().__init__(forex_pair=forex_pair, parameters=self.parameters)
+        super().__init__(forex_pair=forex_pair, parameters=parameters)
 
     def _calculate_indicators(self, data: pd.DataFrame) -> pd.DataFrame:
         """
@@ -935,8 +947,8 @@ class NNFXStrategy(BaseStrategy):
             if (
                 exit_bearish_signal
                 or baseline_bearish_signal
-                or c1_bearish_signal
-                or c2_bearish_signal
+                # or c1_bearish_signal
+                # or c2_bearish_signal
             ):
                 signals.append(EXIT_LONG)
                 signal_source = "Exit"
@@ -945,8 +957,8 @@ class NNFXStrategy(BaseStrategy):
             if (
                 exit_bullish_signal
                 or baseline_bullish_signal
-                or c1_bullish_signal
-                or c2_bullish_signal
+                # or c1_bullish_signal
+                # or c2_bullish_signal
             ):
                 signals.append(EXIT_SHORT)
                 signal_source = "Exit"

@@ -1,7 +1,5 @@
 import logging
-import multiprocessing as mp
 import time
-import types
 from itertools import product
 
 from scripts import polygon, strategies
@@ -116,8 +114,8 @@ def test_one():
     trades = backtester.save_trades()
 
 
-# Generate strategy + pair/timeframe combinations
-def generate_combo_tasks():
+def nnfx_testing():
+    # Assume you’ve already defined these lists
     volatility_pool = volatility_indicators
     baseline_pool = baseline_indicators
     confirmation_pool = trend_indicators + momentum_indicators
@@ -126,121 +124,95 @@ def generate_combo_tasks():
         confirmation_pool  # or use a separate exit_indicators list if you have one
     )
 
-    for atr, baseline, c1, c2, volume, exit in product(
+    logging.info(f"Number of volatility indicators: {len(volatility_pool)}")
+    logging.info(f"Number of baseline indicators: {len(baseline_pool)}")
+    logging.info(f"Number of confirmation indicators: {len(confirmation_pool)}")
+    logging.info(f"Number of volume indicators: {len(volume_pool)}")
+    logging.info(f"Number of exit indicators: {len(exit_pool)}")
+
+    backtest_sqlhelper = BacktestSQLHelper()
+
+    # Create a generator to lazily produce combinations
+    combo_generator = product(
         volatility_pool,
         baseline_pool,
         confirmation_pool,
         confirmation_pool,
         volume_pool,
         exit_pool,
-    ):
-        if c1 != c2:
-            for forex_pair in MAJOR_FOREX_PAIRS:
-                for timeframe in TIMEFRAMES:
-                    yield (atr, baseline, c1, c2, volume, exit, forex_pair, timeframe)
-
-
-def estimate_total_tasks():
-    n_atr = len(volatility_indicators)
-    n_base = len(baseline_indicators)
-    n_conf = len(trend_indicators + momentum_indicators)
-    n_vol = len(volume_indicators)
-    n_exit = n_conf  # or another list if using separate exit indicators
-
-    c1_c2_pairs = n_conf * (n_conf - 1)  # c1 != c2
-    total = (
-        n_atr
-        * n_base
-        * c1_c2_pairs
-        * n_vol
-        * n_exit
-        * len(MAJOR_FOREX_PAIRS)
-        * len(TIMEFRAMES)
     )
-    return total
 
+    total_checked = 0
+    total_run = 0
 
-def wrap_lambdas(indicator_config: dict) -> dict:
-    def wrap(fn, name):
-        if fn.__name__ == "<lambda>":
-            new_fn = types.FunctionType(fn.__code__, fn.__globals__, name)
-            return new_fn
-        return fn
-
-    return {
-        key: (wrap(value, f"{key}_wrapped") if callable(value) else value)
-        for key, value in indicator_config.items()
-    }
-
-
-# Worker builds backtester, runs backtest, returns to queue
-def run_combo_worker(task):
-    atr, baseline, c1, c2, volume, exit, forex_pair, timeframe = task
-    strategy = strategies.NNFXStrategy(atr, baseline, c1, c2, volume, exit, forex_pair)
-    backtester = Backtester(
-        strategy, forex_pair.replace("/", ""), timeframe, initial_balance=10_000
+    estimated_total_checks = count_valid_combos(
+        vol_pool=volatility_pool,
+        base_pool=baseline_pool,
+        conf_pool=confirmation_pool,
+        volu_pool=volume_pool,
+        exit_pool=exit_pool,
     )
-    backtester.run_backtest()
-    return backtester
+
+    logging.info(f"Estimated total checks: {estimated_total_checks}")
+
+    for atr, baseline, c1, c2, volume, exit in combo_generator:
+        if c1 == c2:
+            continue  # Skip invalid C1 == C2
+
+        for forex_pair in MAJOR_FOREX_PAIRS:
+            pair_id = backtest_sqlhelper.get_forex_pair_id(forex_pair)
+
+            for timeframe in TIMEFRAMES:
+                # Build strategy
+                strategy = strategies.NNFXStrategy(
+                    atr=atr,
+                    baseline=baseline,
+                    c1=c1,
+                    c2=c2,
+                    volume=volume,
+                    exit_indicator=exit,
+                    forex_pair=forex_pair,
+                )
+
+                strategy_id = backtest_sqlhelper.select_strategy_configuration(
+                    strategy.NAME, strategy.DESCRIPTION, strategy.PARAMETER_SETTINGS
+                )
+
+                run_exists = backtest_sqlhelper.backtest_run_exists(
+                    pair_id, strategy_id, timeframe
+                )
+
+                if not run_exists:
+                    backtester = Backtester(
+                        strategy,
+                        forex_pair.replace("/", ""),
+                        timeframe,
+                        initial_balance=10_000,
+                    )
+                    backtester.run_backtest()
+                    backtester.save_run()
+                    total_runs += 1
+                else:
+                    logging.debug(
+                        f"Already exists: {strategy.NAME} | {forex_pair} | {timeframe}"
+                    )
+
+        total_checked += 1
+
+        # Optional: stop early for testing
+        # if total_run >= 100:
+        #     break
+
+    logging.info(f"Total combinations checked: {total_checked}")
+    logging.info(f"Total new backtests run: {total_run}")
 
 
-# Single writer process receives backtester objects and saves them
-def db_writer(queue: mp.Queue, done_flag):
-    while True:
-        while not queue.empty():
-            backtester: Backtester = queue.get()
-            if backtester is None:
-                continue
-            backtester.save_run()
-        if done_flag.value:
-            break
-        time.sleep(0.1)
-
-
-# Multiprocessing controller
-def parallel_nnfx_testing_with_writer(processes: int):
-    start_time = time.time()
-    completed = mp.Value("i", 0)
-    done_flag = mp.Value("b", False)
-    queue = mp.Queue()
-
-    # Estimate total upfront only if needed for progress tracking (optional)
-    total_tasks = estimate_total_tasks()
-    print(f"Estimated total tasks: {total_tasks}")
-
-    # Start the writer process
-    writer_proc = mp.Process(target=db_writer, args=(queue, done_flag))
-
-    logging.info("Starting backtesting...")
-    writer_proc.start()
-
-    def callback(backtester):
-        queue.put(backtester)
-        with completed.get_lock():
-            completed.value += 1
-            elapsed = time.time() - start_time
-            rate = completed.value / elapsed if elapsed > 0 else 0
-            eta = (total_tasks - completed.value) / rate if rate > 0 else float("inf")
-            print(
-                f"\rProgress: {completed.value}/{total_tasks} "
-                f"({(completed.value / total_tasks) * 100:.2f}%) | "
-                f"Elapsed: {elapsed:.1f}s | ETA: {eta:.1f}s",
-                end="",
-            )
-
-    with mp.Pool(processes=processes) as pool:
-        for result in pool.imap_unordered(
-            run_combo_worker, generate_combo_tasks(), chunksize=1
-        ):
-            callback(result)
-
-    with done_flag.get_lock():
-        done_flag.value = True
-    writer_proc.join()
-    print("\nBacktesting complete.")
-
-
-# Entry point
 if __name__ == "__main__":
-    processes = round(mp.cpu_count() / 2)
-    parallel_nnfx_testing_with_writer(processes=processes)
+    # Collect any historical data we don't already have
+    # polygon.collect_all_data()
+
+    # Test one strategy
+    # test_one()
+
+    # Run backtests
+    nnfx_testing()
