@@ -1,2 +1,3 @@
 *.db
+*.feather
 /scripts/__pycache__

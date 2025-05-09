@@ -131,7 +131,7 @@ class Backtester:
         Initializes the backtester with historical data and trading parameters.
         """
         self.strategy = strategy  # Trading strategy
-        self.forex_pair = forex_pair  # Forex pair being traded
+        self.forex_pair = forex_pair.replace("/", "")  # Forex pair being traded
         self.base_currency, self.quote_currency = (
             self.forex_pair[:3],
             self.forex_pair[3:],
@@ -160,13 +160,18 @@ class Backtester:
 
         # Load historical OHLCV + indicator data
         data_sqlhelper = HistoricalDataSQLHelper(
-            f"{config.DATA_FOLDER}/{forex_pair}.db"
+            f"{config.DATA_FOLDER}/{self.forex_pair}.db"
         )
         self.data: pd.DataFrame = data_sqlhelper.get_historical_data(table=timeframe)
         self.data_start_date, self.data_end_date = (
             self.data["Timestamp"].min(),
             self.data["Timestamp"].max(),
         )
+        # Precompute indicators
+        self.strategy.prepare_data(self.data)
+
+        # Set a start index for when we start trading on the data (to create a semblance of historical data)
+        self.trading_start_index = 100
 
         # Load conversion data if non-USD quote currency
         self.quote_to_usd_data = None
@@ -178,20 +183,263 @@ class Backtester:
                 secondary_data_sqlhelper.get_historical_data(table=timeframe)
             )
 
+            # Set Timestamp as index for easier alignment
+            quote_df = self.quote_to_usd_data.set_index("Timestamp").sort_index()
+            data_timestamps = pd.Series(self.data["Timestamp"].unique())
+
+            # Find missing timestamps
+            missing_timestamps = data_timestamps[~data_timestamps.isin(quote_df.index)]
+
+            # For each missing timestamp, forward-fill from the last known quote row
+            if not missing_timestamps.empty:
+                # Reindex the quote data to include missing timestamps
+                all_timestamps = quote_df.index.union(missing_timestamps).sort_values()
+                quote_df = quote_df.reindex(all_timestamps)
+
+                # Forward-fill missing values
+                quote_df = quote_df.ffill()
+
+            # Reset index to have Timestamp as a column again
+            self.quote_to_usd_data = quote_df.reset_index()
+
+            secondary_data_sqlhelper.close_connection()
+            secondary_data_sqlhelper = None
+
         self.all_trades: list[Trade] = []  # List of all executed trades
         self.open_trades: list[Trade] = []  # Stores open trades
         self.position = 0  # Current position: 1 for long, -1 for short, 0 for none
         self.max_drawdown = 0  # Maximum observed drawdown
+        self.max_drawdown_pct = 0  # Maximum observed drawdown as a percentage
         self.peak_balance = initial_balance  # Highest account balance observed
+
+        # Close SQL connections
+        self.backtest_sqlhelper.close_connection()
+        data_sqlhelper.close_connection()
+        self.backtest_sqlhelper = None
+        data_sqlhelper = None
+
+    # def __repr__(self):
+    #     return f"Backtester({self.strategy.NAME}, {self.forex_pair}, {self.timeframe}) | {self.strategy.PARAMETER_SETTINGS}"
+
+    def _calculate_metrics(self):
+        total_trades = len(self.all_trades)
+
+        # Set up the initial metrics dictionary, including new metrics.
+        metrics = {
+            "Data_Start_Date": self.data_start_date,
+            "Data_End_Date": self.data_end_date,
+            "Trading_Start_Date": self.data["Timestamp"].iloc[self.trading_start_index],
+            "Total_Trades": total_trades,
+            "Winning_Trades": 0,
+            "Gross_Profit": 0.0,
+            "Gross_Loss": 0.0,
+            "Net_Profit": 0.0,
+            "Total_Return_Pct": 0.0,
+            "Win_Rate": 0.0,
+            "Profit_Factor": 0.0,
+            "Max_Drawdown": getattr(self, "max_drawdown", 0.0),
+            "Max_Drawdown_Pct": getattr(self, "max_drawdown_pct", 0.0),
+            "Average_Trade_Duration_Minutes": 0.0,
+            "Initial_Balance": self.initial_balance,
+            "Final_Balance": self.initial_balance,
+            "Sharpe_Ratio": 0.0,
+            "Sortino_Ratio": 0.0,
+            "Calmar_Ratio": 0.0,
+            "Recovery_Factor": 0.0,
+            "Win_Loss_Ratio": 0.0,
+            "Trade_Expectancy_Pct": 0.0,
+            "Expectancy_Per_Day_Pct": 0.0,
+            "Trade_Return_Std": 0.0,
+            "Trades_Per_Day": 0.0,
+            "Max_Consecutive_Wins": 0,
+            "Max_Consecutive_Losses": 0,
+            "Max_Margin_Required_Pct": 0.0,
+        }
+
+        # If no trades were executed, return default metrics.
+        if total_trades == 0:
+            metrics_df = pd.DataFrame([metrics])
+            self.metrics_df = metrics_df
+            return
+
+        # Basic aggregated metrics.
+        winning_trades = sum(
+            1 for trade in self.all_trades if trade.pnl is not None and trade.pnl > 0
+        )
+        gross_profit = sum(
+            trade.pnl
+            for trade in self.all_trades
+            if trade.pnl is not None and trade.pnl > 0
+        )
+        gross_loss = sum(
+            trade.pnl
+            for trade in self.all_trades
+            if trade.pnl is not None and trade.pnl < 0
+        )
+        initial_balance = self.initial_balance
+        final_balance = self.all_trades[-1].balance_after_trade
+        net_profit = final_balance - initial_balance
+        total_return_pct = (
+            (net_profit / initial_balance) * 100 if initial_balance != 0 else 0
+        )
+        win_rate = winning_trades / total_trades
+        profit_factor = (
+            (gross_profit / abs(gross_loss)) if gross_loss != 0 else float("inf")
+        )
+        average_trade_duration = (
+            sum(
+                trade.duration
+                for trade in self.all_trades
+                if trade.duration is not None
+            )
+            / total_trades
+        )
+
+        # Compute trade returns (as percentages) for Sharpe, Sortino, and Trade Expectancy.
+        trade_returns = [
+            trade.return_pct
+            for trade in self.all_trades
+            if trade.return_pct is not None
+        ]
+        mean_return = np.mean(trade_returns) if trade_returns else 0.0
+        std_return = np.std(trade_returns) if trade_returns else 0.0
+        sharpe_ratio = (mean_return / std_return) if std_return != 0 else float("nan")
+
+        # Sortino Ratio: only use downside returns.
+        downside_returns = [r for r in trade_returns if r < 0]
+        std_downside = np.std(downside_returns) if downside_returns else 0.0
+        sortino_ratio = (
+            (mean_return / std_downside) if std_downside != 0 else float("inf")
+        )
+
+        # Calmar Ratio & Recovery Factor: computed as net profit divided by max drawdown.
+        calmar_ratio = (
+            (total_return_pct / self.max_drawdown_pct)
+            if self.max_drawdown_pct != 0
+            else float("inf")
+        )
+
+        recovery_factor = (
+            (net_profit / self.max_drawdown) if self.max_drawdown != 0 else float("inf")
+        )
+
+        # Win/Loss Ratio (Average): based on percentage returns.
+        wins_pct = [
+            trade.return_pct
+            for trade in self.all_trades
+            if trade.return_pct is not None and trade.return_pct > 0
+        ]
+        losses_pct = [
+            trade.return_pct
+            for trade in self.all_trades
+            if trade.return_pct is not None and trade.return_pct < 0
+        ]
+        avg_win_pct = np.mean(wins_pct) if wins_pct else 0.0
+        avg_loss_pct = np.mean(losses_pct) if losses_pct else 0.0
+        win_loss_ratio = (
+            (avg_win_pct / abs(avg_loss_pct)) if avg_loss_pct != 0 else float("inf")
+        )
+
+        # Standard Deviation of Trade Returns.
+        trade_return_std = std_return
+
+        # Trades Per Day: compute using the data start and end dates.
+        start_date = pd.to_datetime(self.data_start_date)
+        end_date = pd.to_datetime(self.data_end_date)
+        num_days = (end_date - start_date).days + 1
+        trades_per_day = total_trades / num_days if num_days > 0 else total_trades
+
+        # Trade Expectancy as a percentage: expected return per trade.
+        trade_expectancy_pct = (win_rate * avg_win_pct) - (
+            (1 - win_rate) * abs(avg_loss_pct)
+        )
+        expectancy_per_day_pct = trade_expectancy_pct * trades_per_day
+
+        # Maximum Consecutive Wins and Losses.
+        max_consec_wins = 0
+        max_consec_losses = 0
+        current_wins = 0
+        current_losses = 0
+        for trade in self.all_trades:
+            if trade.pnl is not None:
+                if trade.pnl > 0:
+                    current_wins += 1
+                    current_losses = 0
+                elif trade.pnl < 0:
+                    current_losses += 1
+                    current_wins = 0
+                else:
+                    current_wins = 0
+                    current_losses = 0
+            max_consec_wins = max(max_consec_wins, current_wins)
+            max_consec_losses = max(max_consec_losses, current_losses)
+
+        # Maximum Percentage Margin Required.
+        max_pct_margin_required = max(
+            (
+                trade.margin_required / trade.balance_before_trade * 100
+                for trade in self.all_trades
+                if trade.balance_before_trade > 0
+            ),
+            default=0.0,
+        )
+
+        # Update the metrics dictionary.
+        metrics["Winning_Trades"] = winning_trades
+        metrics["Gross_Profit"] = round(gross_profit, 2)
+        metrics["Gross_Loss"] = round(gross_loss, 2)
+        metrics["Net_Profit"] = round(net_profit, 2)
+        metrics["Total_Return_Pct"] = round(total_return_pct, 2)
+        metrics["Win_Rate"] = round(win_rate, 2)
+        metrics["Profit_Factor"] = (
+            round(profit_factor, 2) if profit_factor != float("inf") else profit_factor
+        )
+        metrics["Max_Drawdown"] = round(self.max_drawdown, 2)
+        metrics["Max_Drawdown_Pct"] = round(self.max_drawdown_pct, 2)
+        metrics["Average_Trade_Duration_Minutes"] = round(average_trade_duration, 2)
+        metrics["Initial_Balance"] = round(initial_balance, 2)
+        metrics["Final_Balance"] = round(final_balance, 2)
+        metrics["Sharpe_Ratio"] = (
+            round(sharpe_ratio, 2) if not np.isnan(sharpe_ratio) else sharpe_ratio
+        )
+        metrics["Sortino_Ratio"] = (
+            round(sortino_ratio, 2) if sortino_ratio != float("inf") else sortino_ratio
+        )
+        metrics["Calmar_Ratio"] = (
+            round(calmar_ratio, 2) if calmar_ratio != float("inf") else calmar_ratio
+        )
+        metrics["Recovery_Factor"] = (
+            round(recovery_factor, 2)
+            if recovery_factor != float("inf")
+            else recovery_factor
+        )
+        metrics["Win_Loss_Ratio"] = (
+            round(win_loss_ratio, 2)
+            if win_loss_ratio != float("inf")
+            else win_loss_ratio
+        )
+        metrics["Trade_Expectancy_Pct"] = round(trade_expectancy_pct, 2)
+        metrics["Expectancy_Per_Day_Pct"] = round(expectancy_per_day_pct, 2)
+        metrics["Trade_Return_Std"] = round(trade_return_std, 4)
+        metrics["Trades_Per_Day"] = round(trades_per_day, 2)
+        metrics["Max_Consecutive_Wins"] = max_consec_wins
+        metrics["Max_Consecutive_Losses"] = max_consec_losses
+        metrics["Max_Margin_Required_Pct"] = round(max_pct_margin_required, 2)
+
+        metrics_df = pd.DataFrame([metrics])
+
+        self.metrics_df = metrics_df
+
+        return
+
+    def initialize_sqlhelper(self):
+        self.backtest_sqlhelper = BacktestSQLHelper()
 
     def run_backtest(self):
         """
         Executes the backtest using the provided strategy.
         Now uses generate_trade_plan() from Strategy to determine all trade logic.
         """
-        # Precompute indicators
-        self.strategy.prepare_data(self.data)
-
         closes = self.data["Close"].values
         timestamps = self.data["Timestamp"].values
         quote_to_usd_rates = (
@@ -201,6 +449,11 @@ class Backtester:
         )
 
         for index, row in enumerate(self.data.itertuples(index=False)):
+
+            # Skip the first 100 rows so we have a semblance of historical data
+            if index < self.trading_start_index:
+                continue
+
             current_price = closes[index]
             timestamp = timestamps[index]
 
@@ -316,9 +569,14 @@ class Backtester:
             if self.balance > self.peak_balance:
                 self.peak_balance = self.balance
 
+            # Compute drawdown
             drawdown = self.peak_balance - self.balance
+            drawdown_pct = (
+                (drawdown / self.peak_balance) * 100 if self.peak_balance > 0 else 0
+            )
             if drawdown > self.max_drawdown:
                 self.max_drawdown = drawdown
+                self.max_drawdown_pct = drawdown_pct
 
             # Automatically set position based on current open trades
             if not self.open_trades:
@@ -333,220 +591,20 @@ class Backtester:
                 1,
             ], f"Unexpected position value: {self.position}"
 
-    def save_run(self) -> int:
-        """
-        Calculate aggregated metrics for the entire backtest run using the Trade objects in self.trades.
+        # Calculate metrics from trades
+        self._calculate_metrics()
+        return
 
-        Returns:
-            int: The run_id of the newly inserted backtest run.
-        """
-        total_trades = len(self.all_trades)
+    def get_number_of_trades(self):
+        return len(self.all_trades)
 
-        # Set up the initial metrics dictionary, including new metrics.
-        metrics = {
-            "Timeframe": self.timeframe,
-            "Data_Start_Date": self.data_start_date,
-            "Data_End_Date": self.data_end_date,
-            "Total_Trades": total_trades,
-            "Winning_Trades": 0,
-            "Gross_Profit": 0.0,
-            "Gross_Loss": 0.0,
-            "Net_Profit": 0.0,
-            "Total_Return_Pct": 0.0,
-            "Win_Rate": 0.0,
-            "Profit_Factor": 0.0,
-            "Max_Drawdown": getattr(self, "max_drawdown", 0.0),
-            "Average_Trade_Duration_Minutes": 0.0,
-            "Initial_Balance": self.initial_balance,
-            "Final_Balance": self.initial_balance,
-            "Sharpe_Ratio": 0.0,
-            "Sortino_Ratio": 0.0,
-            "Calmar_Ratio": 0.0,
-            "Recovery_Factor": 0.0,
-            "Win_Loss_Ratio": 0.0,
-            "Trade_Expectancy_Pct": 0.0,
-            "Expectancy_Per_Day_Pct": 0.0,
-            "Trade_Return_Std": 0.0,
-            "Trades_Per_Day": 0.0,
-            "Max_Consecutive_Wins": 0,
-            "Max_Consecutive_Losses": 0,
-            "Max_Pct_Margin_Required": 0.0,
-        }
+    def get_metrics_df(self):
+        return self.metrics_df
 
-        # If no trades were executed, insert default metrics.
-        if total_trades == 0:
-            metrics_df = pd.DataFrame([metrics])
-            self.run_id = self.backtest_sqlhelper.insert_backtest_run(
-                self.forex_pair_id, self.strategy_config_id, metrics_df
-            )
-            return self.run_id
-
-        # Basic aggregated metrics.
-        winning_trades = sum(
-            1 for trade in self.all_trades if trade.pnl is not None and trade.pnl > 0
-        )
-        gross_profit = sum(
-            trade.pnl
-            for trade in self.all_trades
-            if trade.pnl is not None and trade.pnl > 0
-        )
-        gross_loss = sum(
-            trade.pnl
-            for trade in self.all_trades
-            if trade.pnl is not None and trade.pnl < 0
-        )
-        initial_balance = self.initial_balance
-        final_balance = self.all_trades[-1].balance_after_trade
-        net_profit = final_balance - initial_balance
-        total_return_pct = (
-            (net_profit / initial_balance) * 100 if initial_balance != 0 else 0
-        )
-        win_rate = winning_trades / total_trades
-        profit_factor = (
-            (gross_profit / abs(gross_loss)) if gross_loss != 0 else float("inf")
-        )
-        max_drawdown = getattr(self, "max_drawdown", 0.0)
-        average_trade_duration = (
-            sum(
-                trade.duration
-                for trade in self.all_trades
-                if trade.duration is not None
-            )
-            / total_trades
-        )
-
-        # Compute trade returns (as percentages) for Sharpe, Sortino, and Trade Expectancy.
-        trade_returns = [
-            trade.return_pct
-            for trade in self.all_trades
-            if trade.return_pct is not None
-        ]
-        mean_return = np.mean(trade_returns) if trade_returns else 0.0
-        std_return = np.std(trade_returns) if trade_returns else 0.0
-        sharpe_ratio = (mean_return / std_return) if std_return != 0 else float("nan")
-
-        # Sortino Ratio: only use downside returns.
-        downside_returns = [r for r in trade_returns if r < 0]
-        std_downside = np.std(downside_returns) if downside_returns else 0.0
-        sortino_ratio = (
-            (mean_return / std_downside) if std_downside != 0 else float("inf")
-        )
-
-        # Calmar Ratio & Recovery Factor: computed as net profit divided by max drawdown.
-        calmar_ratio = (
-            (net_profit / max_drawdown) if max_drawdown != 0 else float("inf")
-        )
-        recovery_factor = (
-            (net_profit / max_drawdown) if max_drawdown != 0 else float("inf")
-        )
-
-        # Win/Loss Ratio (Average): based on percentage returns.
-        wins_pct = [
-            trade.return_pct
-            for trade in self.all_trades
-            if trade.return_pct is not None and trade.return_pct > 0
-        ]
-        losses_pct = [
-            trade.return_pct
-            for trade in self.all_trades
-            if trade.return_pct is not None and trade.return_pct < 0
-        ]
-        avg_win_pct = np.mean(wins_pct) if wins_pct else 0.0
-        avg_loss_pct = np.mean(losses_pct) if losses_pct else 0.0
-        win_loss_ratio = (
-            (avg_win_pct / abs(avg_loss_pct)) if avg_loss_pct != 0 else float("inf")
-        )
-
-        # Standard Deviation of Trade Returns.
-        trade_return_std = std_return
-
-        # Trades Per Day: compute using the data start and end dates.
-        start_date = pd.to_datetime(self.data_start_date)
-        end_date = pd.to_datetime(self.data_end_date)
-        num_days = (end_date - start_date).days + 1
-        trades_per_day = total_trades / num_days if num_days > 0 else total_trades
-
-        # Trade Expectancy as a percentage: expected return per trade.
-        trade_expectancy_pct = (win_rate * avg_win_pct) - (
-            (1 - win_rate) * abs(avg_loss_pct)
-        )
-        expectancy_per_day_pct = trade_expectancy_pct * trades_per_day
-
-        # Maximum Consecutive Wins and Losses.
-        max_consec_wins = 0
-        max_consec_losses = 0
-        current_wins = 0
-        current_losses = 0
-        for trade in self.all_trades:
-            if trade.pnl is not None:
-                if trade.pnl > 0:
-                    current_wins += 1
-                    current_losses = 0
-                elif trade.pnl < 0:
-                    current_losses += 1
-                    current_wins = 0
-                else:
-                    current_wins = 0
-                    current_losses = 0
-            max_consec_wins = max(max_consec_wins, current_wins)
-            max_consec_losses = max(max_consec_losses, current_losses)
-
-        # Maximum Percentage Margin Required.
-        max_pct_margin_required = max(
-            (
-                trade.margin_required / trade.balance_before_trade * 100
-                for trade in self.all_trades
-                if trade.balance_before_trade > 0
-            ),
-            default=0.0,
-        )
-
-        # Update the metrics dictionary.
-        metrics["Winning_Trades"] = winning_trades
-        metrics["Gross_Profit"] = round(gross_profit, 2)
-        metrics["Gross_Loss"] = round(gross_loss, 2)
-        metrics["Net_Profit"] = round(net_profit, 2)
-        metrics["Total_Return_Pct"] = round(total_return_pct, 2)
-        metrics["Win_Rate"] = round(win_rate, 2)
-        metrics["Profit_Factor"] = (
-            round(profit_factor, 2) if profit_factor != float("inf") else profit_factor
-        )
-        metrics["Max_Drawdown"] = round(max_drawdown, 2)
-        metrics["Average_Trade_Duration_Minutes"] = round(average_trade_duration, 2)
-        metrics["Initial_Balance"] = round(initial_balance, 2)
-        metrics["Final_Balance"] = round(final_balance, 2)
-        metrics["Sharpe_Ratio"] = (
-            round(sharpe_ratio, 2) if not np.isnan(sharpe_ratio) else sharpe_ratio
-        )
-        metrics["Sortino_Ratio"] = (
-            round(sortino_ratio, 2) if sortino_ratio != float("inf") else sortino_ratio
-        )
-        metrics["Calmar_Ratio"] = (
-            round(calmar_ratio, 2) if calmar_ratio != float("inf") else calmar_ratio
-        )
-        metrics["Recovery_Factor"] = (
-            round(recovery_factor, 2)
-            if recovery_factor != float("inf")
-            else recovery_factor
-        )
-        metrics["Win_Loss_Ratio"] = (
-            round(win_loss_ratio, 2)
-            if win_loss_ratio != float("inf")
-            else win_loss_ratio
-        )
-        metrics["Trade_Expectancy_Pct"] = round(trade_expectancy_pct, 2)
-        metrics["Expectancy_Per_Day_Pct"] = round(expectancy_per_day_pct, 2)
-        metrics["Trade_Return_Std"] = round(trade_return_std, 4)
-        metrics["Trades_Per_Day"] = round(trades_per_day, 2)
-        metrics["Max_Consecutive_Wins"] = max_consec_wins
-        metrics["Max_Consecutive_Losses"] = max_consec_losses
-        metrics["Max_Pct_Margin_Required"] = round(max_pct_margin_required, 2)
-
-        metrics_df = pd.DataFrame([metrics])
-        self.run_id = self.backtest_sqlhelper.insert_backtest_run(
-            self.forex_pair_id, self.strategy_config_id, metrics_df
-        )
-        return self.run_id
+    def get_metric(self, metric_name: str):
+        # Since the metrics_df is a one-row DataFrame, just grab the first/only value of the column
+        value = self.metrics_df[metric_name].iloc[0]
+        return value
 
     def save_trades(self):
         """
@@ -590,6 +648,79 @@ class Backtester:
         self.backtest_sqlhelper.insert_trades(dataframe)
 
         return dataframe
+
+    def calculate_composite_score(self):
+        """
+        Calculates a composite score for evaluating strategy performance,
+        incorporating performance, risk, consistency, and activity metrics.
+        """
+
+        # --- Core performance metrics ---
+        expectancy_per_day = self.get_metric(
+            "Expectancy_Per_Day_Pct"
+        )  # Daily expected return (%)
+        trade_expectancy = self.get_metric(
+            "Trade_Expectancy_Pct"
+        )  # Per-trade return expectation (%)
+        profit_factor = self.get_metric(
+            "Profit_Factor"
+        )  # Ratio of gross profit to gross loss
+        win_loss_ratio = self.get_metric("Win_Loss_Ratio")  # Avg win % / avg loss %
+        trades_per_day = self.get_metric(
+            "Trades_Per_Day"
+        )  # Average trades per calendar day
+
+        # --- Base score weighting ---
+        score = (
+            expectancy_per_day * 1.5  # Primary performance metric
+            + trade_expectancy * 1.0  # Efficiency per trade
+            + profit_factor * 0.5  # Risk-adjusted reward
+            + win_loss_ratio * 0.5  # Reward vs. risk skew
+            + trades_per_day * 0.25  # Encourages some activity
+        )
+
+        # --- Pull supporting risk/volatility metrics ---
+        max_drawdown_pct = self.get_metric(
+            "Max_Drawdown"
+        )  # Max % drop from equity peak
+        trade_std = self.get_metric("Trade_Return_Std")  # Volatility of returns
+        sharpe_ratio = self.get_metric("Sharpe_Ratio")  # Return / total volatility
+        sortino_ratio = self.get_metric("Sortino_Ratio")  # Return / downside volatility
+        max_margin_required_pct = self.get_metric("Max_Margin_Required_Pct")
+        timeframe = self.timeframe
+
+        # --- Normalize trade activity by timeframe expectations ---
+        trades_per_day_threshold = config.MIN_TRADES_PER_DAY[
+            timeframe
+        ]  # Adjusted baseline
+        activity_penalty = min(1.0, trades_per_day / trades_per_day_threshold)
+        score *= (
+            activity_penalty  # Penalize for very low activity relative to timeframe
+        )
+
+        # --- Penalize high drawdown (exponential) ---
+        # At 20% drawdown → 50% penalty, at 40% → 80%, at 60% → 90%
+        score *= 1 / (1 + (max_drawdown_pct / 20) ** 2)
+
+        # --- Penalize high volatility of returns ---
+        # A strategy with 0% std gets 1.0, 20% std gets 0.5, 40% gets ~0.33
+        score *= 1 / (1 + trade_std / 20)
+
+        # --- Bonus for strong Sharpe/Sortino ratios ---
+        # Cap bonuses so they don’t dominate score
+        if sharpe_ratio > 1.0:
+            score += min((sharpe_ratio - 1.0), 3.0) * 0.25
+        if sortino_ratio > 2.0:
+            score += min((sortino_ratio - 2.0), 3.0) * 0.25
+
+        # --- Penalize high leverage / aggressive sizing ---
+        if max_margin_required_pct > 80:
+            score *= 0.85  # Flat penalty for risk exposure
+
+        # --- Clamp final score to a max (optional, avoids runaway inflation) ---
+        # score = min(score, 25.0)
+
+        return score
 
 
 # Example Usage

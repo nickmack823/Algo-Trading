@@ -1,3 +1,4 @@
+import hashlib
 import json
 import logging
 import os
@@ -211,6 +212,84 @@ class HistoricalDataSQLHelper(SQLHelper):
         return [f for f in os.listdir(config.DATA_FOLDER) if f.endswith(".db")]
 
 
+class IndicatorCacheSQLHelper(SQLHelper):
+    def __init__(
+        self, db_path: str = f"{config.BACKTESTING_FOLDER}/Indicator_Cache.db"
+    ):
+        super().__init__(db_path)
+
+        self.cache_dir = f"{config.BACKTESTING_FOLDER}/indicator_outputs"
+        os.makedirs(self.cache_dir, exist_ok=True)
+
+        self._init_table()
+
+    def _init_table(self):
+        self.cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS IndicatorCache (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                cache_key TEXT UNIQUE,
+                forex_pair TEXT,
+                timeframe TEXT,
+                indicator_name TEXT,
+                parameter_hash TEXT,
+                filepath TEXT
+            )
+        """
+        )
+        self.conn.commit()
+
+    def _generate_cache_key(
+        self, indicator_name, parameters: dict, forex_pair, timeframe
+    ) -> tuple[str, str]:
+        param_str = str(sorted(parameters.items()))
+        param_hash = hashlib.md5(param_str.encode()).hexdigest()
+        key = f"{indicator_name}:{param_hash}:{forex_pair}:{timeframe}"
+        return key, param_hash
+
+    def fetch(
+        self, indicator_name: str, parameters: dict, forex_pair: str, timeframe: str
+    ) -> pd.DataFrame | None:
+        key, _ = self._generate_cache_key(
+            indicator_name, parameters, forex_pair, timeframe
+        )
+
+        self.cursor.execute(
+            "SELECT filepath FROM IndicatorCache WHERE cache_key = ?", (key,)
+        )
+        result = self.cursor.fetchone()
+        if result and os.path.exists(result[0]):
+            return pd.read_feather(result[0])
+        return None
+
+    def store(
+        self,
+        indicator_name: str,
+        parameters: dict,
+        forex_pair: str,
+        timeframe: str,
+        df: pd.DataFrame,
+    ) -> None:
+        key, param_hash = self._generate_cache_key(
+            indicator_name, parameters, forex_pair, timeframe
+        )
+        filename = f"{hashlib.md5(key.encode()).hexdigest()}.feather"
+        filepath = os.path.join(self.cache_dir, filename)
+
+        df.reset_index(drop=True).to_feather(filepath)
+
+        self.cursor.execute(
+            """
+            INSERT OR IGNORE INTO IndicatorCache (
+                cache_key, forex_pair, timeframe, indicator_name, parameter_hash, filepath
+            ) VALUES (?, ?, ?, ?, ?, ?)
+        """,
+            (key, forex_pair, timeframe, indicator_name, param_hash, filepath),
+        )
+
+        self.conn.commit()
+
+
 class BacktestSQLHelper(SQLHelper):
     def __init__(self):
         db_path = f"{config.BACKTESTING_FOLDER}/{config.BACKTESTING_DB_NAME}"
@@ -248,6 +327,7 @@ class BacktestSQLHelper(SQLHelper):
                     "Timeframe": "TEXT",
                     "Data_Start_Date": "TEXT",
                     "Data_End_Date": "TEXT",
+                    "Trading_Start_Date": "TEXT",
                     "Total_Trades": "INTEGER",
                     "Winning_Trades": "INTEGER",
                     "Gross_Profit": "REAL",
@@ -257,6 +337,7 @@ class BacktestSQLHelper(SQLHelper):
                     "Win_Rate": "REAL",
                     "Profit_Factor": "REAL",
                     "Max_Drawdown": "REAL",
+                    "Max_Drawdown_Pct": "REAL",
                     "Average_Trade_Duration_Minutes": "REAL",
                     "Initial_Balance": "REAL",
                     "Final_Balance": "REAL",
@@ -271,7 +352,7 @@ class BacktestSQLHelper(SQLHelper):
                     "Trades_Per_Day": "REAL",
                     "Max_Consecutive_Wins": "INTEGER",
                     "Max_Consecutive_Losses": "INTEGER",
-                    "Max_Pct_Margin_Required": "REAL",
+                    "Max_Margin_Required_Pct": "REAL",
                 },
                 foreign_keys=[
                     "FOREIGN KEY (Pair_ID) REFERENCES ForexPairs(id)",
@@ -303,6 +384,16 @@ class BacktestSQLHelper(SQLHelper):
                     "Pip_Value": "REAL",
                     "Plan_Source": "TEXT",
                     "Position_Events": "TEXT",
+                },
+                foreign_keys=["FOREIGN KEY (Backtest_ID) REFERENCES BacktestRuns(id)"],
+            )
+        if "CompositeScores" not in existing_tables:
+            self.create_table(
+                "CompositeScores",
+                {
+                    "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+                    "Backtest_ID": "INTEGER",
+                    "Score": "REAL",
                 },
                 foreign_keys=["FOREIGN KEY (Backtest_ID) REFERENCES BacktestRuns(id)"],
             )
@@ -391,7 +482,11 @@ class BacktestSQLHelper(SQLHelper):
         return id
 
     def insert_backtest_run(
-        self, pair_id: int, strategy_config_id: int, metrics: pd.DataFrame
+        self,
+        pair_id: int,
+        strategy_config_id: int,
+        timeframe: str,
+        metrics: pd.DataFrame,
     ) -> int:
         """
         Inserts a new backtest run record into the BacktestRuns table and returns the run_id.
@@ -399,6 +494,7 @@ class BacktestSQLHelper(SQLHelper):
         Args:
             pair_id (int): The ID of the forex pair from the ForexPairs table.
             strategy_config_id (int): The ID of the strategy configuration from the StrategyConfigurations table.
+            timeframe (str): The timeframe of the backtest run.
             metrics (pd.DataFrame): A one-row DataFrame containing aggregated run metrics.
 
         Returns:
@@ -412,8 +508,8 @@ class BacktestSQLHelper(SQLHelper):
 
         # Build the INSERT query.
         query = (
-            f"INSERT INTO BacktestRuns (Pair_ID, Strategy_ID, {', '.join(columns)}) "
-            f"VALUES (?, ?, {placeholders})"
+            f"INSERT INTO BacktestRuns (Pair_ID, Strategy_ID, Timeframe, {', '.join(columns)}) "
+            f"VALUES (?, ?, ?, {placeholders})"
         )
 
         # Extract the single row of metrics and convert each value to a native Python type.
@@ -423,7 +519,7 @@ class BacktestSQLHelper(SQLHelper):
 
         # Execute the INSERT statement with the flattened tuple of values.
         self.safe_execute(
-            self.cursor, query, (pair_id, strategy_config_id, *row_values)
+            self.cursor, query, (pair_id, strategy_config_id, timeframe, *row_values)
         )
         self.conn.commit()
 
@@ -478,4 +574,15 @@ class BacktestSQLHelper(SQLHelper):
 
         # Execute batch insertion
         self.cursor.executemany(query, data_tuples)
+        self.conn.commit()
+
+    def insert_composite_score(self, backtest_id: int, score: float) -> None:
+        """Inserts a composite score into the CompositeScores table
+
+        Args:
+            backtest_id (int): The ID of the backtest run
+            score (float): The composite score of the backtest run
+        """
+        query = "INSERT INTO CompositeScores (Backtest_ID, Score) VALUES (?, ?)"
+        self.safe_execute(self.cursor, query, (backtest_id, score))
         self.conn.commit()

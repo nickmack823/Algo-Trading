@@ -58,6 +58,7 @@ logging.basicConfig(
     level=20, datefmt="%m/%d/%Y %H:%M:%S", format="[%(asctime)s] %(message)s"
 )
 
+
 # =============================================================================
 # TA‑lib–Based Indicators
 # =============================================================================
@@ -65,7 +66,7 @@ logging.basicConfig(
 ta_lib_candlestick = [
     {
         "name": "CANDLE_2CROWS",
-        "function": lambda df: ta.CDL2CROWS(
+        "function": lambda df, **kwargs: ta.CDL2CROWS(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Two Crows: A bearish reversal pattern where two consecutive bearish candles signal a potential trend change from bullish to bearish.",
@@ -73,7 +74,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_3BLACKCROWS",
-        "function": lambda df: ta.CDL3BLACKCROWS(
+        "function": lambda df, **kwargs: ta.CDL3BLACKCROWS(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Three Black Crows: A strong bearish reversal pattern characterized by three long bearish candles with short shadows, suggesting heavy selling.",
@@ -81,7 +82,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_3INSIDE",
-        "function": lambda df: ta.CDL3INSIDE(
+        "function": lambda df, **kwargs: ta.CDL3INSIDE(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Three Inside: A pattern where a small candle is engulfed by its neighbors, hinting at potential reversal or pause in the current trend.",
@@ -89,7 +90,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_3LINESTRIKE",
-        "function": lambda df: ta.CDL3LINESTRIKE(
+        "function": lambda df, **kwargs: ta.CDL3LINESTRIKE(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Three Line Strike: A reversal pattern where three candles are followed by a candle that ‘strikes’ through them, indicating a possible trend reversal.",
@@ -97,7 +98,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_3STARSINSOUTH",
-        "function": lambda df: ta.CDL3STARSINSOUTH(
+        "function": lambda df, **kwargs: ta.CDL3STARSINSOUTH(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Three Stars in the South: A bullish reversal pattern with three small candles after a downtrend, suggesting emerging buying pressure.",
@@ -105,7 +106,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_3WHITESOLDIERS",
-        "function": lambda df: ta.CDL3WHITESOLDIERS(
+        "function": lambda df, **kwargs: ta.CDL3WHITESOLDIERS(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Three White Soldiers: A bullish reversal pattern marked by three consecutive strong white candles, indicating sustained upward momentum.",
@@ -113,7 +114,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_ABANDONEDBABY",
-        "function": lambda df: ta.CDLABANDONEDBABY(
+        "function": lambda df, **kwargs: ta.CDLABANDONEDBABY(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Abandoned Baby: A rare and powerful reversal pattern featuring an isolated doji with gaps on both sides, signaling a sharp change in trend.",
@@ -121,7 +122,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_ADVANCEBLOCK",
-        "function": lambda df: ta.CDLADVANCEBLOCK(
+        "function": lambda df, **kwargs: ta.CDLADVANCEBLOCK(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Advance Block: A bearish reversal pattern that appears after an uptrend when bullish candles become constrained, hinting at exhaustion.",
@@ -129,7 +130,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_BELTHOLD",
-        "function": lambda df: ta.CDLBELTHOLD(
+        "function": lambda df, **kwargs: ta.CDLBELTHOLD(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Belt Hold: A reversal signal where a long candle opens at an extreme (low for bullish, high for bearish) and moves strongly, indicating momentum.",
@@ -137,7 +138,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_BREAKAWAY",
-        "function": lambda df: ta.CDLBREAKAWAY(
+        "function": lambda df, **kwargs: ta.CDLBREAKAWAY(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Breakaway: A pattern that forms after a gap and a series of candles, signaling the end of a trend and the potential start of a reversal.",
@@ -145,7 +146,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_CLOSINGMARUBOZU",
-        "function": lambda df: ta.CDLCLOSINGMARUBOZU(
+        "function": lambda df, **kwargs: ta.CDLCLOSINGMARUBOZU(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Closing Marubozu: A candlestick with little or no shadows that shows strong momentum in the direction of the close.",
@@ -153,7 +154,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_CONCEALBABYSWALL",
-        "function": lambda df: ta.CDLCONCEALBABYSWALL(
+        "function": lambda df, **kwargs: ta.CDLCONCEALBABYSWALL(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Concealing Baby Swallow: A bearish reversal pattern where a small candle is engulfed, suggesting a shift in market sentiment.",
@@ -161,7 +162,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_COUNTERATTACK",
-        "function": lambda df: ta.CDLCOUNTERATTACK(
+        "function": lambda df, **kwargs: ta.CDLCOUNTERATTACK(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Counterattack: A pattern where a gap in one direction is met by a candle in the opposite direction, implying a potential reversal.",
@@ -169,7 +170,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_DARKCLOUDCOVER",
-        "function": lambda df: ta.CDLDARKCLOUDCOVER(
+        "function": lambda df, **kwargs: ta.CDLDARKCLOUDCOVER(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Dark Cloud Cover: A bearish reversal pattern where a bearish candle opens above and closes below the midpoint of a preceding bullish candle.",
@@ -177,7 +178,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_DOJI",
-        "function": lambda df: ta.CDLDOJI(
+        "function": lambda df, **kwargs: ta.CDLDOJI(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Doji: Represents indecision in the market as the open and close are nearly equal; it may signal a reversal when seen with other indicators.",
@@ -185,7 +186,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_DOJISTAR",
-        "function": lambda df: ta.CDLDOJISTAR(
+        "function": lambda df, **kwargs: ta.CDLDOJISTAR(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Doji Star: A variation of the doji that appears with a gap, highlighting indecision and a possible imminent reversal.",
@@ -193,7 +194,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_DRAGONFLYDOJI",
-        "function": lambda df: ta.CDLDRAGONFLYDOJI(
+        "function": lambda df, **kwargs: ta.CDLDRAGONFLYDOJI(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Dragonfly Doji: A bullish reversal signal with a long lower shadow and no upper shadow, indicating that buyers may step in.",
@@ -201,7 +202,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_ENGULFING",
-        "function": lambda df: ta.CDLENGULFING(
+        "function": lambda df, **kwargs: ta.CDLENGULFING(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Engulfing: A reversal pattern where one candle completely engulfs the previous candle’s body, suggesting a strong change in sentiment.",
@@ -209,7 +210,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_EVENINGDOJISTAR",
-        "function": lambda df: ta.CDLEVENINGDOJISTAR(
+        "function": lambda df, **kwargs: ta.CDLEVENINGDOJISTAR(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Evening Doji Star: A bearish reversal pattern where a doji follows a bullish candle, signaling potential weakness.",
@@ -217,7 +218,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_EVENINGSTAR",
-        "function": lambda df: ta.CDLEVENINGSTAR(
+        "function": lambda df, **kwargs: ta.CDLEVENINGSTAR(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Evening Star: A classic bearish reversal pattern formed by three candles, marking a potential shift from uptrend to downtrend.",
@@ -225,7 +226,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_GAPSIDESIDEWHITE",
-        "function": lambda df: ta.CDLGAPSIDESIDEWHITE(
+        "function": lambda df, **kwargs: ta.CDLGAPSIDESIDEWHITE(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Gap Side-by-Side White Lines: Typically a continuation pattern where similar white candles with gaps indicate trend persistence.",
@@ -233,7 +234,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_GRAVESTONEDOJI",
-        "function": lambda df: ta.CDLGRAVESTONEDOJI(
+        "function": lambda df, **kwargs: ta.CDLGRAVESTONEDOJI(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Gravestone Doji: A bearish reversal signal with a long upper shadow and no lower shadow, suggesting a potential market top.",
@@ -241,7 +242,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_HAMMER",
-        "function": lambda df: ta.CDLHAMMER(
+        "function": lambda df, **kwargs: ta.CDLHAMMER(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Hammer: A bullish reversal pattern in a downtrend, characterized by a small body and a long lower shadow indicating buying support.",
@@ -249,7 +250,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_HANGINGMAN",
-        "function": lambda df: ta.CDLHANGINGMAN(
+        "function": lambda df, **kwargs: ta.CDLHANGINGMAN(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Hanging Man: A bearish reversal pattern in an uptrend with a small body and long lower shadow, hinting at potential weakness.",
@@ -257,7 +258,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_HARAMI",
-        "function": lambda df: ta.CDLHARAMI(
+        "function": lambda df, **kwargs: ta.CDLHARAMI(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Harami: A reversal pattern where a small candle is contained within the previous candle’s body, suggesting a possible trend change.",
@@ -265,7 +266,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_HARAMICROSS",
-        "function": lambda df: ta.CDLHARAMICROSS(
+        "function": lambda df, **kwargs: ta.CDLHARAMICROSS(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Harami Cross: Similar to the Harami pattern but with a doji, indicating uncertainty and a potential reversal.",
@@ -273,7 +274,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_HIGHWAVE",
-        "function": lambda df: ta.CDLHIGHWAVE(
+        "function": lambda df, **kwargs: ta.CDLHIGHWAVE(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "High-Wave Candle: Features long shadows with a small body, reflecting high volatility and market indecision.",
@@ -281,7 +282,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_HIKKAKE",
-        "function": lambda df: ta.CDLHIKKAKE(
+        "function": lambda df, **kwargs: ta.CDLHIKKAKE(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Hikkake: A trap pattern that identifies false breakouts and signals a potential reversal when the breakout fails.",
@@ -289,7 +290,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_HIKKAKEMOD",
-        "function": lambda df: ta.CDLHIKKAKEMOD(
+        "function": lambda df, **kwargs: ta.CDLHIKKAKEMOD(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Modified Hikkake: A refined version of the Hikkake pattern that offers a clearer reversal signal after a false breakout.",
@@ -297,7 +298,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_HOMINGPIGEON",
-        "function": lambda df: ta.CDLHOMINGPIGEON(
+        "function": lambda df, **kwargs: ta.CDLHOMINGPIGEON(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Homing Pigeon: A bullish reversal pattern where a small bullish candle appears in a downtrend, suggesting a potential bottom.",
@@ -305,7 +306,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_IDENTICAL3CROWS",
-        "function": lambda df: ta.CDLIDENTICAL3CROWS(
+        "function": lambda df, **kwargs: ta.CDLIDENTICAL3CROWS(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Identical Three Crows: A bearish reversal pattern with three similarly shaped bearish candles, indicating strong selling pressure.",
@@ -313,7 +314,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_INNECK",
-        "function": lambda df: ta.CDLINNECK(
+        "function": lambda df, **kwargs: ta.CDLINNECK(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "In-Neck: A bearish reversal pattern where the close is near the previous candle’s low, hinting at continuing downward momentum.",
@@ -321,7 +322,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_INVERTEDHAMMER",
-        "function": lambda df: ta.CDLINVERTEDHAMMER(
+        "function": lambda df, **kwargs: ta.CDLINVERTEDHAMMER(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Inverted Hammer: A bullish reversal pattern after a downtrend, marked by a small body with a long upper shadow that signals buying interest.",
@@ -329,7 +330,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_KICKING",
-        "function": lambda df: ta.CDLKICKING(
+        "function": lambda df, **kwargs: ta.CDLKICKING(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Kicking: A reversal pattern marked by a gap and a strong candle in the opposite direction, indicating a sharp change in market sentiment.",
@@ -337,7 +338,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_KICKINGBYLENGTH",
-        "function": lambda df: ta.CDLKICKINGBYLENGTH(
+        "function": lambda df, **kwargs: ta.CDLKICKINGBYLENGTH(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Kicking by Length: A variant of the Kicking pattern that emphasizes longer candles, suggesting a more powerful reversal signal.",
@@ -345,7 +346,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_LADDERBOTTOM",
-        "function": lambda df: ta.CDLLADDERBOTTOM(
+        "function": lambda df, **kwargs: ta.CDLLADDERBOTTOM(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Ladder Bottom: A bullish reversal pattern that forms near support, indicating the potential end of a downtrend.",
@@ -353,7 +354,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_LONGLEGGEDDOJI",
-        "function": lambda df: ta.CDLLONGLEGGEDDOJI(
+        "function": lambda df, **kwargs: ta.CDLLONGLEGGEDDOJI(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Long-Legged Doji: Exhibits a wide range with a nearly equal open and close, signifying indecision that may lead to a reversal.",
@@ -361,7 +362,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_LONGLINE",
-        "function": lambda df: ta.CDLLONGLINE(
+        "function": lambda df, **kwargs: ta.CDLLONGLINE(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Long Line Candle: A candle with a long body, indicating strong momentum in the prevailing trend.",
@@ -369,7 +370,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_MARUBOZU",
-        "function": lambda df: ta.CDLMARUBOZU(
+        "function": lambda df, **kwargs: ta.CDLMARUBOZU(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Marubozu: A candlestick with no shadows that reflects dominance by buyers or sellers, supporting trend continuation.",
@@ -377,7 +378,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_MATCHINGLOW",
-        "function": lambda df: ta.CDLMATCHINGLOW(
+        "function": lambda df, **kwargs: ta.CDLMATCHINGLOW(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Matching Low: A bullish reversal pattern where the current low matches the previous low, hinting at a price bottom.",
@@ -385,7 +386,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_MATHOLD",
-        "function": lambda df: ta.CDLMATHOLD(
+        "function": lambda df, **kwargs: ta.CDLMATHOLD(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Mat Hold: A bullish continuation pattern that shows a pause before an uptrend resumes, suggesting temporary consolidation.",
@@ -393,7 +394,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_MORNINGDOJISTAR",
-        "function": lambda df: ta.CDLMORNINGDOJISTAR(
+        "function": lambda df, **kwargs: ta.CDLMORNINGDOJISTAR(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Morning Doji Star: A bullish reversal pattern where a doji appears between a bearish and a bullish candle, indicating a potential bottom.",
@@ -401,7 +402,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_MORNINGSTAR",
-        "function": lambda df: ta.CDLMORNINGSTAR(
+        "function": lambda df, **kwargs: ta.CDLMORNINGSTAR(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Morning Star: A well-known bullish reversal pattern formed by three candles that signals the end of a downtrend.",
@@ -409,7 +410,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_ONNECK",
-        "function": lambda df: ta.CDLONNECK(
+        "function": lambda df, **kwargs: ta.CDLONNECK(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "On-Neck: A bearish reversal pattern where the second candle closes near the first candle’s neck, suggesting emerging selling pressure.",
@@ -417,7 +418,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_PIERCING",
-        "function": lambda df: ta.CDLPIERCING(
+        "function": lambda df, **kwargs: ta.CDLPIERCING(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Piercing: A bullish reversal pattern where a bearish candle is followed by a bullish candle that closes above the midpoint of the previous candle.",
@@ -425,7 +426,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_RICKSHAWMAN",
-        "function": lambda df: ta.CDLRICKSHAWMAN(
+        "function": lambda df, **kwargs: ta.CDLRICKSHAWMAN(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Rickshaw Man: A pattern similar to a doji that reflects indecision, potentially signaling an upcoming reversal.",
@@ -433,7 +434,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_RISEFALL3METHODS",
-        "function": lambda df: ta.CDLRISEFALL3METHODS(
+        "function": lambda df, **kwargs: ta.CDLRISEFALL3METHODS(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Rising/Falling Three Methods: A continuation pattern where a group of candles indicates that the current trend is still intact despite minor pullbacks.",
@@ -441,7 +442,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_SEPARATINGLINES",
-        "function": lambda df: ta.CDLSEPARATINGLINES(
+        "function": lambda df, **kwargs: ta.CDLSEPARATINGLINES(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Separating Lines: A continuation pattern where similar candles appear consecutively, suggesting the trend will persist.",
@@ -449,7 +450,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_SHOOTINGSTAR",
-        "function": lambda df: ta.CDLSHOOTINGSTAR(
+        "function": lambda df, **kwargs: ta.CDLSHOOTINGSTAR(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Shooting Star: A bearish reversal pattern in an uptrend, marked by a small body and long upper shadow, indicating potential trend weakness.",
@@ -457,7 +458,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_SHORTLINE",
-        "function": lambda df: ta.CDLSHORTLINE(
+        "function": lambda df, **kwargs: ta.CDLSHORTLINE(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Short Line Candle: A candle with a narrow range that reflects low volatility and market indecision.",
@@ -465,7 +466,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_SPINNINGTOP",
-        "function": lambda df: ta.CDLSPINNINGTOP(
+        "function": lambda df, **kwargs: ta.CDLSPINNINGTOP(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Spinning Top: Characterized by a small body with long shadows, this pattern signals indecision and may precede a reversal.",
@@ -473,7 +474,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_STALLEDPATTERN",
-        "function": lambda df: ta.CDLSTALLEDPATTERN(
+        "function": lambda df, **kwargs: ta.CDLSTALLEDPATTERN(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Stalled Pattern: A reversal signal in an uptrend that indicates a loss of momentum and a potential market top.",
@@ -481,7 +482,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_STICKSANDWICH",
-        "function": lambda df: ta.CDLSTICKSANDWICH(
+        "function": lambda df, **kwargs: ta.CDLSTICKSANDWICH(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Stick Sandwich: A continuation pattern where a small candle is ‘sandwiched’ between two similar candles, suggesting the trend will continue.",
@@ -489,7 +490,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_TAKURI",
-        "function": lambda df: ta.CDLTAKURI(
+        "function": lambda df, **kwargs: ta.CDLTAKURI(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Takuri: A pattern akin to a dragonfly doji with a long lower shadow, indicating a potential reversal when buyers gain control.",
@@ -497,7 +498,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_TASUKIGAP",
-        "function": lambda df: ta.CDLTASUKIGAP(
+        "function": lambda df, **kwargs: ta.CDLTASUKIGAP(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Tasuki Gap: A continuation pattern where a gap between candles is partially filled, supporting the ongoing trend.",
@@ -505,7 +506,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_THRUSTING",
-        "function": lambda df: ta.CDLTHRUSTING(
+        "function": lambda df, **kwargs: ta.CDLTHRUSTING(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Thrusting: A bearish reversal pattern where a candle opens within the previous candle’s body and closes near its low, indicating selling pressure.",
@@ -513,7 +514,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_TRISTAR",
-        "function": lambda df: ta.CDLTRISTAR(
+        "function": lambda df, **kwargs: ta.CDLTRISTAR(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Tristar: A reversal pattern composed of three small candles that signal indecision and a potential change in trend.",
@@ -521,7 +522,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_UNIQUE3RIVER",
-        "function": lambda df: ta.CDLUNIQUE3RIVER(
+        "function": lambda df, **kwargs: ta.CDLUNIQUE3RIVER(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Unique 3 River: A less common reversal pattern indicating a marked shift in momentum over three consecutive candles.",
@@ -529,7 +530,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_UPSIDEGAP2CROWS",
-        "function": lambda df: ta.CDLUPSIDEGAP2CROWS(
+        "function": lambda df, **kwargs: ta.CDLUPSIDEGAP2CROWS(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Upside Gap Two Crows: A bearish reversal pattern where an initial gap up is followed by two bearish candles, suggesting a trend reversal.",
@@ -537,7 +538,7 @@ ta_lib_candlestick = [
     },
     {
         "name": "CANDLE_XSIDEGAP3METHODS",
-        "function": lambda df: ta.CDLXSIDEGAP3METHODS(
+        "function": lambda df, **kwargs: ta.CDLXSIDEGAP3METHODS(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "X-Side Gap Three Methods: A continuation pattern identified by a gap and three supportive candles, indicating the current trend is likely to persist.",
@@ -552,21 +553,38 @@ ta_lib_candlestick = [
 ta_lib_volume = [
     {
         "name": "AD",
-        "function": lambda df: ta.AD(df["High"], df["Low"], df["Close"], df["Volume"]),
+        "function": lambda df, **kwargs: ta.AD(
+            df["High"], df["Low"], df["Close"], df["Volume"], **kwargs
+        ),
         "description": "Accumulation/Distribution (AD): Measures the cumulative flow of money into and out of a security based on price and volume.",
         "signal_function": signal_ad,
         "raw_function": ta.AD,
         "parameters": {},
     },
     {
+        "name": "ADX",
+        "function": lambda df, **kwargs: ta.ADX(
+            df["High"], df["Low"], df["Close"], **kwargs
+        ),
+        "description": "Average Directional Index (ADX): Measures the strength of a trend but not its direction.",
+        "signal_function": signal_adx,
+        "raw_function": ta.ADX,
+        "parameters": {"timeperiod": 14},
+    },
+    {
+        "name": "ADXR",
+        "function": lambda df, **kwargs: ta.ADXR(
+            df["High"], df["Low"], df["Close"], **kwargs
+        ),
+        "description": "Average Directional Movement Rating (ADXR): Smoothed version of ADX to confirm trend strength.",
+        "signal_function": signal_adx,
+        "raw_function": ta.ADXR,
+        "parameters": {"timeperiod": 14},
+    },
+    {
         "name": "ADOSC",
-        "function": lambda df, fastperiod=3, slowperiod=10: ta.ADOSC(
-            df["High"],
-            df["Low"],
-            df["Close"],
-            df["Volume"],
-            fastperiod=fastperiod,
-            slowperiod=slowperiod,
+        "function": lambda df, **kwargs: ta.ADOSC(
+            df["High"], df["Low"], df["Close"], df["Volume"], **kwargs
         ),
         "description": "Accumulation/Distribution Oscillator (ADOSC): A momentum oscillator based on the AD line to detect volume strength shifts.",
         "signal_function": signal_adosc,
@@ -575,7 +593,7 @@ ta_lib_volume = [
     },
     {
         "name": "OBV",
-        "function": lambda df: ta.OBV(df["Close"], df["Volume"]),
+        "function": lambda df, **kwargs: ta.OBV(df["Close"], df["Volume"], **kwargs),
         "description": "On-Balance Volume (OBV): Tracks cumulative buying/selling pressure by adding volume on up days and subtracting it on down days.",
         "signal_function": signal_obv,
         "raw_function": ta.OBV,
@@ -585,7 +603,7 @@ ta_lib_volume = [
 additional_volume = [
     {
         "name": "FantailVMA",
-        "function": lambda df: FantailVMA(df, adx_length=2, weighting=2.0, ma_length=1),
+        "function": FantailVMA,
         "description": "Fantail VMA: A smoothed volume-weighted average that responds to price volatility and ADX to infer market momentum.",
         "signal_function": signal_fantail_vma,
         "raw_function": FantailVMA,
@@ -593,7 +611,7 @@ additional_volume = [
     },
     {
         "name": "KVO",
-        "function": lambda df: KVO(df, fast_ema=34, slow_ema=55, signal_ema=13),
+        "function": KVO,
         "description": "Klinger Volume Oscillator (KVO): Combines price movements and volume to identify long-term trends of money flow.",
         "signal_function": signal_kvo,
         "raw_function": KVO,
@@ -601,7 +619,7 @@ additional_volume = [
     },
     {
         "name": "LWPI",
-        "function": lambda df: LWPI(df, period=8),
+        "function": LWPI,
         "description": "Larry Williams Proxy Index (LWPI): An oscillator evaluating buying/selling strength using price and volatility.",
         "signal_function": signal_lwpi,
         "raw_function": LWPI,
@@ -609,7 +627,7 @@ additional_volume = [
     },
     {
         "name": "NormalizedVolume",
-        "function": lambda df: NormalizedVolume(df, period=14),
+        "function": NormalizedVolume,
         "description": "Normalized Volume: Expresses current volume as a percentage of the average over a given period.",
         "signal_function": signal_normalized_volume,
         "raw_function": NormalizedVolume,
@@ -617,7 +635,7 @@ additional_volume = [
     },
     {
         "name": "TwiggsMF",
-        "function": lambda df: TwiggsMF(df, period=21),
+        "function": TwiggsMF,
         "description": "Twiggs Money Flow: Combines price and volume to estimate the strength of accumulation or distribution.",
         "signal_function": signal_twiggs_mf,
         "raw_function": TwiggsMF,
@@ -632,28 +650,8 @@ volume_indicators = ta_lib_volume + additional_volume
 
 ta_lib_trend = [
     {
-        "name": "ADX",
-        "function": lambda df: ta.ADX(
-            df["High"], df["Low"], df["Close"], timeperiod=14
-        ),
-        "description": "Average Directional Index (ADX): Measures the strength of a trend but not its direction.",
-        "signal_function": signal_adx,
-        "raw_function": ta.ADX,
-        "parameters": {"timeperiod": 14},
-    },
-    {
-        "name": "ADXR",
-        "function": lambda df: ta.ADXR(
-            df["High"], df["Low"], df["Close"], timeperiod=14
-        ),
-        "description": "Average Directional Movement Rating (ADXR): Smoothed version of ADX to confirm trend strength.",
-        "signal_function": signal_adx,
-        "raw_function": ta.ADXR,
-        "parameters": {"timeperiod": 14},
-    },
-    {
         "name": "AROON",
-        "function": lambda df: ta.AROON(df["High"], df["Low"]),
+        "function": lambda df, **kwargs: ta.AROON(df["High"], df["Low"], **kwargs),
         "description": "Aroon Down: Indicates how recently the lowest low occurred during a given period.",
         "signal_function": signal_aroon,
         "raw_function": ta.AROON,
@@ -661,7 +659,7 @@ ta_lib_trend = [
     },
     {
         "name": "AROONOSC",
-        "function": lambda df: ta.AROONOSC(df["High"], df["Low"]),
+        "function": lambda df, **kwargs: ta.AROONOSC(df["High"], df["Low"], **kwargs),
         "description": "Aroon Oscillator: Measures the difference between Aroon Up and Down to gauge trend direction.",
         "signal_function": signal_aroonosc,
         "raw_function": ta.AROONOSC,
@@ -671,9 +669,7 @@ ta_lib_trend = [
 additional_trend = [
     {
         "name": "KASE",
-        "function": lambda df: KASE(
-            df, pstLength=9, pstX=5, pstSmooth=3, smoothPeriod=10
-        ),
+        "function": KASE,
         "description": "KASE Permission Stochastic: Smoothed stochastic oscillator used to assess trade permission based on trend momentum.",
         "signal_function": signal_kase,
         "raw_function": KASE,
@@ -681,7 +677,7 @@ additional_trend = [
     },
     {
         "name": "KijunSen",
-        "function": lambda df: KijunSen(df, period=26, shift=9),
+        "function": KijunSen,
         "description": "Kijun-sen (Base Line): Part of Ichimoku, provides key support/resistance levels and trend direction.",
         "signal_function": signal_kijunsen,
         "raw_function": KijunSen,
@@ -689,7 +685,7 @@ additional_trend = [
     },
     {
         "name": "KalmanFilter",
-        "function": lambda df: KalmanFilter(df, k=1, sharpness=1),
+        "function": KalmanFilter,
         "description": "Kalman Filter: A statistical filter used to smooth price data and reveal trend dynamics.",
         "signal_function": signal_kalman_filter,
         "raw_function": KalmanFilter,
@@ -697,7 +693,7 @@ additional_trend = [
     },
     {
         "name": "SSL",
-        "function": lambda df: SSL(df, period=10),
+        "function": SSL,
         "description": "SSL Channel: A trend-following indicator that uses smoothed high/low averages to generate crossovers.",
         "signal_function": signal_ssl,
         "raw_function": SSL,
@@ -705,7 +701,7 @@ additional_trend = [
     },
     {
         "name": "SuperTrend",
-        "function": lambda df: SuperTrend(df, period=10, multiplier=3.0),
+        "function": SuperTrend,
         "description": "SuperTrend: A trailing stop and trend direction indicator based on ATR.",
         "signal_function": signal_supertrend,
         "raw_function": SuperTrend,
@@ -713,14 +709,7 @@ additional_trend = [
     },
     {
         "name": "TrendLord",
-        "function": lambda df: TrendLord(
-            df,
-            period=12,
-            ma_method="smma",
-            applied_price="close",
-            show_high_low=False,
-            signal_bar=1,
-        ),
+        "function": TrendLord,
         "description": "TrendLord: A smoothed oscillator-based trend detector showing bullish/bearish strength zones.",
         "signal_function": signal_trendlord,
         "raw_function": TrendLord,
@@ -734,7 +723,7 @@ additional_trend = [
     },
     {
         "name": "UF2018",
-        "function": lambda df: UF2018(df, period=54),
+        "function": UF2018,
         "description": "UF2018: A visual zig-zag style trend-following indicator that shows direction based on local highs/lows.",
         "signal_function": signal_uf2018,
         "raw_function": UF2018,
@@ -742,7 +731,7 @@ additional_trend = [
     },
     {
         "name": "CenterOfGravity",
-        "function": lambda df: CenterOfGravity(df, period=10),
+        "function": CenterOfGravity,
         "description": "Center of Gravity (COG): A zero-lag oscillator that forecasts turning points using weighted averages.",
         "signal_function": signal_center_of_gravity,
         "raw_function": CenterOfGravity,
@@ -750,7 +739,7 @@ additional_trend = [
     },
     {
         "name": "GruchaIndex",
-        "function": lambda df: GruchaIndex(df, period=10, ma_period=10),
+        "function": GruchaIndex,
         "description": "Grucha Index: A visual trend indicator showing buyer vs. seller dominance over recent candles.",
         "signal_function": signal_grucha_index,
         "raw_function": GruchaIndex,
@@ -758,7 +747,7 @@ additional_trend = [
     },
     {
         "name": "HalfTrend",
-        "function": lambda df: HalfTrend(df, amplitude=2),
+        "function": HalfTrend,
         "description": "HalfTrend: A non-lagging trend reversal indicator that reacts only after sustained movement.",
         "signal_function": signal_halftrend,
         "raw_function": HalfTrend,
@@ -766,7 +755,7 @@ additional_trend = [
     },
     {
         "name": "TopTrend",
-        "function": lambda df: TopTrend(df, period=20, deviation=2, money_risk=1.0),
+        "function": TopTrend,
         "description": "TopTrend: Uses modified Bollinger logic to indicate trend reversals and trailing stop levels.",
         "signal_function": signal_top_trend,
         "raw_function": TopTrend,
@@ -789,15 +778,15 @@ ta_lib_momentum = [
         "signal_function": signal_apo,
         "raw_function": ta.APO,
         "parameters": {
-            "fastperiod": 3,
-            "slowperiod": 10,
+            "fastperiod": 12,
+            "slowperiod": 26,
             "matype": 0,
         },  # matype goes 0-8
     },
     {
         "name": "CCI",
-        "function": lambda df, timeperiod=14: ta.CCI(
-            df["High"], df["Low"], df["Close"], timeperiod=timeperiod
+        "function": lambda df, **kwargs: ta.CCI(
+            df["High"], df["Low"], df["Close"], **kwargs
         ),
         "description": "CCI (Commodity Channel Index): A momentum oscillator that measures deviation from a moving average to detect overbought or oversold conditions.",
         "signal_function": signal_cci,
@@ -806,31 +795,26 @@ ta_lib_momentum = [
     },
     {
         "name": "MACD",
-        "function": lambda df, fastperiod=12, slowperiod=26, signalperiod=9: ta.MACD(
-            df["Close"],
-            fastperiod=fastperiod,
-            slowperiod=slowperiod,
-            signalperiod=signalperiod,
-        ),
+        "function": lambda df, **kwargs: ta.MACD(df["Close"], **kwargs),
         "description": "MACD: Combines the MACD line, signal line, and histogram to track momentum and detect entry signals via crossovers.",
         "signal_function": signal_macd,
         "raw_function": ta.MACD,
         "parameters": {
-            "fastperiod": 3,
-            "slowperiod": 10,
+            "fastperiod": 12,
+            "slowperiod": 26,
             "signalperiod": 9,
         },
     },
     {
         "name": "MACDEXT",
-        "function": lambda df: ta.MACDEXT(df["Close"]),
+        "function": lambda df, **kwargs: ta.MACDEXT(df["Close"], **kwargs),
         "description": "MACDEXT: An extended version of the MACD indicator with customizable moving average types.",
         "signal_function": signal_macdext,
         "raw_function": ta.MACDEXT,
         "parameters": {
-            "fastperiod": 3,
+            "fastperiod": 12,
             "fastmatype": 0,  # matype goes 0-8
-            "slowperiod": 10,
+            "slowperiod": 26,
             "slowmatype": 0,  # matype goes 0-8
             "signalperiod": 9,
             "signalmatype": 0,  # matype goes 0-8
@@ -838,7 +822,7 @@ ta_lib_momentum = [
     },
     {
         "name": "MACDFIX",
-        "function": lambda df: ta.MACDFIX(df["Close"]),
+        "function": lambda df, **kwargs: ta.MACDFIX(df["Close"], **kwargs),
         "description": "MACDFIX: A simplified MACD that uses a fixed signal period (typically 9), useful for consistent momentum detection.",
         "signal_function": signal_macdfix,
         "raw_function": ta.MACDFIX,
@@ -846,7 +830,7 @@ ta_lib_momentum = [
     },
     {
         "name": "MAMA",
-        "function": lambda df: ta.MAMA(df["Close"]),
+        "function": lambda df, **kwargs: ta.MAMA(df["Close"], **kwargs),
         "description": "MAMA: The MESA Adaptive Moving Average is designed to react faster to price changes using adaptive cycle techniques.",
         "signal_function": signal_mama,
         "raw_function": ta.MAMA,
@@ -854,61 +838,51 @@ ta_lib_momentum = [
     },
     {
         "name": "PPO",
-        "function": lambda df: ta.PPO(df["Close"]),
+        "function": lambda df, **kwargs: ta.PPO(df["Close"], **kwargs),
         "description": "PPO (Percentage Price Oscillator): A normalized MACD that measures momentum as a percentage rather than absolute price.",
         "signal_function": signal_ppo,
         "raw_function": ta.PPO,
         "parameters": {
-            "fastperiod": 3,
-            "slowperiod": 10,
+            "fastperiod": 12,
+            "slowperiod": 26,
             "matype": 0,
         },  # matype goes 0-8
     },
     {
         "name": "ROC",
-        "function": lambda df, timeperiod=12: ta.ROC(
-            df["Close"], timeperiod=timeperiod
-        ),
+        "function": lambda df, **kwargs: ta.ROC(df["Close"], **kwargs),
         "description": "ROC (Rate of Change): Measures the percentage change in price over a defined period to assess momentum shifts.",
         "signal_function": signal_roc,
         "raw_function": ta.ROC,
-        "parameters": {"timeperiod": 14},
+        "parameters": {"timeperiod": 10},
     },
     {
         "name": "ROCP",
-        "function": lambda df, timeperiod=12: ta.ROCP(
-            df["Close"], timeperiod=timeperiod
-        ),
+        "function": lambda df, **kwargs: ta.ROCP(df["Close"], **kwargs),
         "description": "ROCP (Rate of Change Percent): Measures the percent change in price over a specified period to detect momentum shifts.",
         "signal_function": signal_rocp,
         "raw_function": ta.ROCP,
-        "parameters": {"timeperiod": 14},
+        "parameters": {"timeperiod": 10},
     },
     {
         "name": "ROCR",
-        "function": lambda df, timeperiod=12: ta.ROCR(
-            df["Close"], timeperiod=timeperiod
-        ),
+        "function": lambda df, **kwargs: ta.ROCR(df["Close"], **kwargs),
         "description": "ROCR (Rate of Change Ratio): Expresses price change as a ratio relative to a previous period, highlighting acceleration or deceleration.",
         "signal_function": signal_rocr,
         "raw_function": ta.ROCR,
-        "parameters": {"timeperiod": 14},
+        "parameters": {"timeperiod": 10},
     },
     {
         "name": "ROCR100",
-        "function": lambda df, timeperiod=12: ta.ROCR100(
-            df["Close"], timeperiod=timeperiod
-        ),
+        "function": lambda df, **kwargs: ta.ROCR100(df["Close"], **kwargs),
         "description": "ROCR100: Like ROCR, but scaled to 100. A value >100 indicates upward momentum; <100 suggests decline.",
         "signal_function": signal_rocr100,
         "raw_function": ta.ROCR100,
-        "parameters": {"timeperiod": 14},
+        "parameters": {"timeperiod": 10},
     },
     {
         "name": "RSI",
-        "function": lambda df, timeperiod=14: ta.RSI(
-            df["Close"], timeperiod=timeperiod
-        ),
+        "function": lambda df, **kwargs: ta.RSI(df["Close"], **kwargs),
         "description": "RSI (Relative Strength Index): Measures recent price gains versus losses to identify overbought or oversold conditions.",
         "signal_function": signal_rsi,
         "raw_function": ta.RSI,
@@ -916,21 +890,25 @@ ta_lib_momentum = [
     },
     {
         "name": "STOCH_Slow",
-        "function": lambda df: ta.STOCH(df["High"], df["Low"], df["Close"]),
+        "function": lambda df, **kwargs: ta.STOCH(
+            df["High"], df["Low"], df["Close"], **kwargs
+        ),
         "description": "Stochastic Oscillator (Slow): Uses smoothed %K and %D crossovers to identify potential momentum reversals.",
         "signal_function": signal_stoch,
         "raw_function": ta.STOCH,
         "parameters": {
-            "fastk_period": None,
-            "slowk_period": None,
+            "fastk_period": 5,
+            "slowk_period": 3,
             "slowk_matype": 0,  # matype goes 0-8
-            "slowd_period": None,
+            "slowd_period": 3,
             "slowd_matype": 0,  # matype goes 0-8
         },
     },
     {
         "name": "STOCHF_Fast",
-        "function": lambda df: ta.STOCHF(df["High"], df["Low"], df["Close"]),
+        "function": lambda df, **kwargs: ta.STOCHF(
+            df["High"], df["Low"], df["Close"], **kwargs
+        ),
         "description": "Stochastic Oscillator (Fast): Uses raw %K and %D crossovers for faster, more sensitive momentum shifts.",
         "signal_function": signal_stoch,
         "raw_function": ta.STOCHF,
@@ -942,9 +920,7 @@ ta_lib_momentum = [
     },
     {
         "name": "STOCHRSI",
-        "function": lambda df, timeperiod=14: ta.STOCHRSI(
-            df["Close"], timeperiod=timeperiod
-        ),
+        "function": lambda df, **kwargs: ta.STOCHRSI(df["Close"], **kwargs),
         "description": "Stochastic RSI: Applies stochastic logic to RSI values, enhancing detection of overbought/oversold extremes.",
         "signal_function": signal_stoch,
         "raw_function": ta.STOCHRSI,
@@ -957,9 +933,7 @@ ta_lib_momentum = [
     },
     {
         "name": "TSF",
-        "function": lambda df, timeperiod=14: ta.TSF(
-            df["Close"], timeperiod=timeperiod
-        ),
+        "function": lambda df, **kwargs: ta.TSF(df["Close"], **kwargs),
         "description": "TSF (Time Series Forecast): Projects a linear regression forward, estimating future price direction.",
         "signal_function": signal_tsf,
         "raw_function": ta.TSF,
@@ -967,7 +941,9 @@ ta_lib_momentum = [
     },
     {
         "name": "ULTOSC",
-        "function": lambda df: ta.ULTOSC(df["High"], df["Low"], df["Close"]),
+        "function": lambda df, **kwargs: ta.ULTOSC(
+            df["High"], df["Low"], df["Close"], **kwargs
+        ),
         "description": "ULTOSC (Ultimate Oscillator): Combines multiple timeframes of momentum into one oscillator to reduce false signals.",
         "signal_function": signal_ultosc,
         "raw_function": ta.ULTOSC,
@@ -977,9 +953,7 @@ ta_lib_momentum = [
 additional_momentum = [
     {
         "name": "MACDZeroLag",
-        "function": lambda df, short_period=12, long_period=26, signal_period=9: MACDZeroLag(
-            df, short_period, long_period, signal_period
-        ),
+        "function": MACDZeroLag,
         "description": "MACDZeroLag: A variation of MACD designed to reduce lag by applying zero-lag moving averages for better signal timing.",
         "signal_function": signal_macd_zero_lag,
         "raw_function": MACDZeroLag,
@@ -987,9 +961,7 @@ additional_momentum = [
     },
     {
         "name": "Fisher",
-        "function": lambda df, range_periods=10, price_smoothing=0.3, index_smoothing=0.3: Fisher(
-            df, range_periods, price_smoothing, index_smoothing
-        ),
+        "function": Fisher,
         "description": "Fisher Transform: Sharpens turning points in price action using a mathematical transformation of normalized prices.",
         "signal_function": signal_fisher,
         "raw_function": Fisher,
@@ -1001,7 +973,7 @@ additional_momentum = [
     },
     {
         "name": "BullsBearsImpulse",
-        "function": lambda df, ma_period=13: BullsBearsImpulse(df, ma_period),
+        "function": BullsBearsImpulse,
         "description": "Bulls/Bears Impulse: Measures the relative strength of bullish and bearish forces to highlight dominant sentiment.",
         "signal_function": signal_bulls_bears_impulse,
         "raw_function": BullsBearsImpulse,
@@ -1009,7 +981,7 @@ additional_momentum = [
     },
     {
         "name": "J_TPO",
-        "function": lambda df, period=14: J_TPO(df, period),
+        "function": J_TPO,
         "description": "J_TPO: A custom oscillator derived from time-price opportunity modeling to reflect short-term velocity and acceleration.",
         "signal_function": signal_j_tpo,
         "raw_function": J_TPO,
@@ -1017,7 +989,7 @@ additional_momentum = [
     },
     {
         "name": "Laguerre",
-        "function": lambda df, gamma=0.7: Laguerre(df, gamma),
+        "function": Laguerre,
         "description": "Laguerre Filter: A smooth oscillator designed to track price momentum while minimizing whipsaws.",
         "signal_function": signal_laguerre,
         "raw_function": Laguerre,
@@ -1025,9 +997,7 @@ additional_momentum = [
     },
     {
         "name": "SchaffTrendCycle",
-        "function": lambda df, period=10, fast_ma_period=23, slow_ma_period=50, signal_period=3: SchaffTrendCycle(
-            df, period, fast_ma_period, slow_ma_period, signal_period
-        ),
+        "function": SchaffTrendCycle,
         "description": "Schaff Trend Cycle: Combines MACD and cycle theory to create a responsive momentum oscillator.",
         "signal_function": signal_schaff_trend_cycle,
         "raw_function": SchaffTrendCycle,
@@ -1040,7 +1010,7 @@ additional_momentum = [
     },
     {
         "name": "TDFI",
-        "function": lambda df, period=13: TDFI(df, period),
+        "function": TDFI,
         "description": "TDFI (Trend Direction & Force Index): Captures the intensity and direction of price moves for momentum analysis.",
         "signal_function": signal_tdfi,
         "raw_function": TDFI,
@@ -1048,9 +1018,7 @@ additional_momentum = [
     },
     {
         "name": "TTF",
-        "function": lambda df, period=8, top_line=75, bottom_line=-75, t3_period=3, b=0.7: TTF(
-            df, period, top_line, bottom_line, t3_period, b
-        ),
+        "function": TTF,
         "description": "TTF (Trend Trigger Factor): A smoothed oscillator designed to confirm momentum reversals through threshold crossings.",
         "signal_function": signal_ttf,
         "raw_function": TTF,
@@ -1064,9 +1032,7 @@ additional_momentum = [
     },
     {
         "name": "AcceleratorLSMA",
-        "function": lambda df, long_period=30, short_period=10: AcceleratorLSMA(
-            df, long_period, short_period
-        ),
+        "function": AcceleratorLSMA,
         "description": "Accelerator LSMA: Combines LSMA smoothing with acceleration logic to detect momentum shifts early.",
         "signal_function": signal_accelerator_lsma,
         "raw_function": AcceleratorLSMA,
@@ -1082,8 +1048,8 @@ momentum_indicators = ta_lib_momentum + additional_momentum
 ta_lib_volatility = [
     {
         "name": "ATR",
-        "function": lambda df: ta.ATR(
-            df["High"], df["Low"], df["Close"], timeperiod=14
+        "function": lambda df, **kwargs: ta.ATR(
+            df["High"], df["Low"], df["Close"], **kwargs
         ),
         "description": "Average True Range (ATR): Measures absolute volatility by accounting for gaps and high-low range.",
         "signal_function": signal_volatility_line,
@@ -1092,8 +1058,8 @@ ta_lib_volatility = [
     },
     {
         "name": "NATR",
-        "function": lambda df, timeperiod=14: ta.NATR(
-            df["High"], df["Low"], df["Close"], timeperiod=timeperiod
+        "function": lambda df, **kwargs: ta.NATR(
+            df["High"], df["Low"], df["Close"], **kwargs
         ),
         "description": "Normalized ATR (NATR): ATR expressed as a percentage of price, useful for cross-asset volatility comparison.",
         "signal_function": signal_volatility_line,
@@ -1102,7 +1068,9 @@ ta_lib_volatility = [
     },
     {
         "name": "TRANGE",
-        "function": lambda df: ta.TRANGE(df["High"], df["Low"], df["Close"]),
+        "function": lambda df, **kwargs: ta.TRANGE(
+            df["High"], df["Low"], df["Close"], **kwargs
+        ),
         "description": "True Range (TRANGE): Raw measure of price range and gap movement, used as a base for ATR.",
         "signal_function": signal_volatility_line,
         "raw_function": ta.TRANGE,
@@ -1110,7 +1078,7 @@ ta_lib_volatility = [
     },
     {
         "name": "BollingerBands",
-        "function": lambda df: ta.BBANDS(df["Close"]),
+        "function": lambda df, **kwargs: ta.BBANDS(df["Close"], **kwargs),
         "description": "Bollinger Bands: A volatility-based envelope plotted at standard deviations above and below a moving average. Returns upper, middle, and lower bands.",
         "signal_function": signal_bollinger,
         "raw_function": ta.BBANDS,
@@ -1123,9 +1091,7 @@ ta_lib_volatility = [
     },
     {
         "name": "STDDEV",
-        "function": lambda df, timeperiod=5, nbdev=1: ta.STDDEV(
-            df["Close"], timeperiod=timeperiod, nbdev=nbdev
-        ),
+        "function": lambda df, **kwargs: ta.STDDEV(df["Close"], **kwargs),
         "description": "Standard Deviation (STDDEV): Measures price dispersion from the mean to gauge volatility.",
         "signal_function": signal_stddev,
         "raw_function": ta.STDDEV,
@@ -1133,7 +1099,7 @@ ta_lib_volatility = [
     },
     {
         "name": "VAR",
-        "function": lambda df, timeperiod=5: ta.VAR(df["Close"], timeperiod=timeperiod),
+        "function": lambda df, **kwargs: ta.VAR(df["Close"], **kwargs),
         "description": "Variance (VAR): Square of standard deviation; tracks volatility by measuring price fluctuation strength.",
         "signal_function": signal_var,
         "raw_function": ta.VAR,
@@ -1143,24 +1109,27 @@ ta_lib_volatility = [
 additional_volatility = [
     {
         "name": "FilteredATR",
-        "function": lambda df: FilteredATR(df, period=34, ma_period=34, ma_shift=0),
+        "function": FilteredATR,
         "description": "Filtered ATR: A smoothed version of the ATR to reduce noise and better reflect sustained volatility.",
+        "signal_function": signal_filtered_atr,
+        "raw_function": FilteredATR,
+        "parameters": {"period": 34, "ma_period": 34, "ma_shift": 0},
     },
     {
         "name": "VolatilityRatio",
-        "function": lambda df, period=25, inp_price="Close": VolatilityRatio(
-            df, period, inp_price
-        ),
+        "function": VolatilityRatio,
         "description": "Volatility Ratio: Compares recent price deviation against a longer-period range to measure relative volatility shifts.",
         "signal_function": signal_volatility_ratio,
+        "raw_function": VolatilityRatio,
+        "parameters": {"period": 25, "inp_price": "Close"},
     },
     {
         "name": "WAE",
-        "function": lambda df, minutes=0, sensitivity=150, dead_zone_pip=15: WAE(
-            df, minutes, sensitivity, dead_zone_pip
-        ),
+        "function": WAE,
         "description": "Waddah Attar Explosion (WAE): Combines MACD-based momentum with Bollinger Band expansion to highlight explosive volatility phases.",
         "signal_function": signal_wae,
+        "raw_function": WAE,
+        "parameters": {"minutes": 0, "sensitivity": 150, "dead_zone_pip": 15},
     },
 ]
 volatility_indicators = ta_lib_volatility + additional_volatility
@@ -1172,7 +1141,7 @@ volatility_indicators = ta_lib_volatility + additional_volatility
 ta_lib_price = [
     {
         "name": "AVGPRICE",
-        "function": lambda df: ta.AVGPRICE(
+        "function": lambda df, **kwargs: ta.AVGPRICE(
             df["Open"], df["High"], df["Low"], df["Close"]
         ),
         "description": "Average Price: The average of the open, high, low, and close prices. A smoothed central value.",
@@ -1180,7 +1149,7 @@ ta_lib_price = [
     },
     {
         "name": "MEDPRICE",
-        "function": lambda df: ta.MEDPRICE(df["High"], df["Low"]),
+        "function": lambda df, **kwargs: ta.MEDPRICE(df["High"], df["Low"]),
         "description": "Median Price: The midpoint between the high and low price.",
         "signal_function": signal_medprice,
     },
@@ -1250,13 +1219,17 @@ ta_lib_price = [
     },
     {
         "name": "TYPPRICE",
-        "function": lambda df: ta.TYPPRICE(df["High"], df["Low"], df["Close"]),
+        "function": lambda df, **kwargs: ta.TYPPRICE(
+            df["High"], df["Low"], df["Close"]
+        ),
         "description": "Typical Price: Average of high, low, and close. Reflects a representative transaction price.",
         "signal_function": signal_typprice,
     },
     {
         "name": "WCLPRICE",
-        "function": lambda df: ta.WCLPRICE(df["High"], df["Low"], df["Close"]),
+        "function": lambda df, **kwargs: ta.WCLPRICE(
+            df["High"], df["Low"], df["Close"]
+        ),
         "description": "Weighted Close Price: Weighted average price placing more emphasis on the close.",
         "signal_function": signal_wclprice,
     },
@@ -1271,77 +1244,94 @@ price_indicators = ta_lib_price
 baseline_indicators = [
     {
         "name": "ALMA",
-        "function": lambda df, period=9, sigma=6, offset=0.85: ALMA(
-            df, period, sigma, offset
-        ),
+        "function": ALMA,
         "description": "ALMA (Arnaud Legoux Moving Average): A Gaussian-weighted moving average designed to reduce lag while smoothing price.",
         "signal_function": signal_baseline_standard,
+        "raw_function": ALMA,
+        "parameters": {"period": 9, "sigma": 6, "offset": 0.85},
     },
     {
         "name": "HMA",
-        "function": lambda df, period=20: HMA(df, period),
+        "function": HMA,
         "description": "HMA (Hull Moving Average): Uses weighted moving averages to minimize lag and smooth price action responsively.",
         "signal_function": signal_baseline_standard,
+        "raw_function": HMA,
+        "parameters": {"period": 13},
     },
     {
         "name": "RecursiveMA",
-        "function": lambda df, period=2, recursions=20: RecursiveMA(
-            df, period, recursions
-        ),
+        "function": RecursiveMA,
         "description": "Recursive MA: Applies repeated exponential smoothing to create a stable baseline for trend analysis.",
         "signal_function": signal_recursive_ma,
+        "raw_function": RecursiveMA,
+        "parameters": {"period": 2, "recursions": 20},
     },
     {
         "name": "LSMA",
-        "function": lambda df, period=14, shift=1: LSMA(df, period, shift),
+        "function": LSMA,
         "description": "LSMA (Least Squares Moving Average): A regression-based average used to project smoothed directional bias.",
         "signal_function": signal_lsma,
+        "raw_function": LSMA,
+        "parameters": {"period": 14, "shift": 0},
     },
     {
         "name": "VIDYA",
-        "function": lambda df, period=14, histper=14: VIDYA(df, period, histper),
+        "function": VIDYA,
         "description": "VIDYA (Variable Index Dynamic Average): Adaptive moving average that responds to volatility by adjusting smoothing.",
         "signal_function": signal_baseline_standard,
+        "raw_function": VIDYA,
+        "parameters": {"period": 9, "histper": 30},
     },
     {
         "name": "Gen3MA",
-        "function": lambda df, period=220, sampling_period=50: Gen3MA(
-            df, period, sampling_period
-        ),
+        "function": Gen3MA,
         "description": "Gen3MA: A third-generation moving average that combines multi-scale smoothing and sampling.",
         "signal_function": signal_gen3ma,
+        "raw_function": Gen3MA,
+        "parameters": {"period": 220, "sampling_period": 50},
     },
     {
         "name": "TrendLord",
-        "function": lambda df, period=12, ma_method="smma", applied_price="close", show_high_low=False, signal_bar=1: TrendLord(
-            df, period, ma_method, applied_price, show_high_low, signal_bar
-        ),
+        "function": TrendLord,
         "description": "TrendLord: A smoothed MA-based trend filter that dynamically reacts to shifts using layered moving average logic.",
         "signal_function": signal_trendlord,
+        "raw_function": TrendLord,
+        "parameters": {
+            "period": 12,
+            "ma_method": "smma",
+            "applied_price": "close",
+            "show_high_low": False,
+            "signal_bar": 1,
+        },
     },
     {
         "name": "BraidFilter",
-        "function": lambda df, period1=5, period2=8, period3=20, pips_min_sep_percent=0.5: BraidFilter(
-            df, period1, period2, period3, pips_min_sep_percent
-        ),
+        "function": BraidFilter,
         "description": "Braid Filter: Combines multiple moving averages and separation conditions to confirm trend stability or congestion.",
         "signal_function": signal_braidfilter,
+        "raw_function": BraidFilter,
+        "parameters": {
+            "period1": 5,
+            "period2": 8,
+            "period3": 20,
+            "pips_min_sep_percent": 0.5,
+        },
     },
     {
         "name": "AcceleratorLSMA",
-        "function": lambda df, long_period=30, short_period=10: AcceleratorLSMA(
-            df, long_period, short_period
-        ),
+        "function": AcceleratorLSMA,
         "description": "Accelerator LSMA: Applies differential velocity of LSMA to identify acceleration or deceleration in trend bias.",
         "signal_function": signal_accelerator_lsma,
+        "raw_function": AcceleratorLSMA,
+        "parameters": {"long_period": 21, "short_period": 9},
     },
     {
         "name": "McGinleyDI",
-        "function": lambda df, period=12, mcg_constant=5: McGinleyDI(
-            df, period, mcg_constant
-        ),
+        "function": McGinleyDI,
         "description": "McGinley Dynamic Index: An adaptive moving average that self-adjusts for speed and volatility.",
         "signal_function": signal_baseline_standard,
+        "raw_function": McGinleyDI,
+        "parameters": {"period": 12, "mcg_constant": 5},
     },
 ]
 

@@ -1,4 +1,3 @@
-import numpy as np
 import pandas as pd
 
 from scripts.config import (
@@ -186,21 +185,21 @@ def signal_macd(macd_df: pd.DataFrame) -> list:
         list: [BULLISH_CROSSOVER, BULLISH_TREND] etc.
     """
     macd_line, signal_line, hist = (
-        macd_df.iloc[:, 0],
-        macd_df.iloc[:, 1],
-        macd_df.iloc[:, 2],
+        macd_df["0"],
+        macd_df["1"],
+        macd_df["2"],
     )
     signals = []
 
     # Crossover entry signals
     if (
         macd_line.iloc[-2] < signal_line.iloc[-2]
-        and macd_line[-1] > signal_line.iloc[-1]
+        and macd_line.iloc[-1] > signal_line.iloc[-1]
     ):
         signals.append(BULLISH_SIGNAL)
     elif (
         macd_line.iloc[-2] > signal_line.iloc[-2]
-        and macd_line[-1] < signal_line.iloc[-1]
+        and macd_line.iloc[-1] < signal_line.iloc[-1]
     ):
         signals.append(BEARISH_SIGNAL)
 
@@ -514,14 +513,15 @@ def signal_fisher(fisher_df: pd.DataFrame) -> list:
 
 def signal_bulls_bears_impulse(impulse_df: pd.DataFrame) -> list:
     signals = []
-    impulse = impulse_df["Impulse"]
+    bulls = impulse_df["Bulls"].iloc[-1]
+    bears = impulse_df["Bears"].iloc[-1]
 
-    if impulse.iloc[-1] > 0:
-        signals.append(BULLISH_TREND)
-    elif impulse.iloc[-1] < 0:
-        signals.append(BEARISH_TREND)
+    if bulls > 0:
+        signals.append("BULLISH_TREND")
+    elif bears > 0:
+        signals.append("BEARISH_TREND")
     else:
-        signals.append(NEUTRAL_TREND)
+        signals.append("NEUTRAL_TREND")
 
     return signals
 
@@ -562,10 +562,9 @@ def signal_laguerre(laguerre_series: pd.Series) -> list:
     return signals
 
 
-def signal_schaff_trend_cycle(
-    stc_series: pd.Series, overbought=75, oversold=25
-) -> list:
+def signal_schaff_trend_cycle(stc_df: pd.DataFrame, overbought=75, oversold=25) -> list:
     signals = []
+    stc_series = stc_df["STC"]
 
     if stc_series.iloc[-2] < oversold and stc_series.iloc[-1] > oversold:
         signals.append(BULLISH_SIGNAL)
@@ -600,17 +599,18 @@ def signal_tdfi(td_series: pd.Series) -> list:
     return signals
 
 
-def signal_ttf(ttf_series: pd.Series, upper=75, lower=-75) -> list:
+def signal_ttf(ttf_df: pd.DataFrame, upper=75, lower=-75) -> list:
     signals = []
+    signal_series = ttf_df["Signal"]
 
-    if ttf_series.iloc[-2] < lower and ttf_series.iloc[-1] > lower:
+    if signal_series.iloc[-2] <= lower and signal_series.iloc[-1] > lower:
         signals.append(BULLISH_SIGNAL)
-    elif ttf_series.iloc[-2] > upper and ttf_series.iloc[-1] < upper:
+    elif signal_series.iloc[-2] >= upper and signal_series.iloc[-1] < upper:
         signals.append(BEARISH_SIGNAL)
 
-    if ttf_series.iloc[-1] > upper:
+    if signal_series.iloc[-1] >= upper:
         signals.append(BULLISH_TREND)
-    elif ttf_series.iloc[-1] < lower:
+    elif signal_series.iloc[-1] <= lower:
         signals.append(BEARISH_TREND)
     else:
         signals.append(NEUTRAL_TREND)
@@ -779,14 +779,14 @@ def signal_uf2018(uf_df: pd.DataFrame) -> list:
     prev = uf_df.iloc[-2]
     curr = uf_df.iloc[-1]
 
-    if prev["Value"] < 0 and curr["Value"] > 0:
+    if prev["BUY"] < 0 and curr["BUY"] > 0:
         signals.append(BULLISH_SIGNAL)
-    elif prev["Value"] > 0 and curr["Value"] < 0:
+    elif prev["SELL"] > 0 and curr["SELL"] < 0:
         signals.append(BEARISH_SIGNAL)
 
-    if curr["Value"] > 0:
+    if curr["BUY"] > 0:
         signals.append(BULLISH_TREND)
-    elif curr["Value"] < 0:
+    elif curr["SELL"] < 0:
         signals.append(BEARISH_TREND)
     else:
         signals.append(NEUTRAL_TREND)
@@ -841,9 +841,9 @@ def signal_grucha_index(grucha_df: pd.DataFrame) -> list:
     return signals
 
 
-def signal_top_trend(toptrend_df: pd.DataFrame) -> list:
+def signal_top_trend(toptrend_series: pd.Series) -> list:
     signals = []
-    trend_val = toptrend_df["TopTrend"].iloc[-1]
+    trend_val = toptrend_series.iloc[-1]
 
     if trend_val == 1:
         signals.append(BULLISH_TREND)
@@ -962,9 +962,9 @@ def signal_kvo(kvo_df: pd.DataFrame) -> list:
     return signals
 
 
-def signal_lwpi(lwpi_df: pd.DataFrame) -> list:
+def signal_lwpi(lwpi_series: pd.Series) -> list:
     signals = []
-    val = lwpi_df["LWPI"].iloc[-1]
+    val = lwpi_series.iloc[-1]
     if val > 55:
         signals.append(HIGH_VOLUME)
     elif val < 45:

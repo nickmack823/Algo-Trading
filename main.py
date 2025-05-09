@@ -1,17 +1,28 @@
 import logging
 import multiprocessing as mp
+import os
+import sys
 import time
-import types
-from itertools import product
+import traceback
+import winsound
+from concurrent.futures import ProcessPoolExecutor
 
-from scripts import polygon, strategies
+import optuna
+from optuna.samplers import TPESampler
+from optuna.visualization import (
+    plot_optimization_history,
+    plot_parallel_coordinate,
+    plot_param_importances,
+)
+
+from scripts import config, strategies
 from scripts.backtester import Backtester
 from scripts.config import MAJOR_FOREX_PAIRS, TIMEFRAMES
 from scripts.indicators import (
+    atr_indicators,
     baseline_indicators,
     momentum_indicators,
     trend_indicators,
-    volatility_indicators,
     volume_indicators,
 )
 from scripts.sql import BacktestSQLHelper
@@ -20,86 +31,25 @@ logging.basicConfig(
     level=20, datefmt="%m/%d/%Y %H:%M:%S", format="[%(asctime)s] %(message)s"
 )
 
-
-def generate_variants_all_numeric_params(
-    indicator_def: dict, step: int = 2, range_size: int = 10
-) -> list[dict]:
-    """
-    Generate all combinations of parameter variants for every numeric parameter in the indicator.
-    """
-    if not indicator_def.get("parameters"):
-        return [indicator_def]
-
-    numeric_params = {
-        k: v
-        for k, v in indicator_def["parameters"].items()
-        if isinstance(v, (int, float))
-    }
-
-    if not numeric_params:
-        return [indicator_def]
-
-    # Generate list of (param_name, [values])
-    param_values_list = []
-    for param, base in numeric_params.items():
-        values = [base + step * delta for delta in range(-range_size, range_size + 1)]
-        values = [v for v in values if v > 0]
-        param_values_list.append((param, values))
-
-    # All combinations of parameter values
-    all_param_combos = list(product(*[vals for _, vals in param_values_list]))
-
-    variants = []
-    for combo in all_param_combos:
-        variant = dict(indicator_def)
-        variant["parameters"] = dict(indicator_def["parameters"])  # deep copy of params
-
-        name_parts = [indicator_def["name"]]
-        for (param, _), value in zip(param_values_list, combo):
-            variant["parameters"][param] = value
-            name_parts.append(
-                f"{param}{int(value) if isinstance(value, int) else round(value, 2)}"
-            )
-
-        variant["name"] = "_".join(name_parts)
-        variants.append(variant)
-
-    return variants
-
-
-# Returns parameter combinations of input indicators.
-# For use after finding best performers on their default settings
-def expand_indicator_pool(indicators: list[dict]) -> list[dict]:
-    expanded = []
-    for ind in indicators:
-        expanded.extend(generate_variants_all_numeric_params(ind))
-    return expanded
-
-
-def count_valid_combos(vol_pool, base_pool, conf_pool, volu_pool, exit_pool):
-    total = 0
-    for atr, baseline, c1, c2, volume, exit in product(
-        vol_pool, base_pool, conf_pool, conf_pool, volu_pool, exit_pool
-    ):
-        if c1 != c2:
-            total += 1
-    return total
+# db_queue = mp.Queue()
+# done_flag = mp.Value("b", False)
 
 
 def test_one():
     strategy = strategies.NNFXStrategy(
-        atr=volatility_indicators[0],
+        atr=atr_indicators[0],
         baseline=baseline_indicators[0],
         c1=trend_indicators[2],
         c2=trend_indicators[3],
-        volume=volume_indicators[0],
+        volume=volume_indicators[-1],
         exit_indicator=trend_indicators[4],
-        forex_pair="EURUSD",
+        forex_pair="USDCHF",
+        timeframe="4_hour",
     )
 
     logging.info(f"Current strategy: {strategy}")
 
-    backtester = Backtester(strategy, "EURUSD", "15_minute", initial_balance=10_000)
+    backtester = Backtester(strategy, "USDCHF", "4_hour", initial_balance=10_000)
 
     # Time the backtest
     start_time = time.time()
@@ -116,131 +66,247 @@ def test_one():
     trades = backtester.save_trades()
 
 
-# Generate strategy + pair/timeframe combinations
-def generate_combo_tasks():
-    volatility_pool = volatility_indicators
-    baseline_pool = baseline_indicators
-    confirmation_pool = trend_indicators + momentum_indicators
-    volume_pool = volume_indicators
-    exit_pool = (
-        confirmation_pool  # or use a separate exit_indicators list if you have one
-    )
-
-    for atr, baseline, c1, c2, volume, exit in product(
-        volatility_pool,
-        baseline_pool,
-        confirmation_pool,
-        confirmation_pool,
-        volume_pool,
-        exit_pool,
-    ):
-        if c1 != c2:
-            for forex_pair in MAJOR_FOREX_PAIRS:
-                for timeframe in TIMEFRAMES:
-                    yield (atr, baseline, c1, c2, volume, exit, forex_pair, timeframe)
+def get_indicator_by_name(name: str, pool: list[dict]) -> dict:
+    """Find an indicator config by name from a given pool."""
+    for ind in pool:
+        if ind["name"] == name:
+            return ind
+    raise ValueError(f"Indicator with name '{name}' not found.")
 
 
-def estimate_total_tasks():
-    n_atr = len(volatility_indicators)
-    n_base = len(baseline_indicators)
-    n_conf = len(trend_indicators + momentum_indicators)
-    n_vol = len(volume_indicators)
-    n_exit = n_conf  # or another list if using separate exit indicators
+def db_writer_process(queue: mp.Queue, done_flag):
+    """Process for writing backtests to DB with a queue
 
-    c1_c2_pairs = n_conf * (n_conf - 1)  # c1 != c2
-    total = (
-        n_atr
-        * n_base
-        * c1_c2_pairs
-        * n_vol
-        * n_exit
-        * len(MAJOR_FOREX_PAIRS)
-        * len(TIMEFRAMES)
-    )
-    return total
-
-
-def wrap_lambdas(indicator_config: dict) -> dict:
-    def wrap(fn, name):
-        if fn.__name__ == "<lambda>":
-            new_fn = types.FunctionType(fn.__code__, fn.__globals__, name)
-            return new_fn
-        return fn
-
-    return {
-        key: (wrap(value, f"{key}_wrapped") if callable(value) else value)
-        for key, value in indicator_config.items()
-    }
-
-
-# Worker builds backtester, runs backtest, returns to queue
-def run_combo_worker(task):
-    atr, baseline, c1, c2, volume, exit, forex_pair, timeframe = task
-    strategy = strategies.NNFXStrategy(atr, baseline, c1, c2, volume, exit, forex_pair)
-    backtester = Backtester(
-        strategy, forex_pair.replace("/", ""), timeframe, initial_balance=10_000
-    )
-    backtester.run_backtest()
-    return backtester
-
-
-# Single writer process receives backtester objects and saves them
-def db_writer(queue: mp.Queue, done_flag):
+    Args:
+        queue (mp.Queue): The queue
+        done_flag (_type_): The done flag to indicate when to stop
+    """
     while True:
         while not queue.empty():
-            backtester: Backtester = queue.get()
-            if backtester is None:
-                continue
-            backtester.save_run()
+            forex_pair_id, strategy_config_id, timeframe, metrics_df, score = (
+                queue.get()
+            )
+            try:
+                # Re-initialize DB connection in this process
+                backtest_sqlhelper = BacktestSQLHelper()
+
+                # Insert backtest run
+                run_id = backtest_sqlhelper.insert_backtest_run(
+                    forex_pair_id, strategy_config_id, timeframe, metrics_df
+                )
+                logging.info(f"Saved backtest run (id: {run_id})")
+
+                # Insert composite score
+                if score is not None:
+                    backtest_sqlhelper.insert_composite_score(run_id, score)
+                    logging.info(f"Run met thresholds, saved composite score.")
+
+                # Close DB connection
+                backtest_sqlhelper.close_connection()
+            except Exception as e:
+                logging.error(f"Failed to save backtest: {e}")
+                winsound.Beep(300, 500)
+
         if done_flag.value:
             break
-        time.sleep(0.1)
+
+        time.sleep(1)
 
 
-# Multiprocessing controller
-def parallel_nnfx_testing_with_writer(processes: int):
-    start_time = time.time()
-    completed = mp.Value("i", 0)
+def save_optuna_report(study: optuna.Study, output_path: str):
+    """Saves Optuna report to disk
+
+    Args:
+        study (optuna.Study): The Optuna study
+        output_path (str): The output path to save to
+    """
+    logging.info("Saving Optuna report...")
+    os.makedirs(output_path, exist_ok=True)
+
+    plots = {
+        "optimization_history.html": plot_optimization_history(study),
+        "param_importances.html": plot_param_importances(study),
+        "parallel_coordinates.html": plot_parallel_coordinate(study),
+    }
+
+    for filename, fig in plots.items():
+        fig.write_html(f"{output_path}/{filename}")
+        logging.info(f"Saved {filename}")
+
+
+def objective(
+    trial: optuna.Trial, forex_pair: str, timeframe: str, db_queue: mp.Queue
+) -> float:
+    """
+    Optuna objective function to maximize composite score of an NNFX strategy.
+    Now using safe categorical values (strings) + dictionary lookup.
+    """
+
+    # Choose by name to allow Optuna to persist trials cleanly
+    atr_name = trial.suggest_categorical("ATR", [i["name"] for i in atr_indicators])
+    baseline_name = trial.suggest_categorical(
+        "Baseline", [i["name"] for i in baseline_indicators]
+    )
+    c1_name = trial.suggest_categorical(
+        "C1", [i["name"] for i in trend_indicators + momentum_indicators]
+    )
+    c2_name = trial.suggest_categorical(
+        "C2", [i["name"] for i in trend_indicators + momentum_indicators]
+    )
+    volume_name = trial.suggest_categorical(
+        "Volume", [i["name"] for i in volume_indicators]
+    )
+    exit_name = trial.suggest_categorical(
+        "Exit", [i["name"] for i in trend_indicators + momentum_indicators]
+    )
+
+    # Prevent invalid C1/C2 combo
+    if c1_name == c2_name:
+        raise optuna.exceptions.TrialPruned()
+
+    # Retrieve full config dicts by name
+    atr = get_indicator_by_name(atr_name, atr_indicators)
+    baseline = get_indicator_by_name(baseline_name, baseline_indicators)
+    c1 = get_indicator_by_name(c1_name, trend_indicators + momentum_indicators)
+    c2 = get_indicator_by_name(c2_name, trend_indicators + momentum_indicators)
+    volume = get_indicator_by_name(volume_name, volume_indicators)
+    exit = get_indicator_by_name(exit_name, trend_indicators + momentum_indicators)
+
+    # Initialize strategy and backtester
+    strategy = strategies.NNFXStrategy(
+        atr, baseline, c1, c2, volume, exit, forex_pair, timeframe
+    )
+    backtester = Backtester(strategy, forex_pair, timeframe, initial_balance=10_000)
+
+    # Skip configuration if already tested
+    backtest_sqlhelper = BacktestSQLHelper()
+    pair_id = backtest_sqlhelper.get_forex_pair_id(forex_pair)
+    strategy_id = backtest_sqlhelper.select_strategy_configuration(
+        strategy.NAME, strategy.DESCRIPTION, strategy.PARAMETER_SETTINGS
+    )
+
+    manually_pruned = False
+    if backtest_sqlhelper.backtest_run_exists(pair_id, strategy_id, timeframe):
+        logging.info("Pruned trial due to existing run.")
+        manually_pruned = True
+        raise optuna.exceptions.TrialPruned()
+
+    backtest_sqlhelper.close_connection()
+    backtest_sqlhelper = None
+
+    score = None
+    run_metrics_df = None
+    try:
+        # Run backtest
+        backtester.run_backtest()
+
+        # Retrieve metrics
+        run_metrics_df = backtester.get_metrics_df()
+
+        # Prune trials with too few trades to minimize exploring inactive configurations
+        min_trades_per_day = config.MIN_TRADES_PER_DAY[timeframe]
+        trades_per_day = backtester.get_metric("Trades_Per_Day")
+        if trades_per_day < min_trades_per_day:
+            logging.info(
+                f"Pruned trial due to low activity: {trades_per_day:.2f} trades/day < required {min_trades_per_day} trades/day for {timeframe} timeframe"
+            )
+            manually_pruned = True
+            raise optuna.exceptions.TrialPruned()
+
+        # Calculate composite score
+        score = backtester.calculate_composite_score()
+
+        # Replace inf or NaN with 0
+        if score is None or score != score or score in (float("inf"), float("-inf")):
+            logging.warning("Pruned trial due to invalid score.")
+            manually_pruned = True
+            score = None
+            raise optuna.exceptions.TrialPruned()
+
+        # Optimize for higher score
+        return score
+    except Exception as e:
+        if manually_pruned:
+            raise e
+        full_traceback = traceback.format_exc()
+        logging.error(f"Fatal error on {forex_pair} {timeframe}: {full_traceback}")
+        sys.exit(1)
+    finally:
+        # Send backtester metrics to queue to save results
+        if run_metrics_df is not None:
+            queue_tuple = (pair_id, strategy_id, timeframe, run_metrics_df, score)
+            db_queue.put(queue_tuple)
+
+
+def run_study_wrapper(args):
+    """Wrapper for multiprocessing
+
+    Args:
+        args (Tuple): A tuple of (pair, timeframe, n_trials)
+    Returns:
+        str: The study name
+    """
+    pair, timeframe, trials, db_queue = args
+    logging.info(f"[START STUDY] {pair} @ {timeframe}")
+
+    def wrapped_objective(trial):
+        return objective(trial, pair, timeframe, db_queue)
+
+    study = optuna.create_study(
+        direction="maximize",
+        study_name=f"{pair.replace('/', '')}_{timeframe}_NNFX",
+        sampler=TPESampler(
+            seed=42, n_startup_trials=20
+        ),  # n_startup_trials indicates the number of initial random trials
+        storage="sqlite:///backtesting/optuna_studies.db",
+        load_if_exists=True,
+    )
+
+    # Start studying
+    study.optimize(wrapped_objective, n_trials=trials, n_jobs=1)
+
+    report_path = f"backtesting/optuna_reports/{pair.replace('/', '')}_{timeframe}"
+    save_optuna_report(study, report_path)
+
+    logging.info(f"[FINISHED STUDY] {pair} @ {timeframe}")
+    return study.study_name
+
+
+def run_all_studies(n_trials_per_combo: int = 100, max_parallel_studies: int = 1):
+    """Run Optuna studies on all pair/timeframe combos
+
+    Args:
+        n_trials_per_combo (int, optional): The number of trials per pair/timeframe combo. Defaults to 100.
+        max_parallel_studies (int, optional): The maximum number of parallel studies. Defaults to 1.
+    """
+    manager = mp.Manager()
+    db_queue = manager.Queue()
     done_flag = mp.Value("b", False)
-    queue = mp.Queue()
 
-    # Estimate total upfront only if needed for progress tracking (optional)
-    total_tasks = estimate_total_tasks()
-    print(f"Estimated total tasks: {total_tasks}")
-
-    # Start the writer process
-    writer_proc = mp.Process(target=db_writer, args=(queue, done_flag))
-
-    logging.info("Starting backtesting...")
+    # Start DB writer process
+    writer_proc = mp.Process(target=db_writer_process, args=(db_queue, done_flag))
     writer_proc.start()
 
-    def callback(backtester):
-        queue.put(backtester)
-        with completed.get_lock():
-            completed.value += 1
-            elapsed = time.time() - start_time
-            rate = completed.value / elapsed if elapsed > 0 else 0
-            eta = (total_tasks - completed.value) / rate if rate > 0 else float("inf")
-            print(
-                f"\rProgress: {completed.value}/{total_tasks} "
-                f"({(completed.value / total_tasks) * 100:.2f}%) | "
-                f"Elapsed: {elapsed:.1f}s | ETA: {eta:.1f}s",
-                end="",
-            )
+    try:
+        # Prepare study jobs
+        study_args = [
+            (pair, timeframe, n_trials_per_combo, db_queue)
+            for pair in MAJOR_FOREX_PAIRS
+            for timeframe in TIMEFRAMES
+        ]
 
-    with mp.Pool(processes=processes) as pool:
-        for result in pool.imap_unordered(
-            run_combo_worker, generate_combo_tasks(), chunksize=1
-        ):
-            callback(result)
-
-    with done_flag.get_lock():
+        with ProcessPoolExecutor(max_workers=max_parallel_studies) as executor:
+            for study_name in executor.map(run_study_wrapper, study_args):
+                logging.info(f"Finished: {study_name}")
+    finally:
         done_flag.value = True
-    writer_proc.join()
-    print("\nBacktesting complete.")
+        writer_proc.join()
 
 
-# Entry point
 if __name__ == "__main__":
-    processes = round(mp.cpu_count() / 2)
-    parallel_nnfx_testing_with_writer(processes=processes)
+    # Run Optuna studies on all pair/timeframe combos
+    num_processes = mp.cpu_count()
+    num_processes = 1
+    run_all_studies(n_trials_per_combo=300, max_parallel_studies=num_processes)
+
+    # test_one()

@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 from scripts.config import *
+from scripts.sql import IndicatorCacheSQLHelper
 
 
 # Indicator Config for indicator parameters in strategies
@@ -296,7 +297,17 @@ class PositionCalculator:
     ):
         """
         Calculates the number of trade units based on the target pip value. (NNFX)
+
+        Args:
+            forex_pair (str): e.g. 'EURUSD', 'EURAUD', etc. (no "/")
+            balance (int): Available balance
+            risk_per_trade (float): Risk per trade
+            entry_price (float): Entry price
+            atr (float): Average True Range
+            quote_to_usd_rate (float): Optional, needed for cross pairs
         """
+        assert "/" not in forex_pair, "forex_pair must not contain '/'"
+
         # Calculate current pip value per lot
         dollars_per_pip_per_lot = PositionCalculator.calculate_current_pip_value(
             forex_pair, 100_000, entry_price, quote_to_usd_rate
@@ -412,11 +423,13 @@ class BaseStrategy:
     DESCRIPTION = None
     PARAMETER_SETTINGS = {}
     FOREX_PAIR = None
+    TIMEFRAME = None
     CONFIG_ID = None
 
-    def __init__(self, forex_pair: str, parameters: dict = None):
-        self.FOREX_PAIR = forex_pair
+    def __init__(self, forex_pair: str, parameters: dict = None, timeframe: str = None):
+        self.FOREX_PAIR = forex_pair.replace("/", "")
         self.PARAMETER_SETTINGS = parameters
+        self.TIMEFRAME = timeframe
 
     def prepare_data(self, full_data: pd.DataFrame):
         """
@@ -560,6 +573,7 @@ class NNFXStrategy(BaseStrategy):
         volume: IndicatorConfig,
         exit_indicator: IndicatorConfig,
         forex_pair: str,
+        timeframe: str,
     ):
 
         self.atr = atr
@@ -582,26 +596,46 @@ class NNFXStrategy(BaseStrategy):
         self.last_valid_entry_index = None
         self.last_valid_entry_direction = None
 
-        super().__init__(forex_pair=forex_pair, parameters=parameters)
+        super().__init__(
+            forex_pair=forex_pair, parameters=parameters, timeframe=timeframe
+        )
 
     def _calculate_indicators(self, data: pd.DataFrame) -> pd.DataFrame:
-        """
-        Applies all NNFX indicators (ATR, Baseline, C1, C2, Volume, Exit)
-        and returns a DataFrame with their outputs attached.
-        """
         data = data.copy()
+        cache = IndicatorCacheSQLHelper()
 
-        def safe_apply(name: str, config: IndicatorConfig):
+        def safe_apply(nnfx_piece_name: str, config: IndicatorConfig):
+            cached = cache.fetch(
+                nnfx_piece_name, config["parameters"], self.FOREX_PAIR, self.TIMEFRAME
+            )
+            if cached is not None:
+                return cached
+
             raw_output = config["function"](data, **config["parameters"])
             output_df_or_series = self._convert_np_to_pd(raw_output)
 
             if isinstance(output_df_or_series, pd.DataFrame):
-                renamed = output_df_or_series.add_prefix(f"{name}_")
+                renamed = output_df_or_series.add_prefix(f"{nnfx_piece_name}_")
+                cache.store(
+                    config["name"],
+                    config["parameters"],
+                    self.FOREX_PAIR,
+                    self.TIMEFRAME,
+                    renamed,
+                )
                 return renamed
             else:
-                return pd.DataFrame({name: output_df_or_series})
+                df = pd.DataFrame({nnfx_piece_name: output_df_or_series})
+                cache.store(
+                    config["name"],
+                    config["parameters"],
+                    self.FOREX_PAIR,
+                    self.TIMEFRAME,
+                    df,
+                )
+                return df
 
-        # Collect all indicator DataFrames
+        # Calculate/retrieve cached indicators and add to data DataFrame
         indicator_dfs = [
             safe_apply("ATR", self.atr),
             safe_apply("Baseline", self.baseline),
@@ -611,13 +645,53 @@ class NNFXStrategy(BaseStrategy):
             safe_apply("Exit", self.exit),
         ]
 
-        # Concatenate once to avoid fragmentation
         indicator_data = pd.concat(indicator_dfs, axis=1)
         data = pd.concat(
             [data.reset_index(drop=True), indicator_data.reset_index(drop=True)], axis=1
         )
 
+        cache.close_connection()
+        cache = None
+
         return data
+
+    def _get_signals_since_last_valid_signal(
+        self, close_series: pd.Series, baseline_df_or_series: pd.DataFrame
+    ):
+        """Get baseline signals since the last valid signal (for Continuation Entry checking)
+
+        Args:
+            close_series (pd.Series): A Pandas Series containing the closing prices.
+            baseline_df_or_series (pd.DataFrame): A Pandas DataFrame containing the baseline indicator values.
+
+        Returns:
+            list[str]: A list of signals
+        """
+        closes_since_signal = close_series.iloc[self.last_valid_entry_index + 1 :]
+        baselines_since_signal = baseline_df_or_series.iloc[
+            self.last_valid_entry_index + 1 :
+        ]
+
+        signals_since_last_valid_signal = []
+        # Generate signals for each data point since the last valid entry
+        for i in range(
+            1, len(closes_since_signal)
+        ):  # Start from the second item (i=1) because we need the previous one
+            # Slice the data to include both the previous and current data points
+            signal_data_close = closes_since_signal.iloc[i - 1 : i + 1]
+            signal_data_baseline = baselines_since_signal.iloc[i - 1 : i + 1]
+
+            # Get the signal for the current data point using the function
+            current_signals = self._get_indicator_signals(
+                self.baseline["signal_function"],
+                signal_data_baseline,
+                signal_data_close,
+            )
+
+            # Accumulate the signals
+            signals_since_last_valid_signal.extend(current_signals)
+
+        return signals_since_last_valid_signal
 
     def _generate_signals(self, data: pd.DataFrame, current_position: int) -> list[str]:
         """
@@ -638,26 +712,24 @@ class NNFXStrategy(BaseStrategy):
             return [NO_SIGNAL], signal_source
 
         # Extract current and previous row
-        current_row = data.iloc[-1]
-        previous_row = data.iloc[-2]
+        current_row: pd.Series = data.iloc[-1]
+        previous_row: pd.Series = data.iloc[-2]
 
-        atr_series = data["ATR"]
-        baseline_series = data["Baseline"]
-        c1_df_or_series = (
-            self._reconstruct_df(data, "C1")
-            # if "C1" in data
-            # else data[[col for col in data if col.startswith("C1_")][0]]
-        )
+        atr_df_or_series = self._reconstruct_df(data, "ATR")
+        baseline_df_or_series = self._reconstruct_df(data, "Baseline")
+        c1_df_or_series = self._reconstruct_df(data, "C1")
         c2_df_or_series = self._reconstruct_df(data, "C2")
         volume_df_or_series = self._reconstruct_df(data, "VolumeIndicator")
         exit_df_or_series = self._reconstruct_df(data, "Exit")
 
         # Remove tags from column names in DataFrames for passing to signal functions
-        if isinstance(atr_series, pd.DataFrame):
-            atr_series.columns = [col.replace("ATR_", "") for col in atr_series.columns]
-        if isinstance(baseline_series, pd.DataFrame):
-            baseline_series.columns = [
-                col.replace("Baseline_", "") for col in baseline_series.columns
+        if isinstance(atr_df_or_series, pd.DataFrame):
+            atr_df_or_series.columns = [
+                col.replace("ATR_", "") for col in atr_df_or_series.columns
+            ]
+        if isinstance(baseline_df_or_series, pd.DataFrame):
+            baseline_df_or_series.columns = [
+                col.replace("Baseline_", "") for col in baseline_df_or_series.columns
             ]
         if isinstance(c1_df_or_series, pd.DataFrame):
             c1_df_or_series.columns = [
@@ -684,14 +756,15 @@ class NNFXStrategy(BaseStrategy):
         # print(volume_df_or_series.head())
         # print(exit_df_or_series.head())
 
-        close_series = data["Close"]
+        close_series: pd.Series = data["Close"]
+        prev_close_series: pd.Series = close_series.iloc[:-1]
 
         # Evaluate signal functions
-        atr_signals = self._get_indicator_signals(
-            self.atr["signal_function"], atr_series, close_series
-        )
+        # atr_signals = self._get_indicator_signals(
+        #     self.atr["signal_function"], atr_series, close_series
+        # )
         baseline_signals = self._get_indicator_signals(
-            self.baseline["signal_function"], baseline_series, close_series
+            self.baseline["signal_function"], baseline_df_or_series, close_series
         )
         c1_signals = self._get_indicator_signals(
             self.c1["signal_function"], c1_df_or_series, close_series
@@ -707,10 +780,9 @@ class NNFXStrategy(BaseStrategy):
         )
 
         # Evaluate previous candle signals
-        prev_close_series = close_series.iloc[:-1]
         baseline_signals_prev = self._get_indicator_signals(
             self.baseline["signal_function"],
-            baseline_series.iloc[:-1],
+            baseline_df_or_series.iloc[:-1],
             prev_close_series,
         )
 
@@ -726,16 +798,33 @@ class NNFXStrategy(BaseStrategy):
         )
 
         # Extract indicator values
-        atr_value = atr_series.iloc[-1]
-        prev_atr_value = atr_series.iloc[-2]
-        baseline_value = baseline_series.iloc[-1]
+        atr_value: float = (
+            atr_df_or_series.iloc[-1]
+            if isinstance(atr_df_or_series, pd.Series)
+            else atr_df_or_series.iloc[-1, 0]
+        )
+        prev_atr_value: float = (
+            atr_df_or_series.iloc[-2]
+            if isinstance(atr_df_or_series, pd.Series)
+            else atr_df_or_series.iloc[-2, 0]
+        )
+        baseline_value: float = (
+            baseline_df_or_series.iloc[-1]
+            if isinstance(baseline_df_or_series, pd.Series)
+            else baseline_df_or_series.iloc[-1, 0]
+        )
+        prev_baseline_value: float = (
+            baseline_df_or_series.iloc[-2]
+            if isinstance(baseline_df_or_series, pd.Series)
+            else baseline_df_or_series.iloc[-2, 0]
+        )
 
         # Check conditions
         price_within_1x_atr_of_baseline = (
             abs(current_row["Close"] - baseline_value) < 1 * atr_value
         )
         prev_price_within_1x_atr_of_baseline = (
-            abs(previous_row["Close"] - baseline_value) < 1 * prev_atr_value
+            abs(previous_row["Close"] - prev_baseline_value) < 1 * prev_atr_value
         )
 
         baseline_bullish_signal, baseline_bearish_signal = (
@@ -796,7 +885,7 @@ class NNFXStrategy(BaseStrategy):
             recent_c1_signals.append(signals)
 
         # Flatten the signals
-        flattened_signals = [sig for sublist in recent_c1_signals for sig in sublist]
+        # flattened_signals = [sig for sublist in recent_c1_signals for sig in sublist]
 
         # Evaluate 7 Candle Rule
         # seven_candle_c1_bullish = BULLISH_SIGNAL in flattened_signals
@@ -906,13 +995,13 @@ class NNFXStrategy(BaseStrategy):
                 self.last_valid_entry_index is not None
                 and self.last_valid_entry_direction == "Long"
             ):
-                # Get data since the last valid signal
-                data_since_signal = data.iloc[self.last_valid_entry_index + 1 :]
-
-                # Has price crossed BELOW the baseline since the last valid signal?
+                # Has price crossed ABOVE the baseline since the last valid signal?
                 below_baseline_since_signal = (
-                    data_since_signal["Close"] < data_since_signal["Baseline"]
-                ).any()
+                    BEARISH_SIGNAL
+                    in self._get_signals_since_last_valid_signal(
+                        close_series, baseline_df_or_series
+                    )
+                )
 
                 # If not crossed and current signals align, enter again
                 if (
@@ -927,12 +1016,13 @@ class NNFXStrategy(BaseStrategy):
                 self.last_valid_entry_index is not None
                 and self.last_valid_entry_direction == "Short"
             ):
-                data_since_signal = data.iloc[self.last_valid_entry_index + 1 :]
-
                 # Has price crossed ABOVE the baseline since the last valid signal?
                 above_baseline_since_signal = (
-                    data_since_signal["Close"] > data_since_signal["Baseline"]
-                ).any()
+                    BULLISH_SIGNAL
+                    in self._get_signals_since_last_valid_signal(
+                        close_series, baseline_df_or_series
+                    )
+                )
 
                 if (
                     not above_baseline_since_signal

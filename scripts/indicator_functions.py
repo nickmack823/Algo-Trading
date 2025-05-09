@@ -855,7 +855,7 @@ def Fisher(
 
 def BullsBearsImpulse(price_data: pd.DataFrame, ma_period: int = 13) -> pd.DataFrame:
     """
-    Calculate the Bears Bulls Impulse indicator for the given price data.
+    Calculate the Bulls Bears Impulse indicator for the given price data.
 
     Parameters
     ----------
@@ -867,19 +867,22 @@ def BullsBearsImpulse(price_data: pd.DataFrame, ma_period: int = 13) -> pd.DataF
     Returns
     -------
     pd.DataFrame
-        A DataFrame containing the Bears Bulls Impulse indicator values for the specified price data and parameters.
+        A DataFrame containing the Bulls Bears Impulse indicator values for the specified price data and parameters.
     """
+    # Calculate moving average of closing prices
     ma = price_data["Close"].rolling(window=ma_period).mean()
 
+    # Calculate the Bulls and Bears difference from the moving average
     bulls = price_data["High"] - ma
     bears = price_data["Low"] - ma
 
-    avg = bears + bulls
+    # Calculate the impulse (bulls minus bears)
+    impulse = bulls - bears
 
-    buffer1 = (avg >= 0).replace({True: 1.0, False: -1.0})
-    buffer2 = -buffer1
+    # Create buffers: 1 for bullish, -1 for bearish
+    buffer = impulse.apply(lambda x: 1.0 if x > 0 else -1.0)
 
-    return pd.DataFrame({"Bulls": buffer1, "Bears": buffer2})
+    return pd.DataFrame({"Bulls": buffer, "Bears": -buffer})
 
 
 def Gen3MA(
@@ -1181,7 +1184,7 @@ def HalfTrend(price_data: pd.DataFrame, amplitude: int = 2) -> pd.DataFrame:
     )  # , 'AtrLo': atrlo, 'AtrHi': atrhi, 'Trend': trend})
 
 
-def J_TPO(price_data: pd.DataFrame, period: int = 14):
+def J_TPO(price_data: pd.DataFrame, period: int = 14) -> pd.DataFrame:
     """
     Calculates the J_TPO_Velocity indicator.
 
@@ -1197,7 +1200,7 @@ def J_TPO(price_data: pd.DataFrame, period: int = 14):
     period: Length of the indicator. Default is 14.
 
     Returns:
-    Pandas DataFrame of J_TPO_Velocity values.
+    Pandas Series of J_TPO_Velocity values.
     """
     close_prices = price_data["Close"]
     high_prices = price_data["High"]
@@ -1228,7 +1231,7 @@ def J_TPO(price_data: pd.DataFrame, period: int = 14):
             / period
         )
 
-    j_tpo = pd.DataFrame({"J_TPO_Velocity": ext_map_buffer})
+    j_tpo = pd.Series(ext_map_buffer, index=close_prices.index)
 
     return j_tpo
 
@@ -1279,11 +1282,11 @@ def LWPI(price_data: pd.DataFrame, period: int = 8) -> pd.DataFrame:
     Pandas DataFrame of Larry Williams Proxy Index values
     """
     Raw = price_data["Open"] - price_data["Close"]
-    MA = Raw.rolling(window=period).mean()
-    ATR = (price_data["High"] - price_data["Low"]).rolling(window=period).mean()
-    LWPI = 50 * MA / ATR + 50
-    LWPI[ATR == 0] = 0
-    return pd.DataFrame({"LWPI": LWPI})
+    ma = Raw.rolling(window=period).mean()
+    atr = (price_data["High"] - price_data["Low"]).rolling(window=period).mean()
+    lwpi = 50 * ma / atr + 50
+    lwpi[atr == 0] = 0
+    return pd.Series(lwpi)
 
 
 def SuperTrend(
@@ -1532,7 +1535,7 @@ def BraidFilter(
     )
 
 
-def Laguerre(price_data: pd.DataFrame, gamma: float = 0.7) -> pd.DataFrame:
+def Laguerre(price_data: pd.DataFrame, gamma: float = 0.7) -> pd.Series:
     """Calculates the Laguerre indicator.
 
     Args:
@@ -1540,7 +1543,7 @@ def Laguerre(price_data: pd.DataFrame, gamma: float = 0.7) -> pd.DataFrame:
         gamma (float, optional): The gamma. Defaults to 0.7.
 
     Returns:
-        pd.DataFrame: A Pandas DataFrame containing the calculated indicator's values.
+        pd.Series: A Pandas Series containing the calculated indicator's values.
     """
     close = price_data["Close"].values
 
@@ -1581,7 +1584,7 @@ def Laguerre(price_data: pd.DataFrame, gamma: float = 0.7) -> pd.DataFrame:
 
         i -= 1
 
-    df = pd.DataFrame({"Laguerre": laguerre}, index=price_data.index)
+    df = pd.Series(laguerre, index=price_data.index)
 
     return df
 
@@ -1692,7 +1695,7 @@ def TopTrend(
     period: int = 20,
     deviation: int = 2,
     money_risk: float = 1.00,
-) -> pd.DataFrame:
+) -> pd.Series:
     """
     Calculates the TopTrend indicator.
 
@@ -1703,7 +1706,7 @@ def TopTrend(
     money_risk (float, optional): Offset Factor. Default is 1.00.
 
     Returns:
-    pd.DataFrame: Pandas DataFrame containing the TopTrend indicator values.
+    pd.Series: Pandas Series containing the TopTrend values.
     """
     close = price_data["Close"]
     data_length = len(close)
@@ -1760,8 +1763,8 @@ def TopTrend(
     else:
         trend[-1] = trend[-2]
 
-    # Create the result DataFrame
-    result = pd.DataFrame({"TopTrend": trend}, index=price_data.index)
+    # Create the result Series
+    result = pd.Series(trend, index=close.index)
 
     return result
 
@@ -2027,7 +2030,7 @@ def AcceleratorLSMA(
     df: pd.DataFrame, long_period: int = 21, short_period: int = 9
 ) -> pd.DataFrame:
     """
-    Calculate Accelerator/Decelerator Oscillator
+    Calculate Accelerator/Decelerator Oscillator.
 
     Parameters:
     df (pd.DataFrame): DataFrame containing 'Close' column
@@ -2035,21 +2038,37 @@ def AcceleratorLSMA(
     Returns:
     pd.DataFrame: DataFrame with calculated values
     """
+    # Calculate LSMA for both short and long periods
+    short_lsma = LSMA(df, short_period)
+    long_lsma = LSMA(df, long_period)
 
-    limit = len(df)
-    ExtBuffer3 = np.array(
-        [LSMA(df, short_period, i) - LSMA(df, long_period, i) for i in range(limit)]
-    )
-    ExtBuffer4 = pd.Series(ExtBuffer3).rolling(window=short_period).mean().values
+    # Calculate ExtBuffer3 as the difference between short and long LSMA
+    ExtBuffer3 = short_lsma - long_lsma
 
+    # Handle any NaN values that may result from LSMA or the rolling operation
+    ExtBuffer3 = ExtBuffer3.fillna(0)
+
+    # Calculate rolling mean (ExtBuffer4) for ExtBuffer3 using short_period
+    ExtBuffer4 = ExtBuffer3.rolling(window=short_period).mean()
+
+    # Handle NaN values in ExtBuffer4 (if any)
+    ExtBuffer4 = ExtBuffer4.fillna(0)
+
+    # Current difference from the rolling mean
     current = ExtBuffer3 - ExtBuffer4
+
+    # Shift current for comparison with previous
     prev = np.roll(current, 1)
+
+    # Determine the direction (up or down)
     up = current > prev
 
+    # Separate into positive (up) and negative (down) values
     ExtBuffer1 = np.where(up, current, 0)
     ExtBuffer2 = np.where(~up, current, 0)
-    ExtBuffer0 = current
+    ExtBuffer0 = current  # Final oscillator values
 
+    # Return results in a DataFrame
     result = pd.DataFrame(
         {
             "ExtBuffer0": ExtBuffer0,
@@ -2153,7 +2172,7 @@ def ADX(price_data: pd.DataFrame, period=14) -> pd.DataFrame:
     return result
 
 
-def TDFI(df: pd.DataFrame, period: int = 13) -> pd.DataFrame:
+def TDFI(df: pd.DataFrame, period: int = 13) -> pd.Series:
     """
     Calculate the Trend Direction Force Index (TDFI) using a Pandas DataFrame.
 
@@ -2176,7 +2195,7 @@ def TDFI(df: pd.DataFrame, period: int = 13) -> pd.DataFrame:
     )
 
     # Convert to DataFrame
-    tdfi = pd.DataFrame({"TDFI": tdfi})
+    tdfi = pd.Series(tdfi)
 
     return tdfi
 

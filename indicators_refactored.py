@@ -1,301 +1,240 @@
-import inspect
-import logging
-import multiprocessing
-
-import pandas as pd
-import talib as ta
-from tqdm import tqdm
-
-from scripts import config
-from scripts.indicator_functions import (
-    ALMA,
-    EHLERS,
-    HMA,
-    J_TPO,
-    KASE,
-    KVO,
-    LSMA,
-    LWPI,
-    SSL,
-    TCF,
-    TDFI,
-    TTF,
-    UF2018,
-    VIDYA,
-    WAE,
-    AcceleratorLSMA,
-    BraidFilter,
-    BraidFilterHist,
-    BullsBearsImpulse,
-    CenterOfGravity,
-    Coral,
-    FantailVMA,
-    FilteredATR,
-    Fisher,
-    Gen3MA,
-    GruchaIndex,
-    HalfTrend,
-    KalmanFilter,
-    KijunSen,
-    Laguerre,
-    MACDZeroLag,
-    McGinleyDI,
-    NormalizedVolume,
-    RecursiveMA,
-    SchaffTrendCycle,
-    SmoothStep,
-    SuperTrend,
-    TopTrend,
-    TrendLord,
-    TwiggsMF,
-    VolatilityRatio,
-    Vortex,
-)
-from scripts.signal_functions import *
-from scripts.sql import HistoricalDataSQLHelper
-
-logging.basicConfig(
-    level=20, datefmt="%m/%d/%Y %H:%M:%S", format="[%(asctime)s] %(message)s"
-)
-
-
-def candle_2crows_func(df):
+def candle_2crows_func(df, **kwargs):
     return ta.CDL2CROWS(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_3blackcrows_func(df):
+def candle_3blackcrows_func(df, **kwargs):
     return ta.CDL3BLACKCROWS(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_3inside_func(df):
+def candle_3inside_func(df, **kwargs):
     return ta.CDL3INSIDE(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_3linestrike_func(df):
+def candle_3linestrike_func(df, **kwargs):
     return ta.CDL3LINESTRIKE(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_3starsinsouth_func(df):
+def candle_3starsinsouth_func(df, **kwargs):
     return ta.CDL3STARSINSOUTH(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_3whitesoldiers_func(df):
+def candle_3whitesoldiers_func(df, **kwargs):
     return ta.CDL3WHITESOLDIERS(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_abandonedbaby_func(df):
+def candle_abandonedbaby_func(df, **kwargs):
     return ta.CDLABANDONEDBABY(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_advanceblock_func(df):
+def candle_advanceblock_func(df, **kwargs):
     return ta.CDLADVANCEBLOCK(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_belthold_func(df):
+def candle_belthold_func(df, **kwargs):
     return ta.CDLBELTHOLD(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_breakaway_func(df):
+def candle_breakaway_func(df, **kwargs):
     return ta.CDLBREAKAWAY(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_closingmarubozu_func(df):
+def candle_closingmarubozu_func(df, **kwargs):
     return ta.CDLCLOSINGMARUBOZU(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_concealbabyswall_func(df):
+def candle_concealbabyswall_func(df, **kwargs):
     return ta.CDLCONCEALBABYSWALL(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_counterattack_func(df):
+def candle_counterattack_func(df, **kwargs):
     return ta.CDLCOUNTERATTACK(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_darkcloudcover_func(df):
+def candle_darkcloudcover_func(df, **kwargs):
     return ta.CDLDARKCLOUDCOVER(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_doji_func(df):
+def candle_doji_func(df, **kwargs):
     return ta.CDLDOJI(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_dojistar_func(df):
+def candle_dojistar_func(df, **kwargs):
     return ta.CDLDOJISTAR(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_dragonflydoji_func(df):
+def candle_dragonflydoji_func(df, **kwargs):
     return ta.CDLDRAGONFLYDOJI(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_engulfing_func(df):
+def candle_engulfing_func(df, **kwargs):
     return ta.CDLENGULFING(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_eveningdojistar_func(df):
+def candle_eveningdojistar_func(df, **kwargs):
     return ta.CDLEVENINGDOJISTAR(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_eveningstar_func(df):
+def candle_eveningstar_func(df, **kwargs):
     return ta.CDLEVENINGSTAR(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_gapsidesidewhite_func(df):
+def candle_gapsidesidewhite_func(df, **kwargs):
     return ta.CDLGAPSIDESIDEWHITE(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_gravestonedoji_func(df):
+def candle_gravestonedoji_func(df, **kwargs):
     return ta.CDLGRAVESTONEDOJI(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_hammer_func(df):
+def candle_hammer_func(df, **kwargs):
     return ta.CDLHAMMER(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_hangingman_func(df):
+def candle_hangingman_func(df, **kwargs):
     return ta.CDLHANGINGMAN(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_harami_func(df):
+def candle_harami_func(df, **kwargs):
     return ta.CDLHARAMI(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_haramicross_func(df):
+def candle_haramicross_func(df, **kwargs):
     return ta.CDLHARAMICROSS(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_highwave_func(df):
+def candle_highwave_func(df, **kwargs):
     return ta.CDLHIGHWAVE(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_hikkake_func(df):
+def candle_hikkake_func(df, **kwargs):
     return ta.CDLHIKKAKE(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_hikkakemod_func(df):
+def candle_hikkakemod_func(df, **kwargs):
     return ta.CDLHIKKAKEMOD(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_homingpigeon_func(df):
+def candle_homingpigeon_func(df, **kwargs):
     return ta.CDLHOMINGPIGEON(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_identical3crows_func(df):
+def candle_identical3crows_func(df, **kwargs):
     return ta.CDLIDENTICAL3CROWS(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_inneck_func(df):
+def candle_inneck_func(df, **kwargs):
     return ta.CDLINNECK(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_invertedhammer_func(df):
+def candle_invertedhammer_func(df, **kwargs):
     return ta.CDLINVERTEDHAMMER(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_kicking_func(df):
+def candle_kicking_func(df, **kwargs):
     return ta.CDLKICKING(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_kickingbylength_func(df):
+def candle_kickingbylength_func(df, **kwargs):
     return ta.CDLKICKINGBYLENGTH(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_ladderbottom_func(df):
+def candle_ladderbottom_func(df, **kwargs):
     return ta.CDLLADDERBOTTOM(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_longleggeddoji_func(df):
+def candle_longleggeddoji_func(df, **kwargs):
     return ta.CDLLONGLEGGEDDOJI(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_longline_func(df):
+def candle_longline_func(df, **kwargs):
     return ta.CDLLONGLINE(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_marubozu_func(df):
+def candle_marubozu_func(df, **kwargs):
     return ta.CDLMARUBOZU(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_matchinglow_func(df):
+def candle_matchinglow_func(df, **kwargs):
     return ta.CDLMATCHINGLOW(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_mathold_func(df):
+def candle_mathold_func(df, **kwargs):
     return ta.CDLMATHOLD(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_morningdojistar_func(df):
+def candle_morningdojistar_func(df, **kwargs):
     return ta.CDLMORNINGDOJISTAR(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_morningstar_func(df):
+def candle_morningstar_func(df, **kwargs):
     return ta.CDLMORNINGSTAR(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_onneck_func(df):
+def candle_onneck_func(df, **kwargs):
     return ta.CDLONNECK(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_piercing_func(df):
+def candle_piercing_func(df, **kwargs):
     return ta.CDLPIERCING(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_rickshawman_func(df):
+def candle_rickshawman_func(df, **kwargs):
     return ta.CDLRICKSHAWMAN(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_risefall3methods_func(df):
+def candle_risefall3methods_func(df, **kwargs):
     return ta.CDLRISEFALL3METHODS(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_separatinglines_func(df):
+def candle_separatinglines_func(df, **kwargs):
     return ta.CDLSEPARATINGLINES(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_shootingstar_func(df):
+def candle_shootingstar_func(df, **kwargs):
     return ta.CDLSHOOTINGSTAR(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_shortline_func(df):
+def candle_shortline_func(df, **kwargs):
     return ta.CDLSHORTLINE(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_spinningtop_func(df):
+def candle_spinningtop_func(df, **kwargs):
     return ta.CDLSPINNINGTOP(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_stalledpattern_func(df):
+def candle_stalledpattern_func(df, **kwargs):
     return ta.CDLSTALLEDPATTERN(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_sticksandwich_func(df):
+def candle_sticksandwich_func(df, **kwargs):
     return ta.CDLSTICKSANDWICH(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_takuri_func(df):
+def candle_takuri_func(df, **kwargs):
     return ta.CDLTAKURI(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_tasukigap_func(df):
+def candle_tasukigap_func(df, **kwargs):
     return ta.CDLTASUKIGAP(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_thrusting_func(df):
+def candle_thrusting_func(df, **kwargs):
     return ta.CDLTHRUSTING(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_tristar_func(df):
+def candle_tristar_func(df, **kwargs):
     return ta.CDLTRISTAR(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_unique3river_func(df):
+def candle_unique3river_func(df, **kwargs):
     return ta.CDLUNIQUE3RIVER(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_upsidegap2crows_func(df):
+def candle_upsidegap2crows_func(df, **kwargs):
     return ta.CDLUPSIDEGAP2CROWS(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def candle_xsidegap3methods_func(df):
+def candle_xsidegap3methods_func(df, **kwargs):
     return ta.CDLXSIDEGAP3METHODS(df["Open"], df["High"], df["Low"], df["Close"])
 
 
@@ -327,10 +266,8 @@ def aroonosc_func(df, **kwargs):
     return ta.AROONOSC(df["High"], df["Low"], **kwargs)
 
 
-def apo_func(df, fastperiod=12, slowperiod=26, matype=0):
-    return ta.APO(
-        df["Close"], fastperiod=fastperiod, slowperiod=slowperiod, matype=matype
-    )
+def apo_func(df, fastperiod=12, slowperiod=26):
+    return ta.APO(df["Close"], fastperiod=fastperiod, slowperiod=slowperiod)
 
 
 def cci_func(df, **kwargs):
@@ -421,11 +358,11 @@ def var_func(df, **kwargs):
     return ta.VAR(df["Close"], **kwargs)
 
 
-def avgprice_func(df):
+def avgprice_func(df, **kwargs):
     return ta.AVGPRICE(df["Open"], df["High"], df["Low"], df["Close"])
 
 
-def medprice_func(df):
+def medprice_func(df, **kwargs):
     return ta.MEDPRICE(df["High"], df["Low"])
 
 
@@ -461,14 +398,73 @@ def sum_func(df, timeperiod=14):
     return ta.SUM(df["Close"], timeperiod=timeperiod)
 
 
-def typprice_func(df):
+def typprice_func(df, **kwargs):
     return ta.TYPPRICE(df["High"], df["Low"], df["Close"])
 
 
-def wclprice_func(df):
+def wclprice_func(df, **kwargs):
     return ta.WCLPRICE(df["High"], df["Low"], df["Close"])
 
 
+import inspect
+import logging
+import multiprocessing
+
+import pandas as pd
+import talib as ta
+from tqdm import tqdm
+
+from scripts import config
+from scripts.indicator_functions import (
+    ALMA,
+    EHLERS,
+    HMA,
+    J_TPO,
+    KASE,
+    KVO,
+    LSMA,
+    LWPI,
+    SSL,
+    TCF,
+    TDFI,
+    TTF,
+    UF2018,
+    VIDYA,
+    WAE,
+    AcceleratorLSMA,
+    BraidFilter,
+    BraidFilterHist,
+    BullsBearsImpulse,
+    CenterOfGravity,
+    Coral,
+    FantailVMA,
+    FilteredATR,
+    Fisher,
+    Gen3MA,
+    GruchaIndex,
+    HalfTrend,
+    KalmanFilter,
+    KijunSen,
+    Laguerre,
+    MACDZeroLag,
+    McGinleyDI,
+    NormalizedVolume,
+    RecursiveMA,
+    SchaffTrendCycle,
+    SmoothStep,
+    SuperTrend,
+    TopTrend,
+    TrendLord,
+    TwiggsMF,
+    VolatilityRatio,
+    Vortex,
+)
+from scripts.signal_functions import *
+from scripts.sql import HistoricalDataSQLHelper
+
+logging.basicConfig(
+    level=20, datefmt="%m/%d/%Y %H:%M:%S", format="[%(asctime)s] %(message)s"
+)
 ta_lib_candlestick = [
     {
         "name": "CANDLE_2CROWS",
@@ -1085,7 +1081,7 @@ ta_lib_momentum = [
         "description": "MAMA: The MESA Adaptive Moving Average is designed to react faster to price changes using adaptive cycle techniques.",
         "signal_function": signal_mama,
         "raw_function": ta.MAMA,
-        "parameters": {"fastlimit": 0.5, "slowlimit": 0.05},
+        "parameters": {"fastlimit": 0, "slowlimit": 0},
     },
     {
         "name": "PPO",
@@ -1279,6 +1275,22 @@ additional_momentum = [
 momentum_indicators = ta_lib_momentum + additional_momentum
 ta_lib_volatility = [
     {
+        "name": "ATR",
+        "function": atr_func,
+        "description": "Average True Range (ATR): Measures absolute volatility by accounting for gaps and high-low range.",
+        "signal_function": signal_volatility_line,
+        "raw_function": ta.ATR,
+        "parameters": {"timeperiod": 14},
+    },
+    {
+        "name": "NATR",
+        "function": natr_func,
+        "description": "Normalized ATR (NATR): ATR expressed as a percentage of price, useful for cross-asset volatility comparison.",
+        "signal_function": signal_volatility_line,
+        "raw_function": ta.NATR,
+        "parameters": {"timeperiod": 14},
+    },
+    {
         "name": "TRANGE",
         "function": trange_func,
         "description": "True Range (TRANGE): Raw measure of price range and gap movement, used as a base for ATR.",
@@ -1313,6 +1325,14 @@ ta_lib_volatility = [
 ]
 additional_volatility = [
     {
+        "name": "FilteredATR",
+        "function": FilteredATR,
+        "description": "Filtered ATR: A smoothed version of the ATR to reduce noise and better reflect sustained volatility.",
+        "signal_function": signal_filtered_atr,
+        "raw_function": FilteredATR,
+        "parameters": {"period": 34, "ma_period": 34, "ma_shift": 0},
+    },
+    {
         "name": "VolatilityRatio",
         "function": VolatilityRatio,
         "description": "Volatility Ratio: Compares recent price deviation against a longer-period range to measure relative volatility shifts.",
@@ -1329,36 +1349,7 @@ additional_volatility = [
         "parameters": {"minutes": 0, "sensitivity": 150, "dead_zone_pip": 15},
     },
 ]
-
-atr_indicators = [
-    {
-        "name": "ATR",
-        "function": atr_func,
-        "description": "Average True Range (ATR): Measures absolute volatility by accounting for gaps and high-low range.",
-        "signal_function": signal_volatility_line,
-        "raw_function": ta.ATR,
-        "parameters": {"timeperiod": 14},
-    },
-    {
-        "name": "NATR",
-        "function": natr_func,
-        "description": "Normalized ATR (NATR): ATR expressed as a percentage of price, useful for cross-asset volatility comparison.",
-        "signal_function": signal_volatility_line,
-        "raw_function": ta.NATR,
-        "parameters": {"timeperiod": 14},
-    },
-    {
-        "name": "FilteredATR",
-        "function": FilteredATR,
-        "description": "Filtered ATR: A smoothed version of the ATR to reduce noise and better reflect sustained volatility.",
-        "signal_function": signal_filtered_atr,
-        "raw_function": FilteredATR,
-        "parameters": {"period": 34, "ma_period": 34, "ma_shift": 0},
-    },
-]
-
 volatility_indicators = ta_lib_volatility + additional_volatility
-
 ta_lib_price = [
     {
         "name": "AVGPRICE",
@@ -1536,3 +1527,127 @@ all_indicators = (
     + price_indicators
     + baseline_indicators
 )
+
+
+def need_to_calculate_indicators(data: pd.DataFrame) -> bool:
+    """
+    Checks if we need to calculate indicators on this data by
+    checking if the last row of the DataFrame has any missing indicator values.
+
+    Parameters:
+    - data: pd.DataFrame, the dataframe containing price and indicator data.
+
+    Returns:
+    - bool: True if any data is missing in the last row, False otherwise.
+    """
+    if data.empty:
+        return True
+    last_row = data.iloc[-1]
+    for column in config.FINAL_INDICATOR_COLUMNS:
+        matching_columns = [c for c in data.columns if column in c]
+        if len(matching_columns) == 0:
+            return True
+        for c in matching_columns:
+            try:
+                if pd.isna(last_row[c]):
+                    return True
+            except KeyError:
+                return True
+    return False
+
+
+def normalize_data(data: pd.DataFrame) -> pd.DataFrame:
+    """
+    Ensures the columns match standard OHLCV format.
+    Converts timestamp to datetime and sets index.
+    """
+    data.rename(
+        columns={
+            "open": "Open",
+            "high": "High",
+            "low": "Low",
+            "close": "Close",
+            "volume": "Volume",
+            "vwap": "VWAP",
+            "transactions": "Transactions",
+        },
+        inplace=True,
+    )
+    data["Timestamp"] = pd.to_datetime(data["Timestamp"])
+    data.set_index("Timestamp", inplace=True)
+    data.sort_index(inplace=True)
+
+
+def calculate_indicators(data: pd.DataFrame, indicators: list[dict]) -> pd.DataFrame:
+    """
+    Calculates all indicators and appends them to the DataFrame.
+    """
+    indicator_results = {}
+    for indicator in indicators:
+        indicator_function = indicator["function"]
+        result = indicator["function"](data)
+        if isinstance(result, pd.Series):
+            column_name = indicator["name"]
+            indicator_results[column_name] = result
+        elif isinstance(result, pd.DataFrame):
+            for column in result.columns:
+                column_name = f"{indicator['name']}_{column}"
+                indicator_results[column_name] = result[column]
+        elif isinstance(result, np.ndarray):
+            column_name = indicator["name"]
+            series = pd.Series(result)
+            indicator_results[column_name] = series
+        elif isinstance(result, tuple):
+            i = 0
+            for item in result:
+                column_name = f"{indicator['name']}_{i}"
+                item_series = pd.Series(item)
+                indicator_results[column_name] = item_series
+                i += 1
+        else:
+            raise ValueError(f"Unsupported indicator return type: {type(result)}")
+    data = pd.concat([data, pd.DataFrame(indicator_results, index=data.index)], axis=1)
+    return data
+
+
+def process_database(filename: str) -> str:
+    sql_helper = HistoricalDataSQLHelper(f"data/{filename}")
+    db_tables = sql_helper.get_database_tables()
+    for table in db_tables:
+        existing_data = sql_helper.get_historical_data(table)
+        if not need_to_calculate_indicators(existing_data):
+            continue
+        normalize_data(existing_data)
+        calculated_data = calculate_indicators(existing_data, all_indicators)
+        calculated_data.reset_index(inplace=True)
+        sql_helper.insert_historical_data(calculated_data, table)
+    sql_helper.close_connection()
+    return filename
+
+
+def calculate_indicators_for_all_databases() -> None:
+    files = HistoricalDataSQLHelper.get_all_data_files()
+    processes = round(multiprocessing.cpu_count() / 4)
+    processes = 1
+    with multiprocessing.Pool(processes=processes) as pool:
+        with tqdm(
+            total=len(files), desc="Calculating indicators for databases"
+        ) as pbar:
+            for result in pool.imap_unordered(process_database, files):
+                pbar.update()
+                logging.info(f"Calculated indicators for {result}.")
+
+
+def extract_indicator_params(
+    func, ignore_args=("open", "high", "low", "close", "volume")
+):
+    sig = inspect.signature(func)
+    params = {}
+    for name, param in sig.parameters.items():
+        name_lower = name.lower()
+        if name_lower not in ignore_args:
+            if param.default is not inspect.Parameter.empty:
+                params[name] = param.default
+            else:
+                params[name] = None
+    return params
