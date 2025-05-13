@@ -1,4 +1,7 @@
 *.db
 *.feather
+*.txt
+*.pdf
 /scripts/__pycache__
+/resources/
 windsurf.txt
