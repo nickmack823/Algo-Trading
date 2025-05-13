@@ -178,7 +178,7 @@ def nnfx_testing():
                     strategy.NAME, strategy.DESCRIPTION, strategy.PARAMETER_SETTINGS
                 )
 
-                run_exists = backtest_sqlhelper.backtest_run_exists(
+                run_exists = backtest_sqlhelper.select_backtest_run_by_config(
                     pair_id, strategy_id, timeframe
                 )
 

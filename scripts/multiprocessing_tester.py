@@ -144,7 +144,7 @@ def run_combo_worker(task):
     strategy_id = backtester.backtest_sqlhelper.select_strategy_configuration(
         strategy.NAME, strategy.DESCRIPTION, strategy.PARAMETER_SETTINGS
     )
-    run_exists = backtester.backtest_sqlhelper.backtest_run_exists(
+    run_exists = backtester.backtest_sqlhelper.select_backtest_run_by_config(
         pair_id, strategy_id, timeframe
     )
 

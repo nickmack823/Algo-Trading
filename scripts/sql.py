@@ -2,6 +2,7 @@ import hashlib
 import json
 import logging
 import os
+import random
 import sqlite3
 import time
 
@@ -26,16 +27,26 @@ class SQLHelper:
         self.conn.close()
 
     def safe_execute(
-        self, cursor: sqlite3.Cursor, query: str, params=None, retries=3, delay=1
-    ):
+        self, cursor: sqlite3.Cursor, query: str, params=None, retries=5, delay=1
+    ) -> sqlite3.Cursor:
         for attempt in range(retries):
             try:
                 if params:
-                    return cursor.execute(query, params)
+                    cursor = cursor.execute(query, params)
                 else:
-                    return cursor.execute(query)
+                    cursor = cursor.execute(query)
+                return cursor
             except sqlite3.OperationalError as e:
+                delay = random.uniform(1, 5)
                 if "disk I/O" in str(e) and attempt < retries - 1:
+                    logging.info(
+                        f"Database I/O error, retrying after {delay} second..."
+                    )
+                    time.sleep(delay)
+                elif "database is locked" in str(e) and attempt < retries - 1:
+                    logging.info(
+                        f"Database is locked, retrying after {delay} second..."
+                    )
                     time.sleep(delay)
                 else:
                     raise
@@ -214,30 +225,25 @@ class HistoricalDataSQLHelper(SQLHelper):
 
 class IndicatorCacheSQLHelper(SQLHelper):
     def __init__(
-        self, db_path: str = f"{config.BACKTESTING_FOLDER}/Indicator_Cache.db"
+        self, db_path: str = f"{config.BACKTESTING_FOLDER}/{config.BACKTESTING_DB_NAME}"
     ):
         super().__init__(db_path)
 
-        self.cache_dir = f"{config.BACKTESTING_FOLDER}/indicator_outputs"
+        self.cache_dir = f"{config.BACKTESTING_FOLDER}/indicator_caches"
         os.makedirs(self.cache_dir, exist_ok=True)
 
-        self._init_table()
-
-    def _init_table(self):
-        self.cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS IndicatorCache (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                cache_key TEXT UNIQUE,
-                forex_pair TEXT,
-                timeframe TEXT,
-                indicator_name TEXT,
-                parameter_hash TEXT,
-                filepath TEXT
-            )
-        """
+        self.create_table(
+            "IndicatorCache",
+            {
+                "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+                "cache_key": "TEXT UNIQUE",
+                "forex_pair": "TEXT",
+                "timeframe": "TEXT",
+                "indicator_name": "TEXT",
+                "parameter_hash": "TEXT",
+                "filepath": "TEXT",
+            },
         )
-        self.conn.commit()
 
     def _generate_cache_key(
         self, indicator_name, parameters: dict, forex_pair, timeframe
@@ -254,10 +260,13 @@ class IndicatorCacheSQLHelper(SQLHelper):
             indicator_name, parameters, forex_pair, timeframe
         )
 
-        self.cursor.execute(
-            "SELECT filepath FROM IndicatorCache WHERE cache_key = ?", (key,)
+        cursor = self.safe_execute(
+            self.cursor,
+            "SELECT filepath FROM IndicatorCache WHERE cache_key = ?",
+            (key,),
         )
-        result = self.cursor.fetchone()
+
+        result = cursor.fetchone()
         if result and os.path.exists(result[0]):
             return pd.read_feather(result[0])
         return None
@@ -278,12 +287,12 @@ class IndicatorCacheSQLHelper(SQLHelper):
 
         df.reset_index(drop=True).to_feather(filepath)
 
-        self.cursor.execute(
-            """
-            INSERT OR IGNORE INTO IndicatorCache (
+        _ = self.safe_execute(
+            self.cursor,
+            """INSERT OR IGNORE INTO IndicatorCache (
                 cache_key, forex_pair, timeframe, indicator_name, parameter_hash, filepath
             ) VALUES (?, ?, ?, ?, ?, ?)
-        """,
+            """,
             (key, forex_pair, timeframe, indicator_name, param_hash, filepath),
         )
 
@@ -393,9 +402,37 @@ class BacktestSQLHelper(SQLHelper):
                 {
                     "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
                     "Backtest_ID": "INTEGER",
+                    "Study_ID": "INTEGER DEFAULT NULL",
+                    "Study_Name": "TEXT",
+                    "Trial_ID": "INTEGER",
                     "Score": "REAL",
+                    "Exploration_Space": "TEXT",
+                    "Timestamp": "TIMESTAMP",
                 },
-                foreign_keys=["FOREIGN KEY (Backtest_ID) REFERENCES BacktestRuns(id)"],
+                foreign_keys=[
+                    "FOREIGN KEY (Backtest_ID) REFERENCES BacktestRuns(id)",
+                    "FOREIGN KEY (Study_ID) REFERENCES StudyMetadata(id) ON DELETE SET NULL ON UPDATE CASCADE",
+                ],
+            )
+        if "StudyMetadata" not in existing_tables:
+            self.create_table(
+                "StudyMetadata",
+                {
+                    "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+                    "Study_Name": "TEXT",
+                    "Pair": "TEXT",
+                    "Timeframe": "TEXT",
+                    "Exploration_Space": "TEXT",
+                    "Best_Score": "REAL",
+                    "Best_Trial": "INTEGER",
+                    "Time_to_Best": "REAL",
+                    "Total_Time_Sec": "REAL",
+                    "N_Trials": "INTEGER",
+                    "N_Completed": "INTEGER",
+                    "N_Pruned": "INTEGER",
+                    "Avg_Score": "REAL",
+                    "Std_Score": "REAL",
+                },
             )
 
     def insert_forex_pairs(self, pairs: list[str]) -> None:
@@ -526,9 +563,9 @@ class BacktestSQLHelper(SQLHelper):
         # Return the last inserted run_id.
         return self.cursor.lastrowid
 
-    def backtest_run_exists(
+    def select_backtest_run_by_config(
         self, pair_id: int, strategy_config_id: int, timeframe: str
-    ) -> bool:
+    ) -> int:
         """Checks if a backtest run exists in the database
 
         Args:
@@ -537,7 +574,7 @@ class BacktestSQLHelper(SQLHelper):
             timeframe (str): The timeframe of the backtest
 
         Returns:
-            bool: A boolean indicating whether the backtest run exists in the database
+            int: The run_id of the backtest run
         """
         self.safe_execute(
             self.cursor,
@@ -545,7 +582,32 @@ class BacktestSQLHelper(SQLHelper):
             (pair_id, strategy_config_id, timeframe),
         )
 
-        return self.cursor.fetchone() is not None
+        result = self.cursor.fetchone()
+
+        if result is None:
+            return None
+
+        run_id = result[0]
+
+        return run_id
+
+    def select_backtest_run_metrics_by_id(self, run_id: int) -> pd.DataFrame:
+        self.safe_execute(
+            self.cursor,
+            "SELECT * FROM BacktestRuns WHERE id = ?",
+            (run_id,),
+        )
+
+        result = self.cursor.fetchone()
+
+        if result is None:
+            return None
+
+        # Get column names from cursor
+        columns = [desc[0] for desc in self.cursor.description]
+
+        # Build DataFrame with proper column alignment
+        return pd.DataFrame([result], columns=columns)
 
     def insert_trades(self, trades: pd.DataFrame) -> None:
         """
@@ -576,13 +638,175 @@ class BacktestSQLHelper(SQLHelper):
         self.cursor.executemany(query, data_tuples)
         self.conn.commit()
 
-    def insert_composite_score(self, backtest_id: int, score: float) -> None:
-        """Inserts a composite score into the CompositeScores table
+    def insert_study_metadata(self, study_metadata: pd.DataFrame) -> int:
+        """
+        Inserts multiple study metadata records into the StudyMetadata table in the database.
+
+        Args:
+            study_metadata (pd.DataFrame): DataFrame containing study metadata data with column names matching the StudyMetadata table.
+        Returns:
+            int: The last inserted row id
+        """
+        # Check if study metadata already exists
+        self.safe_execute(
+            self.cursor,
+            "SELECT id FROM StudyMetadata WHERE Study_Name = ?",
+            (study_metadata["Study_Name"][0],),
+        )
+
+        result = self.cursor.fetchone()
+
+        if result is not None:
+            logging.info(f"Study metadata already exists: {result[0]}")
+            return result[0]
+
+        # Prepare the SQL query based on DataFrame columns
+        columns = study_metadata.columns.tolist()
+        placeholders = ", ".join(["?"] * len(columns))
+        query = (
+            f"INSERT INTO StudyMetadata ({', '.join(columns)}) VALUES ({placeholders})"
+        )
+
+        # Convert DataFrame rows into a list of tuples
+        data_tuples = [tuple(row) for row in study_metadata.to_numpy()]
+
+        # Execute batch insertion
+        self.cursor.executemany(query, data_tuples)
+        self.conn.commit()
+
+        study_name = study_metadata["Study_Name"].iloc[0]
+
+        logging.info(f"Inserted study metadata: {study_name}")
+
+    def select_study_id(self, study_name: str) -> int:
+        self.safe_execute(
+            self.cursor,
+            "SELECT id FROM StudyMetadata WHERE Study_Name = ?",
+            (study_name,),
+        )
+
+        result = self.cursor.fetchone()
+
+        if result is None:
+            return None
+
+        study_id = result[0]
+
+        return study_id
+
+    def insert_composite_score(
+        self,
+        backtest_id: int,
+        study_name: str,
+        study_id: int,
+        trial_id: int,
+        score: float,
+        exploration_space: str,
+        timestamp: str,
+    ):
+        self.safe_execute(
+            self.cursor,
+            "INSERT INTO CompositeScores (Backtest_ID, Study_Name, Study_ID, Trial_ID, Score, Exploration_Space, Timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                backtest_id,
+                study_name,
+                study_id,
+                trial_id,
+                score,
+                exploration_space,
+                timestamp,
+            ),
+        )
+        self.conn.commit()
+
+    def backfill_composite_scores(self, study_id: int) -> None:
+        """Backfills the Study_ID column in the CompositeScores table by joining with the StudyMetadata table."""
+        study_name = self.safe_execute(
+            self.cursor,
+            "SELECT Study_Name FROM StudyMetadata WHERE id = ?",
+            (study_id,),
+        ).fetchone()[0]
+        self.safe_execute(
+            self.cursor,
+            f"""
+            UPDATE CompositeScores
+            SET Study_ID = {study_id}
+            WHERE Study_ID IS NULL AND Study_Name = '{study_name}'
+            """,
+        )
+
+        rows_updated = self.cursor.rowcount
+
+        self.conn.commit()
+
+        logging.info(f"Backfilled {rows_updated} composite scores.")
+
+        return rows_updated
+
+    def select_composite_score(self, backtest_id: int) -> float:
+        """Selects a composite score from the CompositeScores table
 
         Args:
             backtest_id (int): The ID of the backtest run
-            score (float): The composite score of the backtest run
+
+        Returns:
+            float: The composite score of the backtest run
         """
-        query = "INSERT INTO CompositeScores (Backtest_ID, Score) VALUES (?, ?)"
-        self.safe_execute(self.cursor, query, (backtest_id, score))
-        self.conn.commit()
+        query = "SELECT Score FROM CompositeScores WHERE Backtest_ID = ?"
+        self.safe_execute(self.cursor, query, (backtest_id,))
+
+        result = self.cursor.fetchone()
+
+        if result is None:
+            return None
+
+        score = result[0]
+
+        return score
+
+    def export_composite_results_with_metrics(
+        self, output_path: str = "composite_results.csv"
+    ) -> None:
+        """
+        Exports all composite scores along with corresponding backtest run metrics to a CSV file.
+
+        Args:
+            output_path (str): Path to save the CSV file.
+        """
+        # Get all composite scores
+        self.safe_execute(self.cursor, "SELECT * FROM CompositeScores")
+        composite_rows = self.cursor.fetchall()
+        if not composite_rows:
+            logging.warning("No composite scores found to export.")
+            return
+
+        composite_cols = [desc[0] for desc in self.cursor.description]
+        composite_df = pd.DataFrame(composite_rows, columns=composite_cols)
+
+        # Get all corresponding backtest runs
+        backtest_ids = tuple(composite_df["Backtest_ID"].unique())
+        id_list = (
+            f"({','.join(str(i) for i in backtest_ids)})"
+            if len(backtest_ids) > 1
+            else f"({backtest_ids[0]})"
+        )
+        self.safe_execute(
+            self.cursor, f"SELECT * FROM BacktestRuns WHERE id IN {id_list}"
+        )
+        backtest_rows = self.cursor.fetchall()
+        backtest_cols = [desc[0] for desc in self.cursor.description]
+        backtests_df = pd.DataFrame(backtest_rows, columns=backtest_cols)
+
+        # Rename for merge
+        backtests_df.rename(columns={"id": "Backtest_ID"}, inplace=True)
+
+        # Merge and export
+        merged_df = composite_df.merge(backtests_df, on="Backtest_ID", how="left")
+
+        # Sort by Score
+        merged_df.sort_values(by="Score", ascending=False, inplace=True)
+
+        merged_df.to_csv(output_path, index=False)
+        logging.info(
+            f"Exported composite results to {output_path} ({len(merged_df)} rows)."
+        )

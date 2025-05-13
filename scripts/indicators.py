@@ -839,6 +839,7 @@ ta_lib_volume = [
         "signal_function": signal_ad,
         "raw_function": ta.AD,
         "parameters": {},
+        "parameter_space": {},
     },
     {
         "name": "ADX",
@@ -847,6 +848,7 @@ ta_lib_volume = [
         "signal_function": signal_adx,
         "raw_function": ta.ADX,
         "parameters": {"timeperiod": 14},
+        "parameter_space": {"timeperiod": [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]},
     },
     {
         "name": "ADXR",
@@ -855,6 +857,7 @@ ta_lib_volume = [
         "signal_function": signal_adx,
         "raw_function": ta.ADXR,
         "parameters": {"timeperiod": 14},
+        "parameter_space": {"timeperiod": [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]},
     },
     {
         "name": "ADOSC",
@@ -863,6 +866,10 @@ ta_lib_volume = [
         "signal_function": signal_adosc,
         "raw_function": ta.ADOSC,
         "parameters": {"fastperiod": 3, "slowperiod": 10},
+        "parameter_space": {
+            "fastperiod": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+            "slowperiod": [10, 12, 14, 16, 18, 20, 22, 24, 26, 28],
+        },
     },
     {
         "name": "OBV",
@@ -871,6 +878,7 @@ ta_lib_volume = [
         "signal_function": signal_obv,
         "raw_function": ta.OBV,
         "parameters": {},
+        "parameter_space": {},
     },
 ]
 additional_volume = [
@@ -881,6 +889,11 @@ additional_volume = [
         "signal_function": signal_fantail_vma,
         "raw_function": FantailVMA,
         "parameters": {"adx_length": 2, "weighting": 2.0, "ma_length": 1},
+        "parameter_space": {
+            "adx_length": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            "weighting": [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5],
+            "ma_length": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        },
     },
     {
         "name": "KVO",
@@ -889,6 +902,11 @@ additional_volume = [
         "signal_function": signal_kvo,
         "raw_function": KVO,
         "parameters": {"fast_ema": 34, "slow_ema": 55, "signal_ema": 13},
+        "parameter_space": {
+            "fast_ema": [5, 10, 15, 20, 25, 30, 35, 40, 45],
+            "slow_ema": [50, 55, 60, 65, 70, 75, 80, 85, 90, 95],
+            "signal_ema": [5, 10, 15, 20, 25, 30, 35, 40, 45, 50],
+        },
     },
     {
         "name": "LWPI",
@@ -897,6 +915,7 @@ additional_volume = [
         "signal_function": signal_lwpi,
         "raw_function": LWPI,
         "parameters": {"period": 8},
+        "parameter_space": {"period": [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]},
     },
     {
         "name": "NormalizedVolume",
@@ -905,6 +924,7 @@ additional_volume = [
         "signal_function": signal_normalized_volume,
         "raw_function": NormalizedVolume,
         "parameters": {"period": 14},
+        "parameter_space": {"period": [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]},
     },
     {
         "name": "TwiggsMF",
@@ -913,6 +933,7 @@ additional_volume = [
         "signal_function": signal_twiggs_mf,
         "raw_function": TwiggsMF,
         "parameters": {"period": 21},
+        "parameter_space": {"period": [10, 15, 20, 25, 30, 35, 40, 45, 50, 55]},
     },
 ]
 volume_indicators = ta_lib_volume + additional_volume
@@ -924,6 +945,7 @@ ta_lib_trend = [
         "signal_function": signal_aroon,
         "raw_function": ta.AROON,
         "parameters": {"timeperiod": 14},
+        "parameter_space": {"timeperiod": [5, 7, 10, 12, 15, 17, 20, 22, 25, 30]},
     },
     {
         "name": "AROONOSC",
@@ -932,6 +954,7 @@ ta_lib_trend = [
         "signal_function": signal_aroonosc,
         "raw_function": ta.AROONOSC,
         "parameters": {"timeperiod": 14},
+        "parameter_space": {"timeperiod": [5, 7, 10, 12, 15, 17, 20, 22, 25, 30]},
     },
 ]
 additional_trend = [
@@ -942,6 +965,12 @@ additional_trend = [
         "signal_function": signal_kase,
         "raw_function": KASE,
         "parameters": {"pstLength": 9, "pstX": 5, "pstSmooth": 3, "smoothPeriod": 10},
+        "parameter_space": {
+            "pstLength": [3, 5, 7, 9, 11, 13, 15, 17, 19, 21],
+            "pstX": [1, 3, 5, 7, 9, 11, 13, 15, 17, 19],
+            "pstSmooth": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            "smoothPeriod": [5, 10, 15, 20, 25, 30, 35, 40, 45, 50],
+        },
     },
     {
         "name": "KijunSen",
@@ -950,6 +979,10 @@ additional_trend = [
         "signal_function": signal_kijunsen,
         "raw_function": KijunSen,
         "parameters": {"period": 26, "shift": 9},
+        "parameter_space": {
+            "period": [5, 10, 15, 20, 25, 30, 35, 40, 45, 50],
+            "shift": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        },
     },
     {
         "name": "KalmanFilter",
@@ -958,6 +991,10 @@ additional_trend = [
         "signal_function": signal_kalman_filter,
         "raw_function": KalmanFilter,
         "parameters": {"k": 1, "sharpness": 1},
+        "parameter_space": {
+            "k": [0.1, 0.5, 1, 2, 5, 10, 20, 50, 100, 200],
+            "sharpness": [0.1, 0.5, 1, 2, 5, 10, 20, 50, 100, 200],
+        },
     },
     {
         "name": "SSL",
@@ -966,6 +1003,7 @@ additional_trend = [
         "signal_function": signal_ssl,
         "raw_function": SSL,
         "parameters": {"period": 10},
+        "parameter_space": {"period": [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]},
     },
     {
         "name": "SuperTrend",
@@ -974,6 +1012,10 @@ additional_trend = [
         "signal_function": signal_supertrend,
         "raw_function": SuperTrend,
         "parameters": {"period": 10, "multiplier": 3.0},
+        "parameter_space": {
+            "period": [5, 10, 15, 20, 25, 30, 35, 40, 45, 50],
+            "multiplier": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        },
     },
     {
         "name": "TrendLord",
@@ -988,6 +1030,12 @@ additional_trend = [
             "show_high_low": False,
             "signal_bar": 1,
         },
+        "parameter_space": {
+            "period": [5, 10, 15, 20, 25, 30, 35, 40, 45, 50],
+            "ma_method": ["sma", "ema", "wma", "hma", "tema", "vidya"],
+            "applied_price": ["open", "high", "low", "close"],
+            "signal_bar": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        },
     },
     {
         "name": "UF2018",
@@ -996,6 +1044,7 @@ additional_trend = [
         "signal_function": signal_uf2018,
         "raw_function": UF2018,
         "parameters": {"period": 54},
+        "parameter_space": {"period": [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]},
     },
     {
         "name": "CenterOfGravity",
@@ -1004,6 +1053,7 @@ additional_trend = [
         "signal_function": signal_center_of_gravity,
         "raw_function": CenterOfGravity,
         "parameters": {"period": 10},
+        "parameter_space": {"period": [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]},
     },
     {
         "name": "GruchaIndex",
@@ -1012,6 +1062,10 @@ additional_trend = [
         "signal_function": signal_grucha_index,
         "raw_function": GruchaIndex,
         "parameters": {"period": 10, "ma_period": 10},
+        "parameter_space": {
+            "period": [5, 10, 15, 20, 25, 30, 35, 40, 45, 50],
+            "ma_period": [5, 10, 15, 20, 25, 30, 35, 40, 45, 50],
+        },
     },
     {
         "name": "HalfTrend",
@@ -1020,6 +1074,7 @@ additional_trend = [
         "signal_function": signal_halftrend,
         "raw_function": HalfTrend,
         "parameters": {"amplitude": 2},
+        "parameter_space": {"amplitude": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]},
     },
     {
         "name": "TopTrend",
@@ -1028,6 +1083,11 @@ additional_trend = [
         "signal_function": signal_top_trend,
         "raw_function": TopTrend,
         "parameters": {"period": 20, "deviation": 2, "money_risk": 1.0},
+        "parameter_space": {
+            "period": [5, 10, 15, 20, 25, 30, 35, 40, 45, 50],
+            "deviation": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            "money_risk": [0.1, 0.5, 1, 2, 5, 10, 20, 50, 100, 200],
+        },
     },
 ]
 trend_indicators = ta_lib_trend + additional_trend
@@ -1039,6 +1099,11 @@ ta_lib_momentum = [
         "signal_function": signal_apo,
         "raw_function": ta.APO,
         "parameters": {"fastperiod": 12, "slowperiod": 26, "matype": 0},
+        "parameter_space": {
+            "fastperiod": [5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+            "slowperiod": [16, 18, 20, 22, 24, 26, 28, 30, 32, 34],
+            "matype": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+        },
     },
     {
         "name": "CCI",
@@ -1047,6 +1112,7 @@ ta_lib_momentum = [
         "signal_function": signal_cci,
         "raw_function": ta.CCI,
         "parameters": {"timeperiod": 14},
+        "parameter_space": {"timeperiod": [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]},
     },
     {
         "name": "MACD",
@@ -1055,6 +1121,11 @@ ta_lib_momentum = [
         "signal_function": signal_macd,
         "raw_function": ta.MACD,
         "parameters": {"fastperiod": 12, "slowperiod": 26, "signalperiod": 9},
+        "parameter_space": {
+            "fastperiod": [5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+            "slowperiod": [16, 18, 20, 22, 24, 26, 28, 30, 32, 34],
+            "signalperiod": [5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+        },
     },
     {
         "name": "MACDEXT",
@@ -1070,6 +1141,14 @@ ta_lib_momentum = [
             "signalperiod": 9,
             "signalmatype": 0,
         },
+        "parameter_space": {
+            "fastperiod": [5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+            "fastmatype": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+            "slowperiod": [16, 18, 20, 22, 24, 26, 28, 30, 32, 34],
+            "slowmatype": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+            "signalperiod": [5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+            "signalmatype": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+        },
     },
     {
         "name": "MACDFIX",
@@ -1078,6 +1157,7 @@ ta_lib_momentum = [
         "signal_function": signal_macdfix,
         "raw_function": ta.MACDFIX,
         "parameters": {"signalperiod": 9},
+        "parameter_space": {"signalperiod": [5, 6, 7, 8, 9, 10, 11, 12, 13, 14]},
     },
     {
         "name": "MAMA",
@@ -1086,6 +1166,10 @@ ta_lib_momentum = [
         "signal_function": signal_mama,
         "raw_function": ta.MAMA,
         "parameters": {"fastlimit": 0.5, "slowlimit": 0.05},
+        "parameter_space": {
+            "fastlimit": [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55],
+            "slowlimit": [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5],
+        },
     },
     {
         "name": "PPO",
@@ -1094,6 +1178,11 @@ ta_lib_momentum = [
         "signal_function": signal_ppo,
         "raw_function": ta.PPO,
         "parameters": {"fastperiod": 12, "slowperiod": 26, "matype": 0},
+        "parameter_space": {
+            "fastperiod": [5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+            "slowperiod": [16, 18, 20, 22, 24, 26, 28, 30, 32, 34],
+            "matype": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+        },
     },
     {
         "name": "ROC",
@@ -1102,6 +1191,7 @@ ta_lib_momentum = [
         "signal_function": signal_roc,
         "raw_function": ta.ROC,
         "parameters": {"timeperiod": 10},
+        "parameter_space": {"timeperiod": [5, 6, 7, 8, 9, 10, 11, 12, 13, 14]},
     },
     {
         "name": "ROCP",
@@ -1110,6 +1200,7 @@ ta_lib_momentum = [
         "signal_function": signal_rocp,
         "raw_function": ta.ROCP,
         "parameters": {"timeperiod": 10},
+        "parameter_space": {"timeperiod": [5, 6, 7, 8, 9, 10, 11, 12, 13, 14]},
     },
     {
         "name": "ROCR",
@@ -1118,6 +1209,7 @@ ta_lib_momentum = [
         "signal_function": signal_rocr,
         "raw_function": ta.ROCR,
         "parameters": {"timeperiod": 10},
+        "parameter_space": {"timeperiod": [5, 6, 7, 8, 9, 10, 11, 12, 13, 14]},
     },
     {
         "name": "ROCR100",
@@ -1126,6 +1218,7 @@ ta_lib_momentum = [
         "signal_function": signal_rocr100,
         "raw_function": ta.ROCR100,
         "parameters": {"timeperiod": 10},
+        "parameter_space": {"timeperiod": [5, 6, 7, 8, 9, 10, 11, 12, 13, 14]},
     },
     {
         "name": "RSI",
@@ -1134,6 +1227,7 @@ ta_lib_momentum = [
         "signal_function": signal_rsi,
         "raw_function": ta.RSI,
         "parameters": {"timeperiod": 14},
+        "parameter_space": {"timeperiod": [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]},
     },
     {
         "name": "STOCH_Slow",
@@ -1148,6 +1242,13 @@ ta_lib_momentum = [
             "slowd_period": 3,
             "slowd_matype": 0,
         },
+        "parameter_space": {
+            "fastk_period": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            "slowk_period": [3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+            "slowk_matype": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+            "slowd_period": [3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+            "slowd_matype": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+        },
     },
     {
         "name": "STOCHF_Fast",
@@ -1156,6 +1257,11 @@ ta_lib_momentum = [
         "signal_function": signal_stoch,
         "raw_function": ta.STOCHF,
         "parameters": {"fastk_period": 5, "fastd_period": 3, "fastd_matype": 0},
+        "parameter_space": {
+            "fastk_period": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            "fastd_period": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            "fastd_matype": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+        },
     },
     {
         "name": "STOCHRSI",
@@ -1169,6 +1275,12 @@ ta_lib_momentum = [
             "fastd_period": 3,
             "fastd_matype": 0,
         },
+        "parameter_space": {
+            "timeperiod": [10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
+            "fastk_period": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            "fastd_period": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            "fastd_matype": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+        },
     },
     {
         "name": "TSF",
@@ -1177,6 +1289,7 @@ ta_lib_momentum = [
         "signal_function": signal_tsf,
         "raw_function": ta.TSF,
         "parameters": {"timeperiod": 14},
+        "parameter_space": {"timeperiod": [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]},
     },
     {
         "name": "ULTOSC",
@@ -1185,6 +1298,11 @@ ta_lib_momentum = [
         "signal_function": signal_ultosc,
         "raw_function": ta.ULTOSC,
         "parameters": {"timeperiod1": 7, "timeperiod2": 14, "timeperiod3": 28},
+        "parameter_space": {
+            "timeperiod1": [3, 4, 5, 6, 7, 8, 9, 10],
+            "timeperiod2": [12, 14, 16, 18, 20, 22, 24],
+            "timeperiod3": [26, 28, 30, 32, 34, 36, 38],
+        },
     },
 ]
 additional_momentum = [
@@ -1195,6 +1313,11 @@ additional_momentum = [
         "signal_function": signal_macd_zero_lag,
         "raw_function": MACDZeroLag,
         "parameters": {"short_period": 12, "long_period": 26, "signal_period": 9},
+        "parameter_space": {
+            "short_period": [1, 4, 7, 10, 13, 16, 19, 22],
+            "long_period": [24, 27, 29, 32, 35, 38, 41, 44, 47, 50, 53, 56],
+            "signal_period": [5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+        },
     },
     {
         "name": "Fisher",
@@ -1207,6 +1330,11 @@ additional_momentum = [
             "price_smoothing": 0.3,
             "index_smoothing": 0.3,
         },
+        "parameter_space": {
+            "range_periods": [5, 10, 15, 20, 25, 30, 35, 40, 45, 50],
+            "price_smoothing": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
+            "index_smoothing": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
+        },
     },
     {
         "name": "BullsBearsImpulse",
@@ -1215,6 +1343,7 @@ additional_momentum = [
         "signal_function": signal_bulls_bears_impulse,
         "raw_function": BullsBearsImpulse,
         "parameters": {"ma_period": 13},
+        "parameter_space": {"ma_period": [1, 5, 10, 15, 20, 25, 30, 35, 40, 45]},
     },
     {
         "name": "J_TPO",
@@ -1223,6 +1352,7 @@ additional_momentum = [
         "signal_function": signal_j_tpo,
         "raw_function": J_TPO,
         "parameters": {"period": 14},
+        "parameter_space": {"period": [1, 4, 7, 10, 13, 16, 19, 22, 25, 28]},
     },
     {
         "name": "Laguerre",
@@ -1231,6 +1361,7 @@ additional_momentum = [
         "signal_function": signal_laguerre,
         "raw_function": Laguerre,
         "parameters": {"gamma": 0.7},
+        "parameter_space": {"gamma": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]},
     },
     {
         "name": "SchaffTrendCycle",
@@ -1244,6 +1375,12 @@ additional_momentum = [
             "slow_ma_period": 50,
             "signal_period": 3,
         },
+        "parameter_space": {
+            "period": [5, 10, 15, 20, 25, 30, 35, 40, 45, 50],
+            "fast_ma_period": [1, 4, 7, 10, 13, 16, 19, 22, 25, 28],
+            "slow_ma_period": [29, 32, 35, 38, 41, 44, 47, 50, 53, 56],
+            "signal_period": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        },
     },
     {
         "name": "TDFI",
@@ -1252,6 +1389,7 @@ additional_momentum = [
         "signal_function": signal_tdfi,
         "raw_function": TDFI,
         "parameters": {"period": 13},
+        "parameter_space": {"period": [1, 4, 7, 10, 13, 16, 19, 22, 25, 28]},
     },
     {
         "name": "TTF",
@@ -1266,6 +1404,13 @@ additional_momentum = [
             "t3_period": 3,
             "b": 0.7,
         },
+        "parameter_space": {
+            "period": [1, 4, 7, 10, 13, 16, 19, 22, 25, 28],
+            "top_line": [50, 60, 70, 80, 90, 100],
+            "bottom_line": [-50, -60, -70, -80, -90, -100],
+            "t3_period": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            "b": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
+        },
     },
     {
         "name": "AcceleratorLSMA",
@@ -1274,6 +1419,10 @@ additional_momentum = [
         "signal_function": signal_accelerator_lsma,
         "raw_function": AcceleratorLSMA,
         "parameters": {"long_period": 30, "short_period": 10},
+        "parameter_space": {
+            "long_period": [24, 26, 28, 30, 32, 34, 36, 38, 40, 42],
+            "short_period": [4, 6, 8, 10, 12, 14, 16, 18, 20, 22],
+        },
     },
 ]
 momentum_indicators = ta_lib_momentum + additional_momentum
@@ -1285,6 +1434,7 @@ ta_lib_volatility = [
         "signal_function": signal_volatility_line,
         "raw_function": ta.TRANGE,
         "parameters": {},
+        "parameter_space": {},
     },
     {
         "name": "BollingerBands",
@@ -1293,6 +1443,12 @@ ta_lib_volatility = [
         "signal_function": signal_bollinger,
         "raw_function": ta.BBANDS,
         "parameters": {"timeperiod": 5, "nbdevup": 2, "nbdevdn": 2, "matype": 0},
+        "parameter_space": {
+            "timeperiod": [1, 3, 5, 7, 10, 12, 15, 18, 20, 22],
+            "nbdevup": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            "nbdevdn": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            "matype": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+        },
     },
     {
         "name": "STDDEV",
@@ -1301,6 +1457,10 @@ ta_lib_volatility = [
         "signal_function": signal_stddev,
         "raw_function": ta.STDDEV,
         "parameters": {"timeperiod": 5, "nbdev": 1},
+        "parameter_space": {
+            "timeperiod": [1, 3, 5, 7, 10, 12, 15, 18, 20, 22],
+            "nbdev": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        },
     },
     {
         "name": "VAR",
@@ -1309,6 +1469,10 @@ ta_lib_volatility = [
         "signal_function": signal_var,
         "raw_function": ta.VAR,
         "parameters": {"timeperiod": 5, "nbdev": 1},
+        "parameter_space": {
+            "timeperiod": [1, 3, 5, 7, 10, 12, 15, 18, 20, 22],
+            "nbdev": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        },
     },
 ]
 additional_volatility = [
@@ -1319,6 +1483,9 @@ additional_volatility = [
         "signal_function": signal_volatility_ratio,
         "raw_function": VolatilityRatio,
         "parameters": {"period": 25, "inp_price": "Close"},
+        "parameter_space": {
+            "period": [10, 15, 20, 25, 30, 35, 40, 45, 50, 55],
+        },
     },
     {
         "name": "WAE",
@@ -1327,6 +1494,11 @@ additional_volatility = [
         "signal_function": signal_wae,
         "raw_function": WAE,
         "parameters": {"minutes": 0, "sensitivity": 150, "dead_zone_pip": 15},
+        "parameter_space": {
+            "minutes": [0, 5, 10, 15, 20, 25, 30, 35, 40, 45],
+            "sensitivity": [50, 75, 100, 125, 150, 175, 200, 225, 250, 275],
+            "dead_zone_pip": [5, 10, 15, 20, 25, 30, 35, 40, 45, 50],
+        },
     },
 ]
 
@@ -1338,6 +1510,7 @@ atr_indicators = [
         "signal_function": signal_volatility_line,
         "raw_function": ta.ATR,
         "parameters": {"timeperiod": 14},
+        "parameter_space": {"timeperiod": [8, 10, 12, 14, 16, 18, 20, 22, 24, 26]},
     },
     {
         "name": "NATR",
@@ -1346,6 +1519,7 @@ atr_indicators = [
         "signal_function": signal_volatility_line,
         "raw_function": ta.NATR,
         "parameters": {"timeperiod": 14},
+        "parameter_space": {"timeperiod": [8, 10, 12, 14, 16, 18, 20, 22, 24, 26]},
     },
     {
         "name": "FilteredATR",
@@ -1354,6 +1528,11 @@ atr_indicators = [
         "signal_function": signal_filtered_atr,
         "raw_function": FilteredATR,
         "parameters": {"period": 34, "ma_period": 34, "ma_shift": 0},
+        "parameter_space": {
+            "period": [26, 28, 30, 32, 34, 36, 38, 40, 42, 44],
+            "ma_period": [24, 26, 28, 30, 32, 34, 36, 38, 40, 42],
+            "ma_shift": [-2, -1, 0, 1, 2],
+        },
     },
 ]
 
@@ -1442,6 +1621,11 @@ baseline_indicators = [
         "signal_function": signal_baseline_standard,
         "raw_function": ALMA,
         "parameters": {"period": 9, "sigma": 6, "offset": 0.85},
+        "parameter_space": {
+            "period": [3, 5, 7, 9, 11, 13, 15, 17, 19],
+            "sigma": [3, 4, 5, 6, 7, 8, 9, 10, 11],
+            "offset": [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1],
+        },
     },
     {
         "name": "HMA",
@@ -1450,6 +1634,9 @@ baseline_indicators = [
         "signal_function": signal_baseline_standard,
         "raw_function": HMA,
         "parameters": {"period": 13},
+        "parameter_space": {
+            "period": [5, 7, 9, 11, 13, 15, 17, 19, 21],
+        },
     },
     {
         "name": "RecursiveMA",
@@ -1458,6 +1645,10 @@ baseline_indicators = [
         "signal_function": signal_recursive_ma,
         "raw_function": RecursiveMA,
         "parameters": {"period": 2, "recursions": 20},
+        "parameter_space": {
+            "period": [1, 2, 3, 4, 5],
+            "recursions": [10, 15, 20, 25, 30],
+        },
     },
     {
         "name": "LSMA",
@@ -1466,6 +1657,10 @@ baseline_indicators = [
         "signal_function": signal_lsma,
         "raw_function": LSMA,
         "parameters": {"period": 14, "shift": 0},
+        "parameter_space": {
+            "period": [3, 5, 7, 9, 11, 13, 15, 17, 19],
+            "shift": [-2, -1, 0, 1, 2],
+        },
     },
     {
         "name": "VIDYA",
@@ -1474,6 +1669,10 @@ baseline_indicators = [
         "signal_function": signal_baseline_standard,
         "raw_function": VIDYA,
         "parameters": {"period": 9, "histper": 30},
+        "parameter_space": {
+            "period": [3, 5, 7, 9, 11, 13, 15],
+            "histper": [5, 10, 15, 20, 25],
+        },
     },
     {
         "name": "Gen3MA",
@@ -1482,6 +1681,10 @@ baseline_indicators = [
         "signal_function": signal_gen3ma,
         "raw_function": Gen3MA,
         "parameters": {"period": 220, "sampling_period": 50},
+        "parameter_space": {
+            "period": [50, 100, 150, 200, 250],
+            "sampling_period": [10, 20, 30, 40, 50],
+        },
     },
     {
         "name": "TrendLord",
@@ -1496,6 +1699,11 @@ baseline_indicators = [
             "show_high_low": False,
             "signal_bar": 1,
         },
+        "parameter_space": {
+            "period": [3, 5, 7, 9, 11, 13, 15, 17, 19],
+            "ma_method": ["sma", "ema", "smma", "lwma"],
+            "signal_bar": [1, 2, 3, 4, 5],
+        },
     },
     {
         "name": "BraidFilter",
@@ -1509,6 +1717,12 @@ baseline_indicators = [
             "period3": 20,
             "pips_min_sep_percent": 0.5,
         },
+        "parameter_space": {
+            "period1": [3, 4, 5, 6],
+            "period2": [7, 8, 9, 10],
+            "period3": [14, 16, 18, 20, 22, 24, 26],
+            "pips_min_sep_percent": [0.1, 0.2, 0.3, 0.4, 0.5],
+        },
     },
     {
         "name": "AcceleratorLSMA",
@@ -1517,6 +1731,10 @@ baseline_indicators = [
         "signal_function": signal_accelerator_lsma,
         "raw_function": AcceleratorLSMA,
         "parameters": {"long_period": 21, "short_period": 9},
+        "parameter_space": {
+            "long_period": [15, 18, 21, 24, 27, 30],
+            "short_period": [3, 5, 7, 9, 11, 13],
+        },
     },
     {
         "name": "McGinleyDI",
@@ -1525,6 +1743,10 @@ baseline_indicators = [
         "signal_function": signal_baseline_standard,
         "raw_function": McGinleyDI,
         "parameters": {"period": 12, "mcg_constant": 5},
+        "parameter_space": {
+            "period": [3, 5, 7, 9, 11, 13, 15],
+            "mcg_constant": [3, 4, 5, 6, 7],
+        },
     },
 ]
 all_indicators = (

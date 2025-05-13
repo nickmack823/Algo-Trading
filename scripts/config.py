@@ -1,10 +1,14 @@
 import os
 
+# Directories
 DATA_FOLDER = "data"
 BACKTESTING_FOLDER = "backtesting"
 BACKTESTING_DB_NAME = "Backtesting.db"
+OPTUNA_STUDIES_FOLDER = "backtesting/optuna_studies"
+OPTUNA_REPORTS_FOLDER = "backtesting/optuna_reports"
 os.makedirs(DATA_FOLDER, exist_ok=True)
 os.makedirs(BACKTESTING_FOLDER, exist_ok=True)
+os.makedirs(OPTUNA_STUDIES_FOLDER, exist_ok=True)
 
 MAJOR_FOREX_PAIRS = [
     "EUR/USD",
@@ -46,13 +50,13 @@ MAJOR_FOREX_PAIRS = [
 ]
 
 TIMEFRAMES = [
-    # "5_minute",
-    # "15_minute",
-    # "30_minute",
-    # "1_hour",
-    # "2_hour",
-    # "4_hour",
-    "1_day",
+    "5_minute",
+    "15_minute",
+    "30_minute",
+    "1_hour",
+    "2_hour",
+    "4_hour",
+    # "1_day",
 ]
 
 TIMESPAN_MULTIPLIER_PAIRS = [
@@ -112,11 +116,24 @@ INCONCLUSIVE = "INCONCLUSIVE"
 # === BACKTESTING CONSTANTS ===
 # Baseline number of trades per day (for calculating composite score)
 MIN_TRADES_PER_DAY = {
-    "5_minute": 5.0,
-    "15_minute": 3.0,
-    "30_minute": 2.0,
-    "1_hour": 1.0,
-    "2_hour": 0.5,
-    "4_hour": 0.25,
-    "1_day": 0.03,  # 1 trade every ~30 days
+    "5_minute": 3.0,  # ~1 trade every 1.5 hours
+    "15_minute": 2.0,  # ~1 trade every 2 hours
+    "30_minute": 1.5,  # ~1 trade every 4 hours
+    "1_hour": 0.5,  # ~1 trade every 2 days
+    "2_hour": 0.2,  # ~1 trade every 5 days (~70/year)
+    "4_hour": 0.1,  # ~1 trade every 10 days (~35/year)
+    "1_day": 0.05,  # ~1 trade every 20 days (~18/year)
 }
+PRUNE_THRESHOLD_FACTOR = 0.2  # Prune if strategy executes < 20% of expected trades
+
+
+# Original one
+# MIN_TRADES_PER_DAY = {
+#     "5_minute": 5.0,
+#     "15_minute": 3.0,
+#     "30_minute": 2.0,
+#     "1_hour": 1.0,
+#     "2_hour": 0.5,
+#     "4_hour": 0.25,
+#     "1_day": 0.03,  # 1 trade every ~30 days
+# }

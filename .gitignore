@@ -1,3 +1,4 @@
 *.db
 *.feather
 /scripts/__pycache__
+windsurf.txt

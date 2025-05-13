@@ -149,14 +149,15 @@ class Backtester:
 
         # SQL Helpers
         self.backtest_sqlhelper = BacktestSQLHelper()
-        self.forex_pair_id = self.backtest_sqlhelper.get_forex_pair_id(
-            f"{self.base_currency}/{self.quote_currency}"
-        )
-        self.strategy_config_id = self.backtest_sqlhelper.upsert_strategy_configuration(
-            self.strategy.NAME,
-            self.strategy.DESCRIPTION,
-            self.strategy.PARAMETER_SETTINGS,
-        )
+
+        # self.forex_pair_id = self.backtest_sqlhelper.get_forex_pair_id(
+        #     f"{self.base_currency}/{self.quote_currency}"
+        # )
+        # self.strategy_config_id = self.backtest_sqlhelper.upsert_strategy_configuration(
+        #     self.strategy.NAME,
+        #     self.strategy.DESCRIPTION,
+        #     self.strategy.PARAMETER_SETTINGS,
+        # )
 
         # Load historical OHLCV + indicator data
         data_sqlhelper = HistoricalDataSQLHelper(
@@ -601,6 +602,9 @@ class Backtester:
     def get_metrics_df(self):
         return self.metrics_df
 
+    def set_metrics_df(self, metrics_df):
+        self.metrics_df = metrics_df
+
     def get_metric(self, metric_name: str):
         # Since the metrics_df is a one-row DataFrame, just grab the first/only value of the column
         value = self.metrics_df[metric_name].iloc[0]
@@ -652,73 +656,96 @@ class Backtester:
     def calculate_composite_score(self):
         """
         Calculates a composite score for evaluating strategy performance,
-        incorporating performance, risk, consistency, and activity metrics.
+        incorporating profitability, risk, consistency, and trade activity.
+        Applies safeguards for low sample sizes and score inflation.
         """
 
-        # --- Core performance metrics ---
-        expectancy_per_day = self.get_metric(
-            "Expectancy_Per_Day_Pct"
-        )  # Daily expected return (%)
-        trade_expectancy = self.get_metric(
-            "Trade_Expectancy_Pct"
-        )  # Per-trade return expectation (%)
-        profit_factor = self.get_metric(
-            "Profit_Factor"
-        )  # Ratio of gross profit to gross loss
-        win_loss_ratio = self.get_metric("Win_Loss_Ratio")  # Avg win % / avg loss %
-        trades_per_day = self.get_metric(
-            "Trades_Per_Day"
-        )  # Average trades per calendar day
+        # --- Primary performance metrics ---
+        expectancy_per_day = self.get_metric("Expectancy_Per_Day_Pct")
+        trade_expectancy = self.get_metric("Trade_Expectancy_Pct")
+        profit_factor = min(self.get_metric("Profit_Factor"), 5.0)  # Cap extreme values
+        win_loss_ratio = min(
+            self.get_metric("Win_Loss_Ratio"), 3.0
+        )  # Cap skewed outcomes
+        trades_per_day = self.get_metric("Trades_Per_Day")
 
-        # --- Base score weighting ---
+        # Reduce the influence of trade expectancy if trading frequency is very low
+        if trades_per_day < 0.02:
+            trade_expectancy *= 0.5  # Avoid inflating score from 1–2 good trades
+
+        # --- Base score calculation ---
+        # Weighted sum of core performance metrics
         score = (
-            expectancy_per_day * 1.5  # Primary performance metric
-            + trade_expectancy * 1.0  # Efficiency per trade
-            + profit_factor * 0.5  # Risk-adjusted reward
-            + win_loss_ratio * 0.5  # Reward vs. risk skew
-            + trades_per_day * 0.25  # Encourages some activity
+            expectancy_per_day * 1.5  # Daily compounding return
+            + trade_expectancy * 0.75  # Average per-trade quality
+            + profit_factor * 0.5  # Risk-reward efficiency
+            + win_loss_ratio * 0.5  # Reward/risk asymmetry
+            + trades_per_day * 0.25  # Mild boost for active systems
         )
 
-        # --- Pull supporting risk/volatility metrics ---
-        max_drawdown_pct = self.get_metric(
-            "Max_Drawdown"
-        )  # Max % drop from equity peak
-        trade_std = self.get_metric("Trade_Return_Std")  # Volatility of returns
-        sharpe_ratio = self.get_metric("Sharpe_Ratio")  # Return / total volatility
-        sortino_ratio = self.get_metric("Sortino_Ratio")  # Return / downside volatility
+        # --- Risk and volatility metrics ---
+        max_drawdown_pct = self.get_metric("Max_Drawdown_Pct")
+        trade_std = self.get_metric("Trade_Return_Std")
+        sharpe_ratio = self.get_metric("Sharpe_Ratio")
+        sortino_ratio = self.get_metric("Sortino_Ratio")
+        calmar_ratio = self.get_metric("Calmar_Ratio")
+        recovery_factor = self.get_metric("Recovery_Factor")
         max_margin_required_pct = self.get_metric("Max_Margin_Required_Pct")
         timeframe = self.timeframe
 
-        # --- Normalize trade activity by timeframe expectations ---
-        trades_per_day_threshold = config.MIN_TRADES_PER_DAY[
-            timeframe
-        ]  # Adjusted baseline
-        activity_penalty = min(1.0, trades_per_day / trades_per_day_threshold)
-        score *= (
-            activity_penalty  # Penalize for very low activity relative to timeframe
-        )
+        # --- Trade count context ---
+        total_trades = self.get_metric("Total_Trades")
+        start = pd.to_datetime(self.data_start_date)
+        end = pd.to_datetime(self.data_end_date)
+        backtest_days = (end - start).days
 
-        # --- Penalize high drawdown (exponential) ---
-        # At 20% drawdown → 50% penalty, at 40% → 80%, at 60% → 90%
+        # Require at least ~5 trades per year to allow bonus metrics
+        min_bonus_trades = max(20, backtest_days / 365 * 5)
+
+        # --- Activity penalty based on expected trading rate ---
+        trades_per_day_threshold = config.MIN_TRADES_PER_DAY[timeframe]
+        ratio = trades_per_day / trades_per_day_threshold
+
+        if trades_per_day >= trades_per_day_threshold:
+            activity_penalty = 1.0  # No penalty
+        elif ratio <= 0:
+            activity_penalty = 0.0  # No activity = no score
+        elif timeframe in ["1_day", "4_hour", "2_hour"]:
+            # Moderate decay for high-timeframe strategies
+            activity_penalty = ratio**0.25
+        else:
+            # Sharper decay for intraday strategies
+            activity_penalty = 1 / (1 + (1 / max(ratio, 1e-6)) ** 2)
+
+        score *= activity_penalty  # Apply activity-based penalty
+
+        # --- Penalize excessive drawdown (exponential) ---
+        # 20% drawdown → 50% reduction, 40% → 80%, etc.
         score *= 1 / (1 + (max_drawdown_pct / 20) ** 2)
 
-        # --- Penalize high volatility of returns ---
-        # A strategy with 0% std gets 1.0, 20% std gets 0.5, 40% gets ~0.33
-        score *= 1 / (1 + trade_std / 20)
+        # --- Penalize high return volatility ---
+        # 0% std = no penalty; 20% std = 0.33; 40% std = 0.2
+        score *= 1 / (1 + trade_std / 10)
 
-        # --- Bonus for strong Sharpe/Sortino ratios ---
-        # Cap bonuses so they don’t dominate score
-        if sharpe_ratio > 1.0:
-            score += min((sharpe_ratio - 1.0), 3.0) * 0.25
-        if sortino_ratio > 2.0:
-            score += min((sortino_ratio - 2.0), 3.0) * 0.25
+        # --- Bonus for Sharpe/Sortino only if trade count is adequate ---
+        if total_trades >= min_bonus_trades:
+            # Scale bonus by how confident we are (up to 1.0)
+            confidence_weight = min(1.0, total_trades / (min_bonus_trades * 2))
 
-        # --- Penalize high leverage / aggressive sizing ---
+            if sharpe_ratio and sharpe_ratio != float("inf") and sharpe_ratio > 1.0:
+                score += min((sharpe_ratio - 1.0), 3.0) * 0.25 * confidence_weight
+
+            if sortino_ratio and sortino_ratio != float("inf") and sortino_ratio > 2.0:
+                score += min((sortino_ratio - 2.0), 3.0) * 0.25 * confidence_weight
+
+        # --- Leverage / position sizing penalty ---
         if max_margin_required_pct > 80:
-            score *= 0.85  # Flat penalty for risk exposure
+            score *= 0.85  # Flat penalty for overly aggressive margin usage
 
-        # --- Clamp final score to a max (optional, avoids runaway inflation) ---
-        # score = min(score, 25.0)
+        # --- Final normalization and clamping ---
+        # score = round(min(score * 10, 20.0), 4)  # Clamp to max score of 20
+
+        score = round(score * 10, 4)
 
         return score
 
