@@ -229,18 +229,28 @@ def VIDYA(price_data: pd.DataFrame, period: int = 9, histper: int = 30) -> pd.Se
     def iStdDev(series, length):
         return series.rolling(window=length).std()
 
-    # Calculate standard deviation values only once
     std_dev_period = iStdDev(price_data["Close"], period)
     std_dev_histper = iStdDev(price_data["Close"], histper)
 
     i = len(price_data) - 1
     while i >= 0:
         if i < len(price_data) - histper:
-            k = std_dev_period.iloc[i] / std_dev_histper.iloc[i]
-            sc = 2.0 / (period + 1)
-            vidya.iloc[i] = (
-                k * sc * price_data["Close"].iloc[i] + (1 - k * sc) * vidya.iloc[i + 1]
-            )
+            # Avoid divide-by-zero or NaN propagation
+            sd_period = std_dev_period.iloc[i]
+            sd_histper = std_dev_histper.iloc[i]
+            if pd.notna(sd_period) and pd.notna(sd_histper) and sd_histper != 0:
+                k = sd_period / sd_histper
+                sc = 2.0 / (period + 1)
+                prev = (
+                    vidya.iloc[i + 1]
+                    if pd.notna(vidya.iloc[i + 1])
+                    else price_data["Close"].iloc[i]
+                )
+                vidya.iloc[i] = (
+                    k * sc * price_data["Close"].iloc[i] + (1 - k * sc) * prev
+                )
+            else:
+                vidya.iloc[i] = price_data["Close"].iloc[i]
         else:
             vidya.iloc[i] = price_data["Close"].iloc[i]
 

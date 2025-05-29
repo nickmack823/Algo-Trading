@@ -492,9 +492,9 @@ def signal_macd_zero_lag(macd_df: pd.DataFrame) -> list:
     return signals
 
 
-def signal_fisher(fisher_df: pd.DataFrame) -> list:
+def signal_fisher(fisher_series: pd.Series) -> list:
     signals = []
-    f0, f1 = fisher_df["Fisher"].iloc[-2], fisher_df["Fisher"].iloc[-1]
+    f0, f1 = fisher_series.iloc[-2], fisher_series.iloc[-1]
 
     if f0 < 0 and f1 > 0:
         signals.append(BULLISH_SIGNAL)
@@ -973,9 +973,9 @@ def signal_lwpi(lwpi_series: pd.Series) -> list:
     return signals
 
 
-def signal_normalized_volume(vol_df: pd.DataFrame, threshold: float = 100.0) -> list:
+def signal_normalized_volume(vol_series: pd.Series, threshold: float = 100.0) -> list:
     signals = []
-    vol = vol_df["Vol"].iloc[-1]
+    vol = vol_series.iloc[-1]
     if vol > threshold:
         signals.append(HIGH_VOLUME)
     else:
@@ -984,9 +984,9 @@ def signal_normalized_volume(vol_df: pd.DataFrame, threshold: float = 100.0) -> 
     return signals
 
 
-def signal_twiggs_mf(tmf_df: pd.DataFrame, threshold: float = 0) -> list:
+def signal_twiggs_mf(tmf_series: pd.Series, threshold: float = 0) -> list:
     signals = []
-    tmf = tmf_df["TMF"].iloc[-1]
+    tmf = tmf_series.iloc[-1]
     if tmf > threshold:
         signals.append(HIGH_VOLUME)
     elif tmf < threshold:

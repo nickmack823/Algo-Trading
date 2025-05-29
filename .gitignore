@@ -5,3 +5,5 @@
 /scripts/__pycache__
 /resources/
 windsurf.txt
+backtesting/Backtesting.db-shm
+backtesting/Backtesting.db-wal

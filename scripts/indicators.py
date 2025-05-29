@@ -1,12 +1,9 @@
-import inspect
 import logging
-import multiprocessing
+from typing import Callable, TypedDict
 
 import pandas as pd
 import talib as ta
-from tqdm import tqdm
 
-from scripts import config
 from scripts.indicator_functions import (
     ALMA,
     EHLERS,
@@ -52,11 +49,21 @@ from scripts.indicator_functions import (
     Vortex,
 )
 from scripts.signal_functions import *
-from scripts.sql import HistoricalDataSQLHelper
 
 logging.basicConfig(
     level=20, datefmt="%m/%d/%Y %H:%M:%S", format="[%(asctime)s] %(message)s"
 )
+
+
+# Indicator Config for indicator parameters in strategies
+class IndicatorConfig(TypedDict):
+    name: str
+    function: Callable[[pd.DataFrame], pd.Series]
+    description: str
+    signal_function: Callable
+    raw_function: Callable
+    parameters: dict
+    parameter_space = dict
 
 
 def candle_2crows_func(df):

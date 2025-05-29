@@ -1,22 +1,91 @@
 import inspect
 from dataclasses import dataclass
-from typing import Callable, TypedDict
+from typing import Callable
 
 import numpy as np
 import pandas as pd
 
 from scripts.config import *
+from scripts.indicators import IndicatorConfig
 from scripts.sql import IndicatorCacheSQLHelper
 
 
-# Indicator Config for indicator parameters in strategies
-class IndicatorConfig(TypedDict):
-    name: str
-    function: Callable[[pd.DataFrame], pd.Series]
-    description: str
-    signal_function: Callable
-    raw_function: Callable
-    parameters: dict
+def convert_np_to_pd(
+    output: pd.DataFrame | pd.Series | tuple | np.ndarray,
+) -> pd.DataFrame | pd.Series:
+    if isinstance(output, pd.DataFrame) or isinstance(output, pd.Series):
+        return output
+    elif isinstance(output, np.ndarray):
+        return pd.Series(output)
+    elif isinstance(output, tuple):
+        # If it's a tuple of Series or arrays, build a DataFrame with auto-named columns
+        converted = []
+
+        for i, item in enumerate(output):
+            if isinstance(item, pd.Series):
+                converted.append(item.reset_index(drop=True))
+            elif isinstance(item, np.ndarray):
+                converted.append(pd.Series(item))
+            else:
+                raise TypeError(f"Unsupported type in tuple at index {i}: {type(item)}")
+
+        return pd.concat(converted, axis=1)
+    else:
+        raise TypeError(f"Unsupported type for conversion: {type(output)}")
+
+
+# def calculate_indicators(
+#     indicator_configs: list[dict], data: pd.DataFrame, forex_pair: str, timeframe: str
+# ) -> pd.DataFrame:
+#     data = data.copy()
+#     cache = IndicatorCacheSQLHelper()
+
+#     def safe_apply(nnfx_piece_name: str, config: IndicatorConfig):
+#         cached = cache.fetch(
+#             config["name"], config["parameters"], forex_pair, timeframe
+#         )
+#         if cached is not None:
+#             return cached
+
+#         raw_output = config["function"](data, **config["parameters"])
+#         output_df_or_series = convert_np_to_pd(raw_output)
+
+#         if isinstance(output_df_or_series, pd.DataFrame):
+#             renamed = output_df_or_series.add_prefix(f"{nnfx_piece_name}_")
+#             cache.store(
+#                 config["name"],
+#                 config["parameters"],
+#                 forex_pair,
+#                 timeframe,
+#                 renamed,
+#             )
+#             return renamed
+#         else:
+#             df = pd.DataFrame({nnfx_piece_name: output_df_or_series})
+#             cache.store(
+#                 config["name"],
+#                 config["parameters"],
+#                 forex_pair,
+#                 timeframe,
+#                 df,
+#             )
+#             return df
+
+#     # Calculate/retrieve cached indicators and add to data DataFrame
+#     indicator_dfs = [
+#         safe_apply(indicator["type"], indicator["config"])
+#         for indicator in indicator_configs
+#     ]
+
+#     indicator_data = pd.concat(indicator_dfs, axis=1)
+#     data = pd.concat(
+#         [data.reset_index(drop=True), indicator_data.reset_index(drop=True)], axis=1
+#     )
+
+#     cache.close_connection()
+#     cache = None
+
+#     return data
 
 
 class StrategySignal:
@@ -431,12 +500,12 @@ class BaseStrategy:
         self.PARAMETER_SETTINGS = parameters
         self.TIMEFRAME = timeframe
 
-    def prepare_data(self, full_data: pd.DataFrame):
-        """
-        Precomputes and stores indicator outputs for the full dataset.
-        Call this once before backtest loop.
-        """
-        self.data_with_indicators = self._calculate_indicators(full_data)
+    # def prepare_data(self, full_data: pd.DataFrame):
+    #     """
+    #     Precomputes and stores indicator outputs for the full dataset.
+    #     Call this once before backtest loop.
+    #     """
+    #     self.data_with_indicators = self._calculate_indicators(full_data)
 
     def generate_trade_plan(
         self,
@@ -465,31 +534,6 @@ class BaseStrategy:
         )
 
     # Extract first series if indicator function returns a DataFrame
-    def _convert_np_to_pd(
-        self, output: pd.DataFrame | pd.Series | tuple | np.ndarray
-    ) -> pd.DataFrame | pd.Series:
-        if isinstance(output, pd.DataFrame) or isinstance(output, pd.Series):
-            return output
-        elif isinstance(output, np.ndarray):
-            return pd.Series(output)
-        elif isinstance(output, tuple):
-            # If it's a tuple of Series or arrays, build a DataFrame with auto-named columns
-            converted = []
-
-            for i, item in enumerate(output):
-                if isinstance(item, pd.Series):
-                    converted.append(item.reset_index(drop=True))
-                elif isinstance(item, np.ndarray):
-                    converted.append(pd.Series(item))
-                else:
-                    raise TypeError(
-                        f"Unsupported type in tuple at index {i}: {type(item)}"
-                    )
-
-            return pd.concat(converted, axis=1)
-        else:
-            raise TypeError(f"Unsupported type for conversion: {type(output)}")
-
     def _reconstruct_df(
         self, data: pd.DataFrame, prefix: str
     ) -> pd.DataFrame | pd.Series:
@@ -505,12 +549,11 @@ class BaseStrategy:
         Returns:
             pd.DataFrame | pd.Series: The reconstructed DataFrame, or Series if only one column
         """
-        cols = [
-            col for col in data.columns if col == prefix or col.startswith(f"{prefix}_")
-        ]
+        cols = [col for col in data.columns if col.startswith(f"{prefix}_")]
         if not cols:
             raise KeyError(f"No columns found for prefix '{prefix}'")
-        if len(cols) == 1 and cols[0] == prefix:
+        # If only one column, return it as a Series
+        if len(cols) == 1 and cols[0].startswith(f"{prefix}_"):
             return data[cols[0]]
         return data[cols]
 
@@ -541,7 +584,7 @@ class BaseStrategy:
         sig = inspect.signature(signal_fn)
         params = list(sig.parameters.values())
 
-        if len(params) == 2 and close_series is not None:
+        if len(params) == 2 and isinstance(close_series, pd.Series):
             second_param = params[1]
             annotation = second_param.annotation
 
@@ -583,6 +626,16 @@ class NNFXStrategy(BaseStrategy):
         self.volume = volume
         self.exit = exit_indicator
 
+        self.indicator_configs = {
+            "ATR": atr,
+            "Baseline": baseline,
+            "C1": c1,
+            "C2": c2,
+            "VolumeIndicator": volume,
+            "Exit": exit_indicator,
+        }
+        self.indicator_cache_dicts_to_insert = []
+
         parameters = {
             "atr": f"{atr['name']}_{atr['parameters']}",
             "baseline": f"{baseline['name']}_{baseline['parameters']}",
@@ -596,64 +649,105 @@ class NNFXStrategy(BaseStrategy):
         self.last_valid_entry_index = None
         self.last_valid_entry_direction = None
 
+        # For backtesting
+        self.data_with_indicators = None
+
         super().__init__(
             forex_pair=forex_pair, parameters=parameters, timeframe=timeframe
         )
+
+    def prepare_data(self, historical_data: pd.DataFrame):
+        self.data_with_indicators = self._calculate_indicators(historical_data)
+
+    def get_cache_jobs(self):
+        return self.indicator_cache_dicts_to_insert
 
     def _calculate_indicators(self, data: pd.DataFrame) -> pd.DataFrame:
         data = data.copy()
         cache = IndicatorCacheSQLHelper()
 
-        def safe_apply(nnfx_piece_name: str, config: IndicatorConfig):
-            cached = cache.fetch(
-                nnfx_piece_name, config["parameters"], self.FOREX_PAIR, self.TIMEFRAME
+        data_start_date, data_end_date = (
+            data["Timestamp"].min(),
+            data["Timestamp"].max(),
+        )
+
+        def retrieve_or_calculate(
+            config: IndicatorConfig,
+        ) -> tuple[pd.DataFrame | pd.Series, bool]:
+            calculated = False
+
+            cached_df = cache.fetch(
+                config["name"],
+                config["parameters"],
+                self.FOREX_PAIR,
+                self.TIMEFRAME,
+                data_start_date,
+                data_end_date,
             )
-            if cached is not None:
-                return cached
+            if cached_df is not None:
+                return cached_df, calculated
 
             raw_output = config["function"](data, **config["parameters"])
-            output_df_or_series = self._convert_np_to_pd(raw_output)
+            output_df_or_series = convert_np_to_pd(raw_output)
+            calculated = True
 
-            if isinstance(output_df_or_series, pd.DataFrame):
-                renamed = output_df_or_series.add_prefix(f"{nnfx_piece_name}_")
-                cache.store(
-                    config["name"],
-                    config["parameters"],
-                    self.FOREX_PAIR,
-                    self.TIMEFRAME,
-                    renamed,
-                )
-                return renamed
-            else:
-                df = pd.DataFrame({nnfx_piece_name: output_df_or_series})
-                cache.store(
-                    config["name"],
-                    config["parameters"],
-                    self.FOREX_PAIR,
-                    self.TIMEFRAME,
-                    df,
-                )
-                return df
+            return output_df_or_series, calculated
 
         # Calculate/retrieve cached indicators and add to data DataFrame
-        indicator_dfs = [
-            safe_apply("ATR", self.atr),
-            safe_apply("Baseline", self.baseline),
-            safe_apply("C1", self.c1),
-            safe_apply("C2", self.c2),
-            safe_apply("VolumeIndicator", self.volume),
-            safe_apply("Exit", self.exit),
-        ]
+        indicator_dfs = []
+        for indicator_config in self.indicator_configs.items():
+            piece_name, config = indicator_config
 
+            # Retrieve or calculate indicator DataFrame
+            output_df_or_series, calculated = retrieve_or_calculate(config)
+
+            if isinstance(output_df_or_series, pd.DataFrame):
+                df = output_df_or_series
+            else:
+                df = pd.DataFrame({config["name"]: output_df_or_series})
+            # Ensure columns are strings
+            df.columns = df.columns.astype(str)
+
+            # Ensure no duplicate cache jobs (situations where same indicator is for 2+ pieces)
+            indicator_in_cache_jobs = any(
+                [
+                    config["name"] == item["indicator_name"]
+                    for item in self.indicator_cache_dicts_to_insert
+                ]
+            )
+
+            # If we calculated the indicator, store it in feather and get meta to link in DB later
+            if calculated and not indicator_in_cache_jobs:
+                dict_to_insert = cache.store_in_feather(
+                    df,
+                    config["name"],
+                    config["parameters"],
+                    self.FOREX_PAIR,
+                    self.TIMEFRAME,
+                    data_start_date,
+                    data_end_date,
+                )
+
+                self.indicator_cache_dicts_to_insert.append(dict_to_insert)
+
+            # Add prefix for later calculations
+            df = df.add_prefix(f"{piece_name}_")
+
+            indicator_dfs.append(df)
+
+        # Concatenate once to avoid fragmentation
         indicator_data = pd.concat(indicator_dfs, axis=1)
-        data = pd.concat(
+
+        # Add indicators to data
+        full_data = pd.concat(
             [data.reset_index(drop=True), indicator_data.reset_index(drop=True)], axis=1
         )
 
+        # Close DB connection
         cache.close_connection()
-        cache = None
+        del cache
 
-        return data
+        return full_data
 
     def _get_signals_since_last_valid_signal(
         self, close_series: pd.Series, baseline_df_or_series: pd.DataFrame
@@ -715,6 +809,7 @@ class NNFXStrategy(BaseStrategy):
         current_row: pd.Series = data.iloc[-1]
         previous_row: pd.Series = data.iloc[-2]
 
+        # Extract ATR, baseline, c1, c2, volume, and exit indicators from data
         atr_df_or_series = self._reconstruct_df(data, "ATR")
         baseline_df_or_series = self._reconstruct_df(data, "Baseline")
         c1_df_or_series = self._reconstruct_df(data, "C1")
@@ -748,13 +843,6 @@ class NNFXStrategy(BaseStrategy):
             exit_df_or_series.columns = [
                 col.replace("Exit_", "") for col in exit_df_or_series.columns
             ]
-
-        # print(atr_series.head())
-        # print(baseline_series.head())
-        # print(c1_df_or_series.head())
-        # print(c2_df_or_series.head())
-        # print(volume_df_or_series.head())
-        # print(exit_df_or_series.head())
 
         close_series: pd.Series = data["Close"]
         prev_close_series: pd.Series = close_series.iloc[:-1]
@@ -1065,6 +1153,14 @@ class NNFXStrategy(BaseStrategy):
 
         return signals, signal_source
 
+    def _get_piece_latest_value(self, piece_name: str, row: pd.Series) -> float:
+        """Find the column with the given piece_name as a prefix, then return the value of that column"""
+        for col in row.index:
+            if col.startswith(f"{piece_name}_"):
+                return row[col]
+
+        raise KeyError(f"No column found with prefix '{piece_name}'")
+
     # Main trade planning function to be called during each backtest iteration
     # Determines whether to enter, exit, or do nothing based on signals and market context
     def generate_trade_plan(
@@ -1093,7 +1189,7 @@ class NNFXStrategy(BaseStrategy):
         if ENTER_LONG in signals or ENTER_SHORT in signals:
             # Step 3: Determine direction of entry signal
             signal = ENTER_LONG if ENTER_LONG in signals else ENTER_SHORT
-            atr = row["ATR"]
+            atr = self._get_piece_latest_value("ATR", row)
             entry_price = row["Close"]
             direction = "BUY" if signal == ENTER_LONG else "SELL"
 

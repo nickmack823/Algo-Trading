@@ -1,4 +1,5 @@
 import math
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -122,6 +123,7 @@ class Backtester:
         strategy: strategies.BaseStrategy,
         forex_pair: str,  # e.g. "EURUSD" with no slashes
         timeframe: str,
+        data: pd.DataFrame,
         initial_balance=10_000,
         commission_per_lot=6,
         slippage=0.0002,
@@ -138,6 +140,13 @@ class Backtester:
         )
 
         self.timeframe = timeframe
+
+        self.data = data
+        self.data_start_date, self.data_end_date = (
+            self.data["Timestamp"].min(),
+            self.data["Timestamp"].max(),
+        )
+
         self.initial_balance = initial_balance  # Starting account balance
         self.balance = initial_balance  # Current account balance
         self.commission_per_lot = commission_per_lot  # Commission charged per lot (USD)
@@ -159,17 +168,8 @@ class Backtester:
         #     self.strategy.PARAMETER_SETTINGS,
         # )
 
-        # Load historical OHLCV + indicator data
-        data_sqlhelper = HistoricalDataSQLHelper(
-            f"{config.DATA_FOLDER}/{self.forex_pair}.db"
-        )
-        self.data: pd.DataFrame = data_sqlhelper.get_historical_data(table=timeframe)
-        self.data_start_date, self.data_end_date = (
-            self.data["Timestamp"].min(),
-            self.data["Timestamp"].max(),
-        )
-        # Precompute indicators
-        self.strategy.prepare_data(self.data)
+        # # Precompute indicators (moved outside for multiprocessing)
+        # self.strategy.prepare_data(self.data)
 
         # Set a start index for when we start trading on the data (to create a semblance of historical data)
         self.trading_start_index = 100
@@ -215,9 +215,7 @@ class Backtester:
 
         # Close SQL connections
         self.backtest_sqlhelper.close_connection()
-        data_sqlhelper.close_connection()
         self.backtest_sqlhelper = None
-        data_sqlhelper = None
 
     # def __repr__(self):
     #     return f"Backtester({self.strategy.NAME}, {self.forex_pair}, {self.timeframe}) | {self.strategy.PARAMETER_SETTINGS}"
@@ -227,9 +225,16 @@ class Backtester:
 
         # Set up the initial metrics dictionary, including new metrics.
         metrics = {
-            "Data_Start_Date": self.data_start_date,
-            "Data_End_Date": self.data_end_date,
-            "Trading_Start_Date": self.data["Timestamp"].iloc[self.trading_start_index],
+            "Data_Start_Date": datetime.strptime(
+                self.data_start_date, "%Y-%m-%d %H:%M:%S"
+            ).strftime("%Y-%m-%d"),
+            "Data_End_Date": datetime.strptime(
+                self.data_end_date, "%Y-%m-%d %H:%M:%S"
+            ).strftime("%Y-%m-%d"),
+            "Trading_Start_Date": datetime.strptime(
+                self.data["Timestamp"].iloc[self.trading_start_index],
+                "%Y-%m-%d %H:%M:%S",
+            ).strftime("%Y-%m-%d"),
             "Total_Trades": total_trades,
             "Winning_Trades": 0,
             "Gross_Profit": 0.0,
@@ -435,6 +440,9 @@ class Backtester:
 
     def initialize_sqlhelper(self):
         self.backtest_sqlhelper = BacktestSQLHelper()
+
+    def get_data(self):
+        return self.data
 
     def run_backtest(self):
         """
@@ -676,20 +684,28 @@ class Backtester:
         # --- Base score calculation ---
         # Weighted sum of core performance metrics
         score = (
-            expectancy_per_day * 1.5  # Daily compounding return
+            expectancy_per_day * 2.5  # Daily compounding return
             + trade_expectancy * 0.75  # Average per-trade quality
             + profit_factor * 0.5  # Risk-reward efficiency
             + win_loss_ratio * 0.5  # Reward/risk asymmetry
             + trades_per_day * 0.25  # Mild boost for active systems
         )
 
+        # --- Profitability metrics ---
+        net_profit = self.get_metric("Net_Profit")
+
+        if net_profit == 185.6:
+            x = 1
+
+        score += math.log1p(max(net_profit, 0)) * 0.3
+        score += max(net_profit, 0) / 250
+        # score += net_profit / 250
+
         # --- Risk and volatility metrics ---
         max_drawdown_pct = self.get_metric("Max_Drawdown_Pct")
         trade_std = self.get_metric("Trade_Return_Std")
         sharpe_ratio = self.get_metric("Sharpe_Ratio")
         sortino_ratio = self.get_metric("Sortino_Ratio")
-        calmar_ratio = self.get_metric("Calmar_Ratio")
-        recovery_factor = self.get_metric("Recovery_Factor")
         max_margin_required_pct = self.get_metric("Max_Margin_Required_Pct")
         timeframe = self.timeframe
 
@@ -721,31 +737,31 @@ class Backtester:
 
         # --- Penalize excessive drawdown (exponential) ---
         # 20% drawdown → 50% reduction, 40% → 80%, etc.
-        score *= 1 / (1 + (max_drawdown_pct / 20) ** 2)
+        score *= 1 / (1 + (max_drawdown_pct / 40) ** 1.5)
 
         # --- Penalize high return volatility ---
         # 0% std = no penalty; 20% std = 0.33; 40% std = 0.2
-        score *= 1 / (1 + trade_std / 10)
+        score *= 1 / (1 + trade_std / 20)
 
         # --- Bonus for Sharpe/Sortino only if trade count is adequate ---
-        if total_trades >= min_bonus_trades:
-            # Scale bonus by how confident we are (up to 1.0)
-            confidence_weight = min(1.0, total_trades / (min_bonus_trades * 2))
+        # if total_trades >= min_bonus_trades:
+        #     # Scale bonus by how confident we are (up to 1.0)
+        #     confidence_weight = min(1.0, total_trades / (min_bonus_trades * 2))
 
-            if sharpe_ratio and sharpe_ratio != float("inf") and sharpe_ratio > 1.0:
-                score += min((sharpe_ratio - 1.0), 3.0) * 0.25 * confidence_weight
+        #     if sharpe_ratio and sharpe_ratio != float("inf") and sharpe_ratio > 1.0:
+        #         score += min((sharpe_ratio - 1.0), 3.0) * 0.25 * confidence_weight
 
-            if sortino_ratio and sortino_ratio != float("inf") and sortino_ratio > 2.0:
-                score += min((sortino_ratio - 2.0), 3.0) * 0.25 * confidence_weight
+        #     if sortino_ratio and sortino_ratio != float("inf") and sortino_ratio > 2.0:
+        #         score += min((sortino_ratio - 2.0), 3.0) * 0.25 * confidence_weight
 
         # --- Leverage / position sizing penalty ---
-        if max_margin_required_pct > 80:
-            score *= 0.85  # Flat penalty for overly aggressive margin usage
+        # if max_margin_required_pct > 80:
+        #     score *= 0.85  # Flat penalty for overly aggressive margin usage
 
         # --- Final normalization and clamping ---
         # score = round(min(score * 10, 20.0), 4)  # Clamp to max score of 20
 
-        score = round(score * 10, 4)
+        score = round(score, 4)
 
         return score
 

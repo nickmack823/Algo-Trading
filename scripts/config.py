@@ -1,14 +1,19 @@
 import os
 
+import pandas as pd
+
 # Directories
 DATA_FOLDER = "data"
 BACKTESTING_FOLDER = "backtesting"
 BACKTESTING_DB_NAME = "Backtesting.db"
 OPTUNA_STUDIES_FOLDER = "backtesting/optuna_studies"
 OPTUNA_REPORTS_FOLDER = "backtesting/optuna_reports"
+TEMP_CACHE_FOLDER = "temp"
 os.makedirs(DATA_FOLDER, exist_ok=True)
 os.makedirs(BACKTESTING_FOLDER, exist_ok=True)
 os.makedirs(OPTUNA_STUDIES_FOLDER, exist_ok=True)
+os.makedirs(OPTUNA_REPORTS_FOLDER, exist_ok=True)
+os.makedirs(TEMP_CACHE_FOLDER, exist_ok=True)
 
 MAJOR_FOREX_PAIRS = [
     "EUR/USD",
@@ -50,13 +55,13 @@ MAJOR_FOREX_PAIRS = [
 ]
 
 TIMEFRAMES = [
-    "5_minute",
-    "15_minute",
-    "30_minute",
-    "1_hour",
+    # "5_minute",
+    # "15_minute",
+    # "30_minute",
+    # "1_hour",
     "2_hour",
     "4_hour",
-    # "1_day",
+    "1_day",
 ]
 
 TIMESPAN_MULTIPLIER_PAIRS = [
@@ -114,6 +119,54 @@ STABLE_VOLATILITY = "STABLE_VOLATILITY"
 INCONCLUSIVE = "INCONCLUSIVE"
 
 # === BACKTESTING CONSTANTS ===
+# Data start/end dates
+START_DATE = "2022-05-08"
+END_DATE = "2025-05-07"  # one day before last in data
+TIMEFRAME_DATE_RANGES = {
+    "1_day": {
+        "from_date": START_DATE,  # full 3 years
+        "to_date": END_DATE,
+    },
+    "4_hour": {
+        "from_date": (pd.to_datetime(END_DATE) - pd.Timedelta(days=730)).strftime(
+            "%Y-%m-%d"
+        ),  # last 2 years
+        "to_date": END_DATE,
+    },
+    "2_hour": {
+        "from_date": (pd.to_datetime(END_DATE) - pd.Timedelta(days=547)).strftime(
+            "%Y-%m-%d"
+        ),  # last 1.5 years
+        "to_date": END_DATE,
+    },
+    "1_hour": {
+        "from_date": (pd.to_datetime(END_DATE) - pd.Timedelta(days=365)).strftime(
+            "%Y-%m-%d"
+        ),  # last 1 year
+        "to_date": END_DATE,
+    },
+    "30_minute": {
+        "from_date": (pd.to_datetime(END_DATE) - pd.Timedelta(days=270)).strftime(
+            "%Y-%m-%d"
+        ),  # last 9 months
+        "to_date": END_DATE,
+    },
+    "15_minute": {
+        "from_date": (pd.to_datetime(END_DATE) - pd.Timedelta(days=180)).strftime(
+            "%Y-%m-%d"
+        ),  # last 6 months
+        "to_date": END_DATE,
+    },
+    "5_minute": {
+        "from_date": (pd.to_datetime(END_DATE) - pd.Timedelta(days=90)).strftime(
+            "%Y-%m-%d"
+        ),  # last 3 months
+        "to_date": END_DATE,
+    },
+}
+
+
+PRUNE_THRESHOLD_FACTOR = 0.2  # Prune if strategy executes < 20% of expected trades
 # Baseline number of trades per day (for calculating composite score)
 MIN_TRADES_PER_DAY = {
     "5_minute": 3.0,  # ~1 trade every 1.5 hours
@@ -124,16 +177,29 @@ MIN_TRADES_PER_DAY = {
     "4_hour": 0.1,  # ~1 trade every 10 days (~35/year)
     "1_day": 0.05,  # ~1 trade every 20 days (~18/year)
 }
-PRUNE_THRESHOLD_FACTOR = 0.2  # Prune if strategy executes < 20% of expected trades
-
-
-# Original one
-# MIN_TRADES_PER_DAY = {
-#     "5_minute": 5.0,
-#     "15_minute": 3.0,
-#     "30_minute": 2.0,
-#     "1_hour": 1.0,
-#     "2_hour": 0.5,
-#     "4_hour": 0.25,
-#     "1_day": 0.03,  # 1 trade every ~30 days
+# Number of optuna trials per timeframe
+# TRIALS_BY_TIMEFRAME = {
+#     "1_day": 500,
+#     "4_hour": 450,
+#     "2_hour": 400,
+#     "1_hour": 150,
+#     "30_minute": 120,
+#     "15_minute": 100,
+#     "5_minute": 75,
 # }
+
+# Maximum number of optuna trials
+TRIALS_UPPER_BOUND = 500
+# Number of trials to allow without score improvement before early stopping
+# IMPROVEMENT_CUTOFF_BY_TIMEFRAME = {
+#     "1_day": 750,  # 50,
+#     "4_hour": 750,  # 40,
+#     "2_hour": 750,  # 30,
+#     "1_hour": 20,
+#     "30_minute": 15,
+#     "15_minute": 10,
+#     "5_minute": 8,
+# }
+
+# === Phases for final tuning ===
+N_STARTUP_TRIALS_PERCENTAGE = 0.15

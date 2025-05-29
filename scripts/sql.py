@@ -5,6 +5,7 @@ import os
 import random
 import sqlite3
 import time
+from datetime import datetime, timedelta
 
 import pandas as pd
 
@@ -16,10 +17,14 @@ logging.basicConfig(
 
 
 class SQLHelper:
-    def __init__(self, db_path: str):
-        self.conn = sqlite3.connect(
-            f"{db_path}", check_same_thread=False
-        )  # Use check_same_thread=False for SQLitedb_filename)
+    def __init__(self, db_path: str, read_only: bool = False):
+        if read_only:
+            db_uri = f"file:{db_path}?mode=ro"
+            self.conn = sqlite3.connect(db_uri, uri=True, check_same_thread=False)
+        else:
+            self.conn = sqlite3.connect(db_path, check_same_thread=False)
+            self.safe_execute(self.conn.cursor(), "PRAGMA journal_mode=WAL;")
+            self.safe_execute(self.conn.cursor(), "PRAGMA synchronous=NORMAL;")
         self.cursor = self.conn.cursor()
         self.db_path = db_path
 
@@ -27,29 +32,24 @@ class SQLHelper:
         self.conn.close()
 
     def safe_execute(
-        self, cursor: sqlite3.Cursor, query: str, params=None, retries=5, delay=1
+        self, cursor: sqlite3.Cursor, query: str, params=None, retries=7, delay=1.5
     ) -> sqlite3.Cursor:
         for attempt in range(retries):
             try:
                 if params:
-                    cursor = cursor.execute(query, params)
-                else:
-                    cursor = cursor.execute(query)
-                return cursor
+                    return cursor.execute(query, params)
+                return cursor.execute(query)
             except sqlite3.OperationalError as e:
-                delay = random.uniform(1, 5)
-                if "disk I/O" in str(e) and attempt < retries - 1:
-                    logging.info(
-                        f"Database I/O error, retrying after {delay} second..."
+                msg = str(e).lower()
+                wait = random.uniform(delay, delay + 1.5)
+                if "database is locked" in msg or "disk i/o" in msg:
+                    logging.warning(
+                        f"[SQLite] Locked (attempt {attempt+1}/{retries}) — retrying in {wait:.2f}s"
                     )
-                    time.sleep(delay)
-                elif "database is locked" in str(e) and attempt < retries - 1:
-                    logging.info(
-                        f"Database is locked, retrying after {delay} second..."
-                    )
-                    time.sleep(delay)
+                    time.sleep(wait)
                 else:
                     raise
+        raise sqlite3.OperationalError(f"[FAILED] Query gave persistent lock: {query}")
 
     def create_table(
         self, table_name: str, columns: dict, foreign_keys: list = None
@@ -94,8 +94,8 @@ class SQLHelper:
 
 
 class HistoricalDataSQLHelper(SQLHelper):
-    def __init__(self, db_path: str):
-        super().__init__(db_path)
+    def __init__(self, db_path: str, read_only: bool = False):
+        super().__init__(db_path, read_only)
 
     def get_database_tables(self) -> list[str]:
         """Get the list of tables in the database, ordered by timeframes from smallest to largest.
@@ -205,7 +205,11 @@ class HistoricalDataSQLHelper(SQLHelper):
         query = f"SELECT {selection} FROM '{table}'"
         # Filter by from or to date or both
         if from_date and to_date:
-            query += f" WHERE Timestamp BETWEEN '{from_date}' AND '{to_date}'"
+            from_dt = datetime.strptime(from_date, "%Y-%m-%d")
+            to_dt = datetime.strptime(to_date, "%Y-%m-%d") + timedelta(
+                days=1
+            )  # Add 1 day to include end date
+            query += f" WHERE Timestamp BETWEEN '{from_dt}' AND '{to_dt}'"
 
         # Read the data from the database
         try:
@@ -239,6 +243,8 @@ class IndicatorCacheSQLHelper(SQLHelper):
                 "cache_key": "TEXT UNIQUE",
                 "forex_pair": "TEXT",
                 "timeframe": "TEXT",
+                "data_start_date": "TEXT",
+                "data_end_date": "TEXT",
                 "indicator_name": "TEXT",
                 "parameter_hash": "TEXT",
                 "filepath": "TEXT",
@@ -246,18 +252,35 @@ class IndicatorCacheSQLHelper(SQLHelper):
         )
 
     def _generate_cache_key(
-        self, indicator_name, parameters: dict, forex_pair, timeframe
+        self,
+        indicator_name,
+        parameters: dict,
+        forex_pair: str,
+        timeframe: str,
+        data_start_date: str,
+        data_end_date: str,
     ) -> tuple[str, str]:
         param_str = str(sorted(parameters.items()))
         param_hash = hashlib.md5(param_str.encode()).hexdigest()
-        key = f"{indicator_name}:{param_hash}:{forex_pair}:{timeframe}"
+        key = f"{indicator_name}:{param_hash}:{forex_pair}:{timeframe}:{data_start_date}:{data_end_date}"
         return key, param_hash
 
     def fetch(
-        self, indicator_name: str, parameters: dict, forex_pair: str, timeframe: str
+        self,
+        indicator_name: str,
+        parameters: dict,
+        forex_pair: str,
+        timeframe: str,
+        data_start_date: str,
+        data_end_date: str,
     ) -> pd.DataFrame | None:
         key, _ = self._generate_cache_key(
-            indicator_name, parameters, forex_pair, timeframe
+            indicator_name,
+            parameters,
+            forex_pair,
+            timeframe,
+            data_start_date,
+            data_end_date,
         )
 
         cursor = self.safe_execute(
@@ -271,38 +294,72 @@ class IndicatorCacheSQLHelper(SQLHelper):
             return pd.read_feather(result[0])
         return None
 
-    def store(
+    def store_in_feather(
         self,
+        df: pd.DataFrame,
         indicator_name: str,
         parameters: dict,
         forex_pair: str,
         timeframe: str,
-        df: pd.DataFrame,
-    ) -> None:
+        data_start_date: str,
+        data_end_date: str,
+    ) -> dict:
         key, param_hash = self._generate_cache_key(
-            indicator_name, parameters, forex_pair, timeframe
+            indicator_name,
+            parameters,
+            forex_pair,
+            timeframe,
+            data_start_date,
+            data_end_date,
         )
         filename = f"{hashlib.md5(key.encode()).hexdigest()}.feather"
         filepath = os.path.join(self.cache_dir, filename)
 
         df.reset_index(drop=True).to_feather(filepath)
 
-        _ = self.safe_execute(
-            self.cursor,
-            """INSERT OR IGNORE INTO IndicatorCache (
-                cache_key, forex_pair, timeframe, indicator_name, parameter_hash, filepath
-            ) VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            (key, forex_pair, timeframe, indicator_name, param_hash, filepath),
-        )
+        return {
+            "key": key,
+            "forex_pair": forex_pair,
+            "timeframe": timeframe,
+            "data_start_date": data_start_date,
+            "data_end_date": data_end_date,
+            "indicator_name": indicator_name,
+            "param_hash": param_hash,
+            "filepath": filepath,
+        }
+
+    def insert_cache_items(self, cache_items: list[dict]):
+        """
+        Insert cache items into the IndicatorCache table.
+
+        cache_items: A list of cache item dictionaries with keys: key, forex_pair, timeframe, data_start_date, data_end_date, indicator_name, param_hash, filepath
+        """
+        for item in cache_items:
+            _ = self.safe_execute(
+                self.cursor,
+                """INSERT OR IGNORE INTO IndicatorCache (
+                    cache_key, forex_pair, timeframe, data_start_date, data_end_date, indicator_name, parameter_hash, filepath
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    item["key"],
+                    item["forex_pair"],
+                    item["timeframe"],
+                    item["data_start_date"],
+                    item["data_end_date"],
+                    item["indicator_name"],
+                    item["param_hash"],
+                    item["filepath"],
+                ),
+            )
 
         self.conn.commit()
 
 
 class BacktestSQLHelper(SQLHelper):
-    def __init__(self):
+    def __init__(self, read_only: bool = False):
         db_path = f"{config.BACKTESTING_FOLDER}/{config.BACKTESTING_DB_NAME}"
-        super().__init__(db_path)
+        super().__init__(db_path, read_only)
 
         existing_tables = self.get_database_tables()
         if "ForexPairs" not in existing_tables:
@@ -432,6 +489,7 @@ class BacktestSQLHelper(SQLHelper):
                     "N_Pruned": "INTEGER",
                     "Avg_Score": "REAL",
                     "Std_Score": "REAL",
+                    "Stop_Reason": "TEXT",
                 },
             )
 
@@ -537,6 +595,12 @@ class BacktestSQLHelper(SQLHelper):
         Returns:
             int: The run_id of the newly inserted backtest run.
         """
+        assert (
+            pair_id is not None
+            and strategy_config_id is not None
+            and timeframe is not None
+            and metrics is not None
+        )
         # Get the list of column names from the metrics DataFrame.
         columns = metrics.columns.tolist()
 
@@ -564,7 +628,12 @@ class BacktestSQLHelper(SQLHelper):
         return self.cursor.lastrowid
 
     def select_backtest_run_by_config(
-        self, pair_id: int, strategy_config_id: int, timeframe: str
+        self,
+        pair_id: int,
+        strategy_config_id: int,
+        timeframe: str,
+        start_date: str,
+        end_date: str,
     ) -> int:
         """Checks if a backtest run exists in the database
 
@@ -572,14 +641,16 @@ class BacktestSQLHelper(SQLHelper):
             pair_id (int): The ID of the forex pair from the ForexPairs table.
             strategy_config_id (int): The ID of the strategy configuration from the StrategyConfigurations table.
             timeframe (str): The timeframe of the backtest
+            start_date (str): The start date of the backtest (YYYY-MM-DD)
+            end_date (str): The end date of the backtest (YYYY-MM-DD)
 
         Returns:
             int: The run_id of the backtest run
         """
         self.safe_execute(
             self.cursor,
-            "SELECT id FROM BacktestRuns WHERE Pair_ID = ? AND Strategy_ID = ? AND Timeframe = ?",
-            (pair_id, strategy_config_id, timeframe),
+            "SELECT id FROM BacktestRuns WHERE Pair_ID = ? AND Strategy_ID = ? AND Timeframe = ? AND Data_Start_Date = ? AND Data_End_Date = ?",
+            (pair_id, strategy_config_id, timeframe, start_date, end_date),
         )
 
         result = self.cursor.fetchone()
@@ -694,6 +765,24 @@ class BacktestSQLHelper(SQLHelper):
 
         return study_id
 
+    def select_study_metadata(self, study_name: str) -> dict | None:
+        self.safe_execute(
+            self.cursor,
+            "SELECT * FROM StudyMetadata WHERE Study_Name = ?",
+            (study_name,),
+        )
+
+        result = self.cursor.fetchone()
+
+        if result is None:
+            return None
+
+        # Get column names from cursor
+        columns = [desc[0] for desc in self.cursor.description]
+
+        # Build dictionary with proper column alignment
+        return dict(zip(columns, result))
+
     def insert_composite_score(
         self,
         backtest_id: int,
@@ -739,11 +828,11 @@ class BacktestSQLHelper(SQLHelper):
 
         self.conn.commit()
 
-        logging.info(f"Backfilled {rows_updated} composite scores.")
+        logging.info(f"[{study_name}] Backfilled {rows_updated} composite scores.")
 
         return rows_updated
 
-    def select_composite_score(self, backtest_id: int) -> float:
+    def select_composite_score(self, backtest_id: int) -> float | None:
         """Selects a composite score from the CompositeScores table
 
         Args:
@@ -810,3 +899,62 @@ class BacktestSQLHelper(SQLHelper):
         logging.info(
             f"Exported composite results to {output_path} ({len(merged_df)} rows)."
         )
+
+    def select_top_percent_strategies(
+        self, exploration_space: str = "default", top_percent: float = 10.0
+    ) -> list[dict]:
+        """
+        Selects the top N% performing strategies from a given exploration space
+        based on composite score.
+
+        Args:
+            exploration_space (str): Exploration space label to filter Phase 1 runs.
+            top_percent (float): Top X percent to keep (e.g., 10.0 = top 10%).
+
+        Returns:
+            list[dict]: Strategy metadata including indicator config and score.
+        """
+        assert 0 < top_percent <= 100, "top_percent must be between 0 and 100"
+
+        query = """
+            SELECT 
+                cs.Score,
+                cs.Trial_ID,
+                cs.Study_Name,
+                br.Net_Profit,
+                br.Timeframe,
+                fp.symbol AS Pair,
+                sc.id AS StrategyConfig_ID,
+                sc.parameters AS Parameters_JSON
+            FROM CompositeScores cs
+            JOIN BacktestRuns br ON br.id = cs.Backtest_ID
+            JOIN StrategyConfigurations sc ON br.Strategy_ID = sc.id
+            JOIN ForexPairs fp ON br.Pair_ID = fp.id
+            WHERE cs.Exploration_Space = ?
+        """
+
+        self.safe_execute(self.cursor, query, (exploration_space,))
+        rows = self.cursor.fetchall()
+
+        if not rows:
+            return []
+
+        # Parse and structure the results
+        results = [
+            {
+                "Score": row[0],
+                "Trial_ID": row[1],
+                "Study_Name": row[2],
+                "Net_Profit": row[3],
+                "Timeframe": row[4],
+                "Pair": row[5],
+                "StrategyConfig_ID": row[6],
+                "Parameters": json.loads(row[7]),
+            }
+            for row in rows
+        ]
+
+        # Sort by composite score and slice top N%
+        results.sort(key=lambda x: x["Score"], reverse=True)
+        keep_count = max(1, int(len(results) * top_percent / 100.0))
+        return results[:keep_count]
