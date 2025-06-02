@@ -1,4 +1,5 @@
 import inspect
+import math
 from dataclasses import dataclass
 from typing import Callable
 
@@ -1190,6 +1191,10 @@ class NNFXStrategy(BaseStrategy):
             # Step 3: Determine direction of entry signal
             signal = ENTER_LONG if ENTER_LONG in signals else ENTER_SHORT
             atr = self._get_piece_latest_value("ATR", row)
+
+            # if math.isnan(atr):
+            #     x = 1
+
             entry_price = row["Close"]
             direction = "BUY" if signal == ENTER_LONG else "SELL"
 

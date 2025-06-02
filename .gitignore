@@ -7,3 +7,5 @@
 windsurf.txt
 backtesting/Backtesting.db-shm
 backtesting/Backtesting.db-wal
+data/GBPUSD.db-shm
+data/GBPUSD.db-wal

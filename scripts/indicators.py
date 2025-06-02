@@ -874,7 +874,7 @@ ta_lib_volume = [
         "raw_function": ta.ADOSC,
         "parameters": {"fastperiod": 3, "slowperiod": 10},
         "parameter_space": {
-            "fastperiod": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+            "fastperiod": [3, 4, 5, 6, 7],
             "slowperiod": [10, 12, 14, 16, 18, 20, 22, 24, 26, 28],
         },
     },
@@ -999,8 +999,8 @@ additional_trend = [
         "raw_function": KalmanFilter,
         "parameters": {"k": 1, "sharpness": 1},
         "parameter_space": {
-            "k": [0.1, 0.5, 1, 2, 5, 10, 20, 50, 100, 200],
-            "sharpness": [0.1, 0.5, 1, 2, 5, 10, 20, 50, 100, 200],
+            "k": [1, 2, 5, 10, 20, 50, 100],
+            "sharpness": [1, 2, 5, 10, 20, 50, 100],
         },
     },
     {
@@ -1038,10 +1038,9 @@ additional_trend = [
             "signal_bar": 1,
         },
         "parameter_space": {
-            "period": [5, 10, 15, 20, 25, 30, 35, 40, 45, 50],
-            "ma_method": ["sma", "ema", "wma", "hma", "tema", "vidya"],
-            "applied_price": ["open", "high", "low", "close"],
-            "signal_bar": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            "period": [3, 5, 7, 9, 11, 13, 15, 17, 19],
+            "ma_method": ["sma", "ema", "smma", "lwma"],
+            "signal_bar": [1, 2, 3, 4, 5],
         },
     },
     {
@@ -1339,8 +1338,8 @@ additional_momentum = [
         },
         "parameter_space": {
             "range_periods": [5, 10, 15, 20, 25, 30, 35, 40, 45, 50],
-            "price_smoothing": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
-            "index_smoothing": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
+            "price_smoothing": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+            "index_smoothing": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
         },
     },
     {
@@ -1368,7 +1367,7 @@ additional_momentum = [
         "signal_function": signal_laguerre,
         "raw_function": Laguerre,
         "parameters": {"gamma": 0.7},
-        "parameter_space": {"gamma": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]},
+        "parameter_space": {"gamma": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]},
     },
     {
         "name": "SchaffTrendCycle",
@@ -1416,7 +1415,7 @@ additional_momentum = [
             "top_line": [50, 60, 70, 80, 90, 100],
             "bottom_line": [-50, -60, -70, -80, -90, -100],
             "t3_period": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-            "b": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
+            "b": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
         },
     },
     {

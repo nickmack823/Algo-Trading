@@ -1351,17 +1351,21 @@ def SuperTrend(
             down[i] = median_price[i] - multiplier * atr_values[i]
 
         if trend[i] == 1:
-            supertrend = down[i]
+            current_supertrend = down[i]
         elif change_of_trend == 1:
-            supertrend = up[i + 1]
-            change_of_trend = 0
+            if i + 1 < len(price_data):
+                current_supertrend = up[i + 1]
+                change_of_trend = 0
+            else:
+                current_supertrend = up[i]  # fallback
+                change_of_trend = 0
         elif trend[i] == -1:
-            supertrend = up[i]
+            current_supertrend = up[i]
         elif change_of_trend == 1:
-            supertrend = down[i + 1]
+            current_supertrend = down[i + 1]
             change_of_trend = 0
 
-    supertrend = pd.DataFrame({"Supertrend": supertrend, "Trend": trend})
+    supertrend = pd.DataFrame({"Supertrend": current_supertrend, "Trend": trend})
 
     return supertrend
 
@@ -1834,25 +1838,18 @@ def TrendLord(
     # Calculate the moving average based on the 'ma_method' parameter
     if ma_method == "sma":
         MA = price.rolling(window=period).mean()
+        Array1 = MA.rolling(window=period).mean()
     elif ma_method == "ema":
         MA = price.ewm(span=period).mean()
+        Array1 = MA.ewm(span=period).mean()
     elif ma_method == "smma":
         MA = price.ewm(alpha=1 / period).mean()
+        Array1 = MA.ewm(alpha=1 / period).mean()
     elif ma_method == "lwma":
         weights = np.arange(1, period + 1)
         MA = price.rolling(window=period).apply(
             lambda x: np.dot(x, weights) / weights.sum(), raw=True
         )
-
-    # Calculate Array1 as the moving average of MA
-    if ma_method == "sma":
-        Array1 = MA.rolling(window=period).mean()
-    elif ma_method == "ema":
-        Array1 = MA.ewm(span=period).mean()
-    elif ma_method == "smma":
-        Array1 = MA.ewm(alpha=1 / period).mean()
-    elif ma_method == "lwma":
-        weights = np.arange(1, period + 1)
         Array1 = MA.rolling(window=period).apply(
             lambda x: np.dot(x, weights) / weights.sum(), raw=True
         )

@@ -27,9 +27,8 @@ from scripts.config import (
     MIN_TRADES_PER_DAY,
     N_STARTUP_TRIALS_PERCENTAGE,
     OPTUNA_STUDIES_FOLDER,
-    PHASES,
+    PHASE2_TOP_PERCENT,
     PRUNE_THRESHOLD_FACTOR,
-    TEMP_CACHE_FOLDER,
     TIMEFRAME_DATE_RANGES,
     TIMEFRAMES,
 )
@@ -57,6 +56,7 @@ logging.basicConfig(
 
 def log_error(message: str, filename: str = "error_log.txt"):
     """Appends a timestamped error message to a file."""
+    logging.error(message)
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     log_line = f"[{timestamp}] {message}\n"
 
@@ -93,14 +93,6 @@ def test_one():
     backtester.save_run()
 
     trades = backtester.save_trades()
-
-
-def get_indicator_by_name(name: str, pool: list[dict]) -> IndicatorConfig:
-    """Find an indicator config by name from a given pool."""
-    for ind in pool:
-        if ind["name"] == name:
-            return ind
-    raise ValueError(f"Indicator with name '{name}' not found.")
 
 
 def wait_for_ack(ack_dict, ack_id, timeout=10):
@@ -312,7 +304,7 @@ def db_writer_process(queue: mp.Queue, done_flag, ack_dict: dict):
                     sql.backfill_composite_scores(study_id)
 
             except Exception as e:
-                logging.error(f"DB write error: {e} {traceback.format_exc()}")
+                log_error(f"DB write error: {e} {traceback.format_exc()}")
                 winsound.Beep(300, 500)
                 # Close DB connection
                 sql.close_connection()
@@ -329,46 +321,86 @@ def db_writer_process(queue: mp.Queue, done_flag, ack_dict: dict):
             break
 
 
+def build_indicator_config_for_trial(
+    trial: optuna.Trial,
+    role: str,  # ATR, Baseline, etc
+    candidate_configs: list[
+        IndicatorConfig
+    ],  # List of available indicators for this role
+    use_default_params: bool,
+) -> IndicatorConfig:
+    # Pool of available indicators for this role
+    name_pool = [c["name"] for c in candidate_configs]
+    selected_name = trial.suggest_categorical(role, name_pool)
+
+    config = next(c for c in candidate_configs if c["name"] == selected_name)
+
+    if use_default_params:
+        sampled_params = config[
+            "parameters"
+        ]  # just reuse the default config's parameter values
+    else:
+        sampled_params = {}
+        for param_name, space in config.get("parameter_space", {}).items():
+            # Unique key for Optuna tracking (i.e. C1.Laguerre.timeperiod)
+            key = f"{role}.{selected_name}.{param_name}"
+            if not isinstance(space, list):
+                raise ValueError(
+                    f"Expected list for parameter space: {role}.{param_name}"
+                )
+
+            sampled_params[param_name] = trial.suggest_categorical(key, space)
+
+    return {
+        "name": selected_name,
+        "function": config["function"],
+        "signal_function": config["signal_function"],
+        "raw_function": config["raw_function"],
+        "description": config.get("description", ""),
+        "parameters": sampled_params,
+    }
+
+
 def objective(
     trial: optuna.Trial,
     forex_pair: str,
     timeframe: str,
     db_queue: mp.Queue,
     ack_dict: dict,
+    allowed_indicators: dict,
+    indicator_config_spaces: dict[str, list[IndicatorConfig]],
 ) -> float:
     """
     Optuna objective function to maximize composite score of an NNFX strategy.
     Now using safe categorical values (strings) + dictionary lookup.
     """
-    # Choose by name to allow Optuna to persist trials cleanly
-    atr_name = trial.suggest_categorical("ATR", [i["name"] for i in atr_indicators])
-    baseline_name = trial.suggest_categorical(
-        "Baseline", [i["name"] for i in baseline_indicators]
+    # Check if we're exploring the full indicator space (Phase 1)
+    use_default_params = all(
+        len(v) > 1 and v[0] == "all" for v in allowed_indicators.values()
     )
-    c1_name = trial.suggest_categorical(
-        "C1", [i["name"] for i in trend_indicators + momentum_indicators]
+
+    atr = build_indicator_config_for_trial(
+        trial, "ATR", indicator_config_spaces["ATR"], use_default_params
     )
-    c2_name = trial.suggest_categorical(
-        "C2", [i["name"] for i in trend_indicators + momentum_indicators]
+    baseline = build_indicator_config_for_trial(
+        trial, "Baseline", indicator_config_spaces["Baseline"], use_default_params
     )
-    volume_name = trial.suggest_categorical(
-        "Volume", [i["name"] for i in volume_indicators]
+    c1 = build_indicator_config_for_trial(
+        trial, "C1", indicator_config_spaces["C1"], use_default_params
     )
-    exit_name = trial.suggest_categorical(
-        "Exit", [i["name"] for i in trend_indicators + momentum_indicators]
+    c2 = build_indicator_config_for_trial(
+        trial, "C2", indicator_config_spaces["C2"], use_default_params
+    )
+    volume = build_indicator_config_for_trial(
+        trial, "Volume", indicator_config_spaces["Volume"], use_default_params
+    )
+    exit = build_indicator_config_for_trial(
+        trial, "Exit", indicator_config_spaces["Exit"], use_default_params
     )
 
     # Prevent invalid C1/C2 combo
-    if c1_name == c2_name:
+    if c1["name"] == c2["name"]:
         raise optuna.exceptions.TrialPruned()
-
-    # Retrieve full config dicts by name
-    atr = get_indicator_by_name(atr_name, atr_indicators)
-    baseline = get_indicator_by_name(baseline_name, baseline_indicators)
-    c1 = get_indicator_by_name(c1_name, trend_indicators + momentum_indicators)
-    c2 = get_indicator_by_name(c2_name, trend_indicators + momentum_indicators)
-    volume = get_indicator_by_name(volume_name, volume_indicators)
-    exit = get_indicator_by_name(exit_name, trend_indicators + momentum_indicators)
 
     # Initialize strategy and backtester
     backtest_sqlhelper = BacktestSQLHelper(read_only=True)
@@ -467,7 +499,14 @@ def objective(
         else:
             # Run backtest
             # logging.info(f"[{forex_pair}-{timeframe}] Running backtest...")
-            backtester.run_backtest()
+            try:
+                backtester.run_backtest()
+            except Exception as e:
+                log_error(
+                    f"[{forex_pair}-{timeframe}] PRUNING trial due to backtest failing with error: {e}"
+                )
+                manually_pruned = True
+                raise optuna.exceptions.TrialPruned()
 
             # Retrieve metrics
             run_metrics_df = backtester.get_metrics_df()
@@ -507,7 +546,7 @@ def objective(
             raise e
 
         full_traceback = traceback.format_exc()
-        logging.error(f"Fatal error on {forex_pair} {timeframe}: {full_traceback}")
+        log_error(f"Fatal error on {forex_pair} {timeframe}: {full_traceback}")
         winsound.Beep(200, 1000)
         sys.exit(1)
     finally:
@@ -600,6 +639,8 @@ def run_study_wrapper(args) -> dict:
         exploration_space,
         phase_name,
         seed,
+        allowed_indicators,
+        indicator_config_spaces,
         db_queue,
         ack_dict,
     ) = args
@@ -610,21 +651,18 @@ def run_study_wrapper(args) -> dict:
     Returns:
         str: The study name
     """
-    (
-        pair,
-        timeframe,
-        n_trials,
-        exploration_space,
-        phase_name,
-        seed,
-        db_queue,
-        ack_dict,
-    ) = args
-
     logging.info(f"[START STUDY] {pair} @ {timeframe}")
 
     def wrapped_objective(trial):
-        return objective(trial, pair, timeframe, db_queue, ack_dict)
+        return objective(
+            trial,
+            forex_pair=pair,
+            timeframe=timeframe,
+            db_queue=db_queue,
+            ack_dict=ack_dict,
+            allowed_indicators=allowed_indicators,
+            indicator_config_spaces=indicator_config_spaces,
+        )
 
     timeframe_range = TIMEFRAME_DATE_RANGES[timeframe]
     from_date, to_date = timeframe_range["from_date"], timeframe_range["to_date"]
@@ -636,6 +674,15 @@ def run_study_wrapper(args) -> dict:
         f"{from_date}to{to_date}_space-{exploration_space}_seed-{seed}"
     )
 
+    # Check if study already has already completed/stopped (if exists)
+    study_metadata: pd.Series = BacktestSQLHelper(read_only=True).select_study_metadata(
+        study_name
+    )
+    stop_reason = study_metadata["Stop_Reason"] if study_metadata is not None else None
+    if stop_reason:
+        logging.info(f"Skipping study creation: [{study_name}] - {stop_reason}")
+        return None
+
     study = optuna.create_study(
         direction="maximize",
         study_name=study_name,
@@ -646,15 +693,6 @@ def run_study_wrapper(args) -> dict:
         storage=f"sqlite:///{OPTUNA_STUDIES_FOLDER}/{study_name}.db",
         load_if_exists=True,
     )
-
-    # Check if study already has already completed/stopped (if exists)
-    study_metadata: pd.Series = BacktestSQLHelper(read_only=True).select_study_metadata(
-        study_name
-    )
-    stop_reason = study_metadata["Stop_Reason"] if study_metadata is not None else None
-    if stop_reason:
-        logging.info(f"[{study.study_name}] Already stopped: {stop_reason}")
-        return None
 
     # Maintain upper bound on number of trials after study resumption
     completed_trials = [
@@ -712,10 +750,8 @@ def run_all_studies(
     meta_results = []
     try:
         # Prepare study jobs
-        study_args = [
-            (pair, tf, trials, space, phase_name, seed, db_queue, ack_dict)
-            for (pair, tf, trials, space, phase_name, seed) in study_args_list
-        ]
+        # Append DB-related args to each study job
+        study_args = [args + (db_queue, ack_dict) for args in study_args_list]
 
         with ProcessPoolExecutor(max_workers=max_parallel_studies) as executor:
             futures = {
@@ -755,37 +791,188 @@ def run_all_studies(
     winsound.Beep(200, 1000)
 
 
+def build_study_args_phase1(
+    pairs: list[str],
+    timeframes: list[str],
+    seeds: list[int],
+    trials_by_timeframe: dict[str, int],
+    exploration_space: str = "default",
+    phase_name: str = "phase1",
+) -> list[tuple]:
+    # Use full search space of indicator names
+    allowed_indicators = {
+        "ATR": ["all"],
+        "Baseline": ["all"],
+        "C1": ["all"],
+        "C2": ["all"],
+        "Volume": ["all"],
+        "Exit": ["all"],
+    }
+
+    # Full indicator config sets for name selection
+    indicator_space = {
+        "ATR": atr_indicators,
+        "Baseline": baseline_indicators,
+        "C1": trend_indicators + momentum_indicators,
+        "C2": trend_indicators + momentum_indicators,
+        "Volume": volume_indicators,
+        "Exit": trend_indicators + momentum_indicators,
+    }
+
+    args = []
+    for seed in seeds:
+        for pair in pairs:
+            for timeframe in timeframes:
+                if timeframe not in trials_by_timeframe:
+                    continue
+                trials = trials_by_timeframe[timeframe]
+                args.append(
+                    (
+                        pair,
+                        timeframe,
+                        trials,
+                        exploration_space,
+                        phase_name,
+                        seed,
+                        allowed_indicators,
+                        indicator_space,
+                    )
+                )
+    return args
+
+
+def build_study_args_phase2(
+    pairs: list[str],
+    timeframes: list[str],
+    seeds: list[int],
+    trials_by_timeframe: dict[str, int],
+    top_percent: float = 10.0,
+    exploration_space: str = "top_10percent_parameterized",
+    phase_name: str = "phase2",
+) -> list[tuple]:
+    # Get top N% performing strategies
+    db = BacktestSQLHelper(read_only=True)
+    top_strategies = db.select_top_percent_strategies("default", top_percent)
+
+    # Group top indicator names per role
+    role_to_names: dict[str, set[str]] = {
+        "ATR": set(),
+        "Baseline": set(),
+        "C1": set(),
+        "C2": set(),
+        "Volume": set(),
+        "Exit": set(),
+    }
+
+    for strat in top_strategies:
+        params = strat["Parameters"]
+        for role in role_to_names:
+            param = params.get(role.lower(), {})
+            name = param.split("_")[0]
+            if name:
+                role_to_names[role].add(name)
+
+    # Now filter your full indicator pools to only include the ones in the top sets
+    def filter_by_name(configs: list[dict], names: set[str]):
+        return [cfg for cfg in configs if cfg["name"] in names]
+
+    indicator_config_spaces = {
+        "ATR": filter_by_name(atr_indicators, role_to_names["ATR"]),
+        "Baseline": filter_by_name(baseline_indicators, role_to_names["Baseline"]),
+        "C1": filter_by_name(
+            trend_indicators + momentum_indicators, role_to_names["C1"]
+        ),
+        "C2": filter_by_name(
+            trend_indicators + momentum_indicators, role_to_names["C2"]
+        ),
+        "Volume": filter_by_name(volume_indicators, role_to_names["Volume"]),
+        "Exit": filter_by_name(
+            trend_indicators + momentum_indicators, role_to_names["Exit"]
+        ),
+    }
+
+    allowed_indicators = {role: list(names) for role, names in role_to_names.items()}
+
+    # Create study args per pair/timeframe/seed
+    args = []
+    for seed in seeds:
+        for pair in pairs:
+            for timeframe in timeframes:
+                if timeframe not in trials_by_timeframe:
+                    continue
+                trials = trials_by_timeframe[timeframe]
+                args.append(
+                    (
+                        pair,
+                        timeframe,
+                        trials,
+                        exploration_space,
+                        phase_name,
+                        seed,
+                        allowed_indicators,
+                        indicator_config_spaces,
+                    )
+                )
+
+    return args
+
+
 if __name__ == "__main__":
     # Run Optuna studies on all pair/timeframe combos
-    N_PROCESSES = mp.cpu_count() - 4
+    N_PROCESSES = mp.cpu_count() - 5
+
+    PHASES = [
+        {
+            "name": "phase1",
+            "exploration_space": "default",
+            "seeds": [42, 1337, 314, 777, 444],
+            "trials_by_timeframe": {
+                "1_day": 500,
+                "4_hour": 450,
+                "2_hour": 400,
+            },
+        },
+        {
+            "name": "phase2",
+            "exploration_space": f"top_{PHASE2_TOP_PERCENT}percent_parameterized",
+            "seeds": [42, 1337],
+            "trials_by_timeframe": {
+                "1_day": 500,
+                "4_hour": 450,
+                "2_hour": 400,
+            },
+            "top_percent": PHASE2_TOP_PERCENT,
+        },
+    ]
 
     logging.info(f"Running phases {[phase['name'] for phase in PHASES]}...")
 
-    all_study_jobs = []
-
     for phase in PHASES:
-        if phase["name"] == "phase2":
+        logging.info(f"Running phase {phase['name']}...")
+        name = phase["name"]
+        kwargs = {
+            "pairs": MAJOR_FOREX_PAIRS,
+            "timeframes": TIMEFRAMES,
+            "seeds": phase["seeds"],
+            "trials_by_timeframe": phase["trials_by_timeframe"],
+            "phase_name": name,
+        }
+
+        if name == "phase1":
             continue
+            kwargs["exploration_space"] = phase["exploration_space"]
+            study_args = build_study_args_phase1(**kwargs)
 
-        for seed in phase["seeds"]:
-            for pair in MAJOR_FOREX_PAIRS:
-                for timeframe in TIMEFRAMES:
-                    if timeframe not in phase["trials_by_timeframe"]:
-                        continue
+        elif name == "phase2":
+            kwargs["exploration_space"] = phase["exploration_space"]
+            kwargs["top_percent"] = phase["top_percent"]
+            study_args = build_study_args_phase2(**kwargs)
 
-                    all_study_jobs.append(
-                        (
-                            pair,
-                            timeframe,
-                            phase["trials_by_timeframe"][timeframe],
-                            phase["exploration_space"],
-                            phase["name"],
-                            seed,
-                        )
-                    )
+        else:
+            raise ValueError(f"Unknown phase name: {name}")
 
-    logging.info(
-        f"Running {len(all_study_jobs)} total jobs across all pair/timeframe/seed combos..."
-    )
+        logging.info(
+            f"Running {len(study_args)} total jobs across all pair/timeframe/seed combos..."
+        )
 
-    run_all_studies(all_study_jobs, max_parallel_studies=N_PROCESSES)
+        run_all_studies(study_args, max_parallel_studies=N_PROCESSES)
