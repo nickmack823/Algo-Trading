@@ -1028,40 +1028,38 @@ def Coral(price_data: pd.DataFrame, period: int = 34) -> pd.DataFrame:
 
 def CenterOfGravity(price_data, period=10) -> pd.Series:
     """
-    Calculates Ehler's Center of Gravity oscillator
+    Calculates Ehler's Center of Gravity oscillator.
 
     Args:
-    price_data: Pandas DataFrame of OHLCV data
-    period: int - period of the oscillator
+        price_data: Pandas DataFrame with 'High' and 'Low'
+        period: int, number of periods to calculate
 
     Returns:
-    Pandas DataFrame of Center of Gravity oscillator values
+        pd.Series with same length as price_data
     """
 
     def p(index: int) -> float:
-        return (price_data["High"][index] + price_data["Low"][index]) / 2.0
+        return (price_data["High"].iloc[index] + price_data["Low"].iloc[index]) / 2.0
 
-    cg = []
+    cg = [float("nan")] * (period - 1)  # prepend NaNs
 
-    for s in range(len(price_data) - period):
+    for s in range(period - 1, len(price_data)):
         num = 0.0
         denom = 0.0
         for count in range(period):
-            p_value = p(s + count)
-            num += (1.0 + count) * p_value
-            denom += p_value
+            idx = s - period + 1 + count
+            p_val = p(idx)
+            num += (1.0 + count) * p_val
+            denom += p_val
 
         if denom != 0:
             cg_val = -num / denom + (period + 1.0) / 2.0
         else:
-            cg_val = 0
+            cg_val = 0.0
 
         cg.append(cg_val)
 
-    # Add NaN values to the end to match the length of the input price_data
-    cg.extend([float("nan")] * period)
-
-    return pd.Series(cg)
+    return pd.Series(cg, index=price_data.index)
 
 
 def GruchaIndex(

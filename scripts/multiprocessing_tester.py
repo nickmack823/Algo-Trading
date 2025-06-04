@@ -140,7 +140,7 @@ def run_combo_worker(task):
     # )
 
     # Check if this run is already in DB
-    pair_id = backtester.backtest_sqlhelper.get_forex_pair_id(forex_pair)
+    pair_id = backtester.backtest_sqlhelper.select_forex_pair_id(forex_pair)
     strategy_id = backtester.backtest_sqlhelper.select_strategy_configuration(
         strategy.NAME, strategy.DESCRIPTION, strategy.PARAMETER_SETTINGS
     )

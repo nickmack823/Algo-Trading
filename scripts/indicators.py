@@ -66,6 +66,21 @@ class IndicatorConfig(TypedDict):
     parameter_space = dict
 
 
+# Utility to find config by name in a pool
+def find_indicator_config(name, params) -> IndicatorConfig:
+    for config in all_indicators:
+        if config["name"] == name:
+            return {
+                "name": name,
+                "function": config["function"],
+                "signal_function": config["signal_function"],
+                "raw_function": config.get("raw_function", config["function"]),
+                "description": config.get("description", ""),
+                "parameters": params,
+            }
+    raise ValueError(f"Indicator {name} not found in provided pool.")
+
+
 def candle_2crows_func(df):
     return ta.CDL2CROWS(df["Open"], df["High"], df["Low"], df["Close"])
 
@@ -1665,7 +1680,7 @@ baseline_indicators = [
         "parameters": {"period": 14, "shift": 0},
         "parameter_space": {
             "period": [3, 5, 7, 9, 11, 13, 15, 17, 19],
-            "shift": [-2, -1, 0, 1, 2],
+            "shift": [0],
         },
     },
     {
@@ -1763,4 +1778,5 @@ all_indicators = (
     + volatility_indicators
     + price_indicators
     + baseline_indicators
+    + atr_indicators
 )

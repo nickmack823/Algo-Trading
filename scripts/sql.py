@@ -1,8 +1,10 @@
+import ast
 import hashlib
 import json
 import logging
 import os
 import random
+import re
 import sqlite3
 import time
 from datetime import datetime, timedelta
@@ -508,7 +510,7 @@ class BacktestSQLHelper(SQLHelper):
             )
         self.conn.commit()
 
-    def get_forex_pair_id(self, pair: str) -> int:
+    def select_forex_pair_id(self, pair: str) -> int:
         """
         Retrieve the ID of a forex pair from the ForexPairs table.
 
@@ -524,7 +526,7 @@ class BacktestSQLHelper(SQLHelper):
 
         return self.cursor.fetchone()[0]
 
-    def upsert_strategy_configuration(
+    def insert_strategy_configuration(
         self, name: str, description: str, parameters: dict
     ) -> int:
         # Convert the parameter settings to a JSON string (or handle differently if needed)
@@ -958,3 +960,263 @@ class BacktestSQLHelper(SQLHelper):
         results.sort(key=lambda x: x["Score"], reverse=True)
         keep_count = max(1, int(len(results) * top_percent / 100.0))
         return results[:keep_count]
+
+    def select_top_n_strategies_across_studies(
+        self,
+        include_exploration_spaces: list[str] = [
+            "default",
+            "top_10.0percent_parameterized",
+        ],
+        top_n: int = 25,
+    ) -> list[dict]:
+        """
+        Selects the top N strategies across studies (from Phase 1 and Phase 2),
+        avoiding duplicates by parameter hash (strategy identity).
+
+        Args:
+            include_exploration_spaces (list[str]): Exploration spaces to include.
+            top_n (int): Total number of unique strategies to return.
+
+        Returns:
+            list[dict]: Strategy metadata including indicator config and score.
+        """
+        placeholders = ",".join("?" for _ in include_exploration_spaces)
+
+        # Query StudyMetadata for relevant studies
+        query = f"""
+            SELECT id, Study_Name, Pair, Timeframe, Best_Score, Best_Trial, Exploration_Space
+            FROM StudyMetadata
+            WHERE Exploration_Space IN ({placeholders})
+        """
+        self.safe_execute(self.cursor, query, include_exploration_spaces)
+        study_rows = self.cursor.fetchall()
+
+        if not study_rows:
+            return []
+
+        candidates = []
+        seen_param_hashes = set()
+
+        for row in study_rows:
+            study_id, study_name, pair, timeframe, best_score, best_trial, space = row
+
+            # Find StrategyConfig_ID and parameters
+            self.safe_execute(
+                self.cursor,
+                """
+                SELECT br.Strategy_ID, sc.parameters
+                FROM CompositeScores cs
+                JOIN BacktestRuns br ON br.id = cs.Backtest_ID
+                JOIN StrategyConfigurations sc ON br.Strategy_ID = sc.id
+                JOIN ForexPairs fp ON br.Pair_ID = fp.id
+                WHERE cs.Study_Name = ? AND cs.Trial_ID = ?
+                LIMIT 1
+                """,
+                (study_name, best_trial),
+            )
+            result = self.cursor.fetchone()
+            if not result:
+                continue
+
+            strategy_id, param_json = result
+            param_hash = hash(param_json)  # simple fast deduplication
+            if param_hash in seen_param_hashes:
+                continue
+
+            seen_param_hashes.add(param_hash)
+            parameters = json.loads(param_json)
+
+            candidates.append(
+                {
+                    "Study_Name": study_name,
+                    "Pair": pair,
+                    "Timeframe": timeframe,
+                    "Exploration_Space": space,
+                    "Score": best_score,
+                    "StrategyConfig_ID": strategy_id,
+                    "Parameters": parameters,
+                }
+            )
+
+        # Sort and return top N unique strategies
+        candidates.sort(key=lambda x: x["Score"], reverse=True)
+        return candidates[:top_n]
+
+    def get_existing_scored_combinations(self) -> set[tuple]:
+        """
+        Returns a set of (strategy_id, pair_symbol, timeframe)
+        for all strategies that already have a composite score.
+        """
+        query = """
+            SELECT DISTINCT br.Strategy_ID, fp.symbol, br.Timeframe
+            FROM CompositeScores cs
+            JOIN BacktestRuns br ON cs.Backtest_ID = br.id
+            JOIN ForexPairs fp ON br.Pair_ID = fp.id
+        """
+        self.safe_execute(self.cursor, query)
+        return set(self.cursor.fetchall())
+
+    def get_best_strategy_per_pair_with_metrics(self) -> list[dict]:
+        """
+        Returns the top scoring (strategy, timeframe) result per unique forex pair,
+        including all metrics from BacktestRuns and full indicator configs.
+
+        Returns:
+            list of dicts with: strategy_id, pair, timeframe, score, indicators, and full run metrics
+        """
+        query = """
+            SELECT cs.Score, fp.symbol, br.*, sc.parameters, sc.id as strategy_id
+            FROM CompositeScores cs
+            JOIN BacktestRuns br ON cs.Backtest_ID = br.id
+            JOIN StrategyConfigurations sc ON br.Strategy_ID = sc.id
+            JOIN ForexPairs fp ON br.Pair_ID = fp.id
+            ORDER BY cs.Score DESC
+        """
+        self.safe_execute(self.cursor, query)
+        rows = self.cursor.fetchall()
+        columns = [desc[0] for desc in self.cursor.description]
+
+        def parse_indicator_field(value: str):
+            match = re.match(r"^(.*?)_\{(.*)\}$", value)
+            if not match:
+                return {"name": value, "parameters": {}}
+            name = match.group(1)
+            param_str = "{" + match.group(2) + "}"
+            try:
+                parameters = ast.literal_eval(param_str)
+            except Exception:
+                parameters = {}
+            return {"name": name, "parameters": parameters}
+
+        seen_pairs = set()
+        results = []
+
+        for row in rows:
+            row_dict = dict(zip(columns, row))
+            pair = row_dict["symbol"]
+            if pair in seen_pairs:
+                continue
+            seen_pairs.add(pair)
+
+            try:
+                raw_params = json.loads(row_dict["parameters"])
+            except Exception:
+                continue
+
+            indicators = {
+                k.upper(): parse_indicator_field(v) for k, v in raw_params.items()
+            }
+
+            # Remove duplicate fields and raw parameter string
+            del row_dict["parameters"]
+            del row_dict["symbol"]
+
+            result = {
+                "strategy_id": row_dict.pop("strategy_id"),
+                "pair": pair,
+                "score": row_dict.pop("Score"),
+                "timeframe": row_dict.get("Timeframe"),
+                "indicators": indicators,
+                "metrics": row_dict,  # everything from BacktestRuns
+            }
+
+            results.append(result)
+
+        return results
+
+    def delete_strategies_lsma_nonzero_shift(self):
+        """
+        Deletes all StrategyConfigurations (and related BacktestRuns and CompositeScores)
+        where LSMA is used with shift ≠ 0 (single-quoted format).
+        """
+
+        def chunked(iterable, size=500):
+            for i in range(0, len(iterable), size):
+                yield iterable[i : i + size]
+
+        try:
+            # Adjusted to match single-quoted Python dict format
+            self.safe_execute(
+                self.cursor,
+                """
+                SELECT id FROM StrategyConfigurations
+                WHERE parameters LIKE '%LSMA%'
+                """,
+            )
+            strategy_ids = [row[0] for row in self.cursor.fetchall()]
+
+            if not strategy_ids:
+                print("✅ No LSMA strategies found with shift ≠ 0.")
+                return
+
+            print(f"🧨 Found {len(strategy_ids)} LSMA strategies with shift ≠ 0.")
+
+            backtest_ids = []
+            for chunk in chunked(strategy_ids):
+                placeholders = ",".join("?" for _ in chunk)
+                self.safe_execute(
+                    self.cursor,
+                    f"SELECT id FROM BacktestRuns WHERE Strategy_ID IN ({placeholders})",
+                    chunk,
+                )
+                backtest_ids.extend(row[0] for row in self.cursor.fetchall())
+
+            for chunk in chunked(backtest_ids):
+                placeholders = ",".join("?" for _ in chunk)
+                self.safe_execute(
+                    self.cursor,
+                    f"DELETE FROM CompositeScores WHERE Backtest_ID IN ({placeholders})",
+                    chunk,
+                )
+
+            for chunk in chunked(strategy_ids):
+                placeholders = ",".join("?" for _ in chunk)
+                self.safe_execute(
+                    self.cursor,
+                    f"DELETE FROM BacktestRuns WHERE Strategy_ID IN ({placeholders})",
+                    chunk,
+                )
+
+            for chunk in chunked(strategy_ids):
+                placeholders = ",".join("?" for _ in chunk)
+                self.safe_execute(
+                    self.cursor,
+                    f"DELETE FROM StrategyConfigurations WHERE id IN ({placeholders})",
+                    chunk,
+                )
+
+            self.conn.commit()
+            print(
+                f"🧹 Cleanup complete. Deleted {len(strategy_ids)} strategies and {len(backtest_ids)} backtest runs."
+            )
+
+        except Exception as e:
+            self.conn.rollback()
+            print(f"❌ Error during LSMA shift cleanup: {e}")
+
+    def get_top_pair_timeframes_by_best_score(
+        self, min_best_score: float = 10.0
+    ) -> list[tuple[str, str]]:
+        """
+        Returns a list of (pair, timeframe) tuples where the BEST strategy score exceeds `min_best_score`.
+        Results are sorted by number of qualifying strategies, then average score.
+        """
+        query = """
+            SELECT
+                fp.symbol AS pair,
+                br.Timeframe,
+                COUNT(*) AS good_strategy_count,
+                ROUND(AVG(cs.Score), 2) AS avg_score,
+                ROUND(MAX(cs.Score), 2) AS best_score
+            FROM CompositeScores cs
+            JOIN BacktestRuns br ON cs.Backtest_ID = br.id
+            JOIN ForexPairs fp ON br.Pair_ID = fp.id
+            GROUP BY fp.symbol, br.Timeframe
+            HAVING best_score > ?
+            ORDER BY good_strategy_count DESC, avg_score DESC
+        """
+
+        self.safe_execute(self.cursor, query, (min_best_score,))
+        results = self.cursor.fetchall()
+
+        return [(row[0], row[1]) for row in results]

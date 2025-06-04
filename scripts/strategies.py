@@ -525,7 +525,7 @@ class BaseStrategy:
             "Please implement the generate_signal method in your strategy subclass."
         )
 
-    def _calculate_indicators(self, data: pd.DataFrame) -> pd.DataFrame:
+    def _calculate_or_retrieve_indicators(self, data: pd.DataFrame) -> pd.DataFrame:
         """
         Applies all NNFX indicators (ATR, Baseline, C1, C2, Volume, Exit)
         and returns a DataFrame with their outputs attached.
@@ -657,13 +657,20 @@ class NNFXStrategy(BaseStrategy):
             forex_pair=forex_pair, parameters=parameters, timeframe=timeframe
         )
 
-    def prepare_data(self, historical_data: pd.DataFrame):
-        self.data_with_indicators = self._calculate_indicators(historical_data)
+    def prepare_data(self, historical_data: pd.DataFrame, use_cache: bool = True):
+        if use_cache:
+            self.data_with_indicators = self._calculate_or_retrieve_indicators(
+                historical_data
+            )
+        else:
+            self.data_with_indicators = self._calculate_indicators_no_cache(
+                historical_data
+            )
 
     def get_cache_jobs(self):
         return self.indicator_cache_dicts_to_insert
 
-    def _calculate_indicators(self, data: pd.DataFrame) -> pd.DataFrame:
+    def _calculate_or_retrieve_indicators(self, data: pd.DataFrame) -> pd.DataFrame:
         data = data.copy()
         cache = IndicatorCacheSQLHelper()
 
@@ -747,6 +754,37 @@ class NNFXStrategy(BaseStrategy):
         # Close DB connection
         cache.close_connection()
         del cache
+
+        return full_data
+
+    def _calculate_indicators_no_cache(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Computes indicator values directly from data with no caching or retrieval.
+        """
+        data = data.copy()
+
+        # Calculate indicators
+        indicator_dfs = []
+        for piece_name, config in self.indicator_configs.items():
+            raw_output = config["function"](data, **config["parameters"])
+            output_df_or_series = convert_np_to_pd(raw_output)
+
+            # Wrap as DataFrame and ensure column names
+            if isinstance(output_df_or_series, pd.DataFrame):
+                df = output_df_or_series
+            else:
+                df = pd.DataFrame({config["name"]: output_df_or_series})
+            df.columns = df.columns.astype(str)
+
+            # Add prefix for distinction
+            df = df.add_prefix(f"{piece_name}_")
+            indicator_dfs.append(df)
+
+        # Combine original price data and indicators
+        indicator_data = pd.concat(indicator_dfs, axis=1)
+        full_data = pd.concat(
+            [data.reset_index(drop=True), indicator_data.reset_index(drop=True)], axis=1
+        )
 
         return full_data
 
