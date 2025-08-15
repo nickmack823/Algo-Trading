@@ -8,10 +8,17 @@ import re
 import sqlite3
 import time
 from datetime import datetime, timedelta
+from typing import Optional
 
 import pandas as pd
 
-from scripts import config
+from scripts.config import (
+    BACKTESTING_DB_NAME,
+    BACKTESTING_FOLDER,
+    DATA_FOLDER,
+    MAJOR_FOREX_PAIRS,
+    TIMESPAN_MULTIPLIER_PAIRS,
+)
 
 logging.basicConfig(
     level=20, datefmt="%m/%d/%Y %H:%M:%S", format="[%(asctime)s] %(message)s"
@@ -110,7 +117,7 @@ class HistoricalDataSQLHelper(SQLHelper):
         # Define desired order as strings like '5_minute', '15_minute', etc.
         desired_order = [
             f"{multiplier}_{timespan}"
-            for multiplier, timespan in config.TIMESPAN_MULTIPLIER_PAIRS
+            for multiplier, timespan in TIMESPAN_MULTIPLIER_PAIRS
         ]
 
         # Sort existing tables based on the desired order
@@ -226,16 +233,14 @@ class HistoricalDataSQLHelper(SQLHelper):
         return data
 
     def get_all_data_files() -> list[str]:
-        return [f for f in os.listdir(config.DATA_FOLDER) if f.endswith(".db")]
+        return [f for f in os.listdir(DATA_FOLDER) if f.endswith(".db")]
 
 
 class IndicatorCacheSQLHelper(SQLHelper):
-    def __init__(
-        self, db_path: str = f"{config.BACKTESTING_FOLDER}/{config.BACKTESTING_DB_NAME}"
-    ):
+    def __init__(self, db_path: str = f"{BACKTESTING_FOLDER}/{BACKTESTING_DB_NAME}"):
         super().__init__(db_path)
 
-        self.cache_dir = f"{config.BACKTESTING_FOLDER}/indicator_caches"
+        self.cache_dir = f"{BACKTESTING_FOLDER}/indicator_caches"
         os.makedirs(self.cache_dir, exist_ok=True)
 
         self.create_table(
@@ -360,7 +365,7 @@ class IndicatorCacheSQLHelper(SQLHelper):
 
 class BacktestSQLHelper(SQLHelper):
     def __init__(self, read_only: bool = False):
-        db_path = f"{config.BACKTESTING_FOLDER}/{config.BACKTESTING_DB_NAME}"
+        db_path = f"{BACKTESTING_FOLDER}/{BACKTESTING_DB_NAME}"
         super().__init__(db_path, read_only)
 
         existing_tables = self.get_database_tables()
@@ -374,7 +379,7 @@ class BacktestSQLHelper(SQLHelper):
                     "quote": "TEXT",
                 },
             )
-            self.insert_forex_pairs(config.MAJOR_FOREX_PAIRS)
+            self.insert_forex_pairs(MAJOR_FOREX_PAIRS)
         if "StrategyConfigurations" not in existing_tables:
             self.create_table(
                 "StrategyConfigurations",
@@ -916,8 +921,6 @@ class BacktestSQLHelper(SQLHelper):
         Returns:
             list[dict]: Strategy metadata including indicator config and score.
         """
-        assert 0 < top_percent <= 100, "top_percent must be between 0 and 100"
-
         query = """
             SELECT 
                 cs.Score,
@@ -963,63 +966,62 @@ class BacktestSQLHelper(SQLHelper):
 
     def select_top_n_strategies_across_studies(
         self,
-        include_exploration_spaces: list[str] = [
-            "default",
-            "top_10.0percent_parameterized",
+        exclude_exploration_spaces: list[str] = [
+            "generalization_test",
         ],
         top_n: int = 25,
     ) -> list[dict]:
         """
-        Selects the top N strategies across studies (from Phase 1 and Phase 2),
-        avoiding duplicates by parameter hash (strategy identity).
+        Selects the top N unique strategies across all trials except in the excluded exploration spaces,
+        deduplicated by parameter hash.
 
         Args:
-            include_exploration_spaces (list[str]): Exploration spaces to include.
-            top_n (int): Total number of unique strategies to return.
+            exclude_exploration_spaces (list[str]): Spaces to filter studies by.
+            top_n (int): Number of unique strategies to return.
 
         Returns:
-            list[dict]: Strategy metadata including indicator config and score.
+            list[dict]: Strategy metadata including score, study, and parameters.
         """
-        placeholders = ",".join("?" for _ in include_exploration_spaces)
+        placeholders = ",".join("?" for _ in exclude_exploration_spaces)
 
-        # Query StudyMetadata for relevant studies
         query = f"""
-            SELECT id, Study_Name, Pair, Timeframe, Best_Score, Best_Trial, Exploration_Space
-            FROM StudyMetadata
-            WHERE Exploration_Space IN ({placeholders})
+            SELECT
+                cs.Score,
+                cs.Study_Name,
+                cs.Trial_ID,
+                br.Strategy_ID,
+                br.Timeframe,
+                fp.symbol AS Pair,
+                sc.parameters,
+                sm.Exploration_Space
+            FROM CompositeScores cs
+            JOIN BacktestRuns br ON cs.Backtest_ID = br.id
+            JOIN ForexPairs fp ON br.Pair_ID = fp.id
+            JOIN StrategyConfigurations sc ON br.Strategy_ID = sc.id
+            JOIN StudyMetadata sm ON sm.Study_Name = cs.Study_Name
+            WHERE sm.Exploration_Space NOT IN ({placeholders})
+            ORDER BY cs.Score DESC
         """
-        self.safe_execute(self.cursor, query, include_exploration_spaces)
-        study_rows = self.cursor.fetchall()
 
-        if not study_rows:
-            return []
+        self.safe_execute(self.cursor, query, exclude_exploration_spaces)
+        rows = self.cursor.fetchall()
 
         candidates = []
         seen_param_hashes = set()
 
-        for row in study_rows:
-            study_id, study_name, pair, timeframe, best_score, best_trial, space = row
+        for row in rows:
+            (
+                score,
+                study_name,
+                trial_id,
+                strategy_id,
+                timeframe,
+                pair,
+                param_json,
+                space,
+            ) = row
+            param_hash = hash(param_json)
 
-            # Find StrategyConfig_ID and parameters
-            self.safe_execute(
-                self.cursor,
-                """
-                SELECT br.Strategy_ID, sc.parameters
-                FROM CompositeScores cs
-                JOIN BacktestRuns br ON br.id = cs.Backtest_ID
-                JOIN StrategyConfigurations sc ON br.Strategy_ID = sc.id
-                JOIN ForexPairs fp ON br.Pair_ID = fp.id
-                WHERE cs.Study_Name = ? AND cs.Trial_ID = ?
-                LIMIT 1
-                """,
-                (study_name, best_trial),
-            )
-            result = self.cursor.fetchone()
-            if not result:
-                continue
-
-            strategy_id, param_json = result
-            param_hash = hash(param_json)  # simple fast deduplication
             if param_hash in seen_param_hashes:
                 continue
 
@@ -1029,18 +1031,20 @@ class BacktestSQLHelper(SQLHelper):
             candidates.append(
                 {
                     "Study_Name": study_name,
+                    "Trial_ID": trial_id,
                     "Pair": pair,
                     "Timeframe": timeframe,
                     "Exploration_Space": space,
-                    "Score": best_score,
+                    "Score": score,
                     "StrategyConfig_ID": strategy_id,
                     "Parameters": parameters,
                 }
             )
 
-        # Sort and return top N unique strategies
-        candidates.sort(key=lambda x: x["Score"], reverse=True)
-        return candidates[:top_n]
+            if len(candidates) >= top_n:
+                break
+
+        return candidates
 
     def get_existing_scored_combinations(self) -> set[tuple]:
         """
@@ -1220,3 +1224,149 @@ class BacktestSQLHelper(SQLHelper):
         results = self.cursor.fetchall()
 
         return [(row[0], row[1]) for row in results]
+
+
+class OandaSQLHelper(SQLHelper):
+    def __init__(self, db_path: str = "OandaTrading.db"):
+        super().__init__(db_path)
+
+        # Create table for live/demo strategies
+        self.create_table(
+            "Strategies",
+            {
+                "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+                "name": "TEXT",
+                "pair": "TEXT",
+                "timeframe": "TEXT",
+                "parameters": "TEXT",
+                "strategy_hash": "TEXT UNIQUE",
+                "mode": "TEXT DEFAULT 'demo'",  # 'demo' or 'live'
+            },
+        )
+
+        # Table to track live/demo actions
+        self.create_table(
+            "TradingActions",
+            {
+                "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+                "strategy_id": "INTEGER",
+                "pair": "TEXT",
+                "timeframe": "TEXT",
+                "timestamp": "TEXT",
+                "action_type": "TEXT",  # ENTRY, EXIT, ERROR, etc.
+                "direction": "TEXT",  # BUY, SELL, or None
+                "price": "REAL",
+                "sl": "REAL",
+                "tp": "REAL",
+                "units": "REAL",
+                "risk_pct": "REAL",
+                "source": "TEXT",
+                "strategy": "TEXT",
+                "tag": "TEXT",
+                "note": "TEXT",
+                "error": "TEXT",
+                "mode": "TEXT DEFAULT 'demo'",
+            },
+            foreign_keys=["FOREIGN KEY (strategy_id) REFERENCES LiveStrategies(id)"],
+        )
+
+    def upsert_strategy(
+        self, name: str, pair: str, timeframe: str, parameters: dict, mode: str = "demo"
+    ) -> int:
+        strategy_hash = hashlib.md5(
+            json.dumps(parameters, sort_keys=True).encode()
+        ).hexdigest()
+
+        self.safe_execute(
+            self.cursor,
+            "SELECT id FROM Strategies WHERE strategy_hash = ? AND mode = ?",
+            (strategy_hash, mode),
+        )
+        result = self.cursor.fetchone()
+        if result:
+            return result[0]
+
+        self.safe_execute(
+            self.cursor,
+            """INSERT INTO Strategies (name, pair, timeframe, parameters, strategy_hash, mode)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (name, pair, timeframe, json.dumps(parameters), strategy_hash, mode),
+        )
+        self.conn.commit()
+        return self.cursor.lastrowid
+
+    def insert_action(
+        self,
+        strategy_id: int,
+        pair: str,
+        timeframe: str,
+        action_type: str,
+        direction: Optional[str] = None,
+        price: Optional[float] = None,
+        sl: Optional[float] = None,
+        tp: Optional[float] = None,
+        units: Optional[float] = None,
+        risk_pct: Optional[float] = None,
+        source: Optional[str] = None,
+        strategy: Optional[str] = None,
+        tag: Optional[str] = None,
+        note: Optional[str] = None,
+        error: Optional[str] = None,
+        mode: str = "demo",
+    ) -> None:
+        self.safe_execute(
+            self.cursor,
+            """
+            INSERT INTO TradingActions (
+                strategy_id, pair, timeframe, timestamp, action_type, direction, price, sl, tp,
+                units, risk_pct, source, strategy, tag, note, error, mode
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                strategy_id,
+                pair,
+                timeframe,
+                datetime.utcnow().isoformat(),
+                action_type,
+                direction,
+                price,
+                sl,
+                tp,
+                units,
+                risk_pct,
+                source,
+                strategy,
+                tag,
+                note,
+                error,
+                mode,
+            ),
+        )
+        self.conn.commit()
+
+    def log_trade_action(
+        self,
+        strategy_id: int,
+        pair: str,
+        timeframe: str,
+        action,
+        mode: str = "demo",
+    ):
+        self.insert_action(
+            strategy_id=strategy_id,
+            pair=pair,
+            timeframe=timeframe,
+            action_type=action.type,
+            direction=action.direction,
+            price=action.price,
+            sl=action.sl,
+            tp=action.tp,
+            units=action.units,
+            risk_pct=action.risk_pct,
+            source=action.source,
+            strategy=action.strategy,
+            tag=action.tag,
+            note=action.note,
+            error=action.error,
+            mode=mode,
+        )

@@ -31,7 +31,8 @@ from scripts.config import (
     OPTUNA_STUDIES_FOLDER,
     PHASE2_TOP_PERCENT,
     PRUNE_THRESHOLD_FACTOR,
-    TIMEFRAME_DATE_RANGES,
+    TIMEFRAME_DATE_RANGES_PHASE3,
+    TIMEFRAME_DATE_RANGES_PHASE_1_AND_2,
     TIMEFRAMES,
 )
 from scripts.indicators import (
@@ -58,6 +59,7 @@ logging.basicConfig(
 
 def log_error(message: str, filename: str = "error_log.txt"):
     """Appends a timestamped error message to a file."""
+    winsound.Beep(300, 500)
     logging.error(message)
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     log_line = f"[{timestamp}] {message}\n"
@@ -97,10 +99,10 @@ def test_one():
     trades = backtester.save_trades()
 
 
-def wait_for_ack(ack_dict, ack_id, timeout=10):
+def wait_for_ack(ack_dict: dict, ack_id, timeout=10):
     start = time.time()
     while True:
-        if ack_dict.get(ack_id):
+        if ack_dict.get(ack_id) is not None:
             del ack_dict[ack_id]  # Cleanup
             return
         if time.time() - start > timeout:
@@ -125,8 +127,8 @@ def run_fixed_strategy_evaluation(
     )
 
     from_date, to_date = (
-        TIMEFRAME_DATE_RANGES[timeframe]["from_date"],
-        TIMEFRAME_DATE_RANGES[timeframe]["to_date"],
+        TIMEFRAME_DATE_RANGES_PHASE3[timeframe]["from_date"],
+        TIMEFRAME_DATE_RANGES_PHASE3[timeframe]["to_date"],
     )
 
     study_name = f"{phase_name}_{pair.replace('/', '')}_{timeframe}_NNFX_{from_date}to{to_date}_space-{exploration_space}"
@@ -411,10 +413,10 @@ def db_writer_process(queue: mp.Queue, done_flag, ack_dict: dict):
 
             except Exception as e:
                 log_error(f"DB write error: {e} {traceback.format_exc()}")
-                winsound.Beep(300, 500)
 
         if done_flag.value is True:
             # Close DB connection
+            logging.info("Closing DB queue connection...")
             sql.close_connection()
             cache_sql.close_connection()
             del sql
@@ -477,7 +479,7 @@ def objective(
     """
     # Check if we're exploring the full indicator space (Phase 1)
     use_default_params = all(
-        len(v) > 1 and v[0] == "all" for v in allowed_indicators.values()
+        len(v) == 1 and 1 and v[0] == "all" for v in allowed_indicators.values()
     )
 
     atr = build_indicator_config_for_trial(
@@ -536,7 +538,7 @@ def objective(
         )
 
     # Check config for how to slice historical data based on timeframe
-    timeframe_range = TIMEFRAME_DATE_RANGES[timeframe]
+    timeframe_range = TIMEFRAME_DATE_RANGES_PHASE_1_AND_2[timeframe]
     from_date, to_date = timeframe_range["from_date"], timeframe_range["to_date"]
 
     # Load historical OHLCV + indicator data
@@ -648,7 +650,6 @@ def objective(
 
         full_traceback = traceback.format_exc()
         log_error(f"Fatal error on {forex_pair} {timeframe}: {full_traceback}")
-        winsound.Beep(200, 1000)
         sys.exit(1)
     finally:
         if ran_new_backtest or (not ran_new_backtest and calculated_score):
@@ -658,8 +659,10 @@ def objective(
             )
             study_name = trial.study.study_name
 
-            # Find word after 'space-' and before next underscore
-            exploration_space = study_name.split("space-")[1].split("_")[0]
+            # Find word after 'space-' and before '_seed'
+            space_index = study_name.find("space-")
+            underscore_index = study_name.find("_seed")
+            exploration_space = study_name[space_index + 6 : underscore_index]
 
             db_queue.put(
                 {
@@ -765,7 +768,7 @@ def run_study_wrapper(args) -> dict:
             indicator_config_spaces=indicator_config_spaces,
         )
 
-    timeframe_range = TIMEFRAME_DATE_RANGES[timeframe]
+    timeframe_range = TIMEFRAME_DATE_RANGES_PHASE_1_AND_2[timeframe]
     from_date, to_date = timeframe_range["from_date"], timeframe_range["to_date"]
 
     # callback_n = IMPROVEMENT_CUTOFF_BY_TIMEFRAME[timeframe]
@@ -1021,7 +1024,7 @@ def build_study_args_phase2(
 def build_study_args_phase3(
     pairs: list[str],
     timeframes: list[str],
-    top_n: int = 250,
+    top_n: int,
 ) -> list[tuple]:
     import ast
 
@@ -1261,72 +1264,54 @@ def correct_and_rerun_lsma_strategies_fixed_eval(json_path: str, db_queue: mp.Qu
 
 if __name__ == "__main__":
     # Run Optuna studies on all pair/timeframe combos
-    N_PROCESSES = mp.cpu_count() - 4
+    N_PROCESSES = mp.cpu_count() - 3
 
-    # sql = BacktestSQLHelper()
-    # sql.delete_strategies_lsma_nonzero_shift()
-
-    # final_best_results = BacktestSQLHelper(
-    #     read_only=True
-    # ).get_best_strategy_per_pair_with_metrics()
-
-    # # Save to JSON file
-    # with open("best_strategies.json", "w") as f:
-    #     json.dump(final_best_results, f, indent=2)
-
-    # # Initialize multiprocessing queue for DB writes
-    # manager = mp.Manager()
-    # db_queue = manager.Queue()
-    # ack_dict = manager.dict()
-    # done_flag = mp.Value("b", False)
-
-    # # Path to your best strategies JSON file
-    # json_path = "best_strategies.json"
-
-    # # Run the LSMA shift=-1 fix + re-evaluation
-    # correct_and_rerun_lsma_strategies_fixed_eval(json_path, db_queue)
-
-    # # Now start the writer after queue is fully populated
-    # done_flag.value = False  # Just to be explicit
-    # writer_proc = mp.Process(
-    #     target=db_writer_process, args=(db_queue, done_flag, ack_dict)
-    # )
-    # writer_proc.start()
-    # writer_proc.join()
-    # print("✅ All strategy results written safely.")
+    seed_sets = [
+        [42, 1337, 314, 777, 444],  # 1
+        [42, 1337],
+        [823, 145, 420, 666],  # 2
+        [823, 145],
+    ]
 
     PHASES = [
         {
             "name": "phase1",
             "exploration_space": "default",
-            "seeds": [42, 1337, 314, 777, 444],
+            "seeds": [8675],
             "trials_by_timeframe": {
-                "1_day": 500,
-                "4_hour": 450,
-                "2_hour": 400,
+                "1_day": 300,
+                "4_hour": 300,
+                "2_hour": 300,
+                "1_hour": 200,
+                "30_minute": 200,
+                "15_minute": 200,
+                "5_minute": 200,
             },
         },
         {
             "name": "phase2",
             "exploration_space": f"top_{PHASE2_TOP_PERCENT}percent_parameterized",
-            "seeds": [42, 1337],
+            "seeds": [8675],
             "trials_by_timeframe": {
-                "1_day": 500,
-                "4_hour": 450,
-                "2_hour": 400,
+                "1_day": 300,
+                "4_hour": 300,
+                "2_hour": 300,
+                "1_hour": 200,
+                "30_minute": 200,
+                "15_minute": 200,
+                "5_minute": 200,
             },
             "top_percent": PHASE2_TOP_PERCENT,
         },
         {
             "name": "phase3",
             "exploration_space": "generalization_test",
-            "seeds": [42],  # Arbitrary seed; params are fixed
             "trials_by_timeframe": {
                 "1_day": 1,
                 "4_hour": 1,
                 "2_hour": 1,
             },
-            "top_n": 250,
+            "top_n": 100,
         },
     ]
 
@@ -1335,12 +1320,12 @@ if __name__ == "__main__":
     # Get best pair/timeframe combos bast on previous phase runs
     sql = BacktestSQLHelper(read_only=True)
     filtered_pairs_timeframes = sql.get_top_pair_timeframes_by_best_score(
-        min_best_score=13
+        min_best_score=15
     )
 
     # Use in kwargs for study setup
     filtered_pairs = sorted(set(pair for pair, tf in filtered_pairs_timeframes))
-    filtered_timeframes = sorted(set(tf for pair, tf in filtered_pairs_timeframes))
+    # filtered_timeframes = sorted(set(tf for pair, tf in filtered_pairs_timeframes))
 
     for phase in PHASES:
         logging.info(f"Running phase {phase['name']}...")
@@ -1348,11 +1333,11 @@ if __name__ == "__main__":
         kwargs = {
             "phase_name": name,
             "pairs": filtered_pairs,
-            "timeframes": filtered_timeframes,
+            "timeframes": TIMEFRAMES,
         }
 
         if name == "phase1":
-            # continue
+            continue
             kwargs["exploration_space"] = phase["exploration_space"]
             kwargs["trials_by_timeframe"] = phase["trials_by_timeframe"]
             kwargs["seeds"] = phase["seeds"]
@@ -1378,11 +1363,14 @@ if __name__ == "__main__":
             run_all_studies(study_args, max_parallel_studies=N_PROCESSES)
 
         elif name == "phase3":
-            # continue
+            continue
             run_phase3(phase)
 
         else:
             raise ValueError(f"Unknown phase name: {name}")
+
+        logging.info(f"Phase {name} complete.")
+        time.sleep(5)
 
     final_best_results = BacktestSQLHelper(
         read_only=True

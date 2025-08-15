@@ -31,7 +31,7 @@ from scripts.config import (
     OPTUNA_STUDIES_FOLDER,
     PHASE2_TOP_PERCENT,
     PRUNE_THRESHOLD_FACTOR,
-    TIMEFRAME_DATE_RANGES,
+    TIMEFRAME_DATE_RANGES_PHASE3,
     TIMEFRAMES,
 )
 from scripts.indicators import (
@@ -125,8 +125,8 @@ def run_fixed_strategy_evaluation(
     )
 
     from_date, to_date = (
-        TIMEFRAME_DATE_RANGES[timeframe]["from_date"],
-        TIMEFRAME_DATE_RANGES[timeframe]["to_date"],
+        TIMEFRAME_DATE_RANGES_PHASE3[timeframe]["from_date"],
+        TIMEFRAME_DATE_RANGES_PHASE3[timeframe]["to_date"],
     )
 
     study_name = f"{phase_name}_{pair.replace('/', '')}_{timeframe}_NNFX_{from_date}to{to_date}_space-{exploration_space}"
@@ -536,7 +536,7 @@ def objective(
         )
 
     # Check config for how to slice historical data based on timeframe
-    timeframe_range = TIMEFRAME_DATE_RANGES[timeframe]
+    timeframe_range = TIMEFRAME_DATE_RANGES_PHASE3[timeframe]
     from_date, to_date = timeframe_range["from_date"], timeframe_range["to_date"]
 
     # Load historical OHLCV + indicator data
@@ -765,7 +765,7 @@ def run_study_wrapper(args) -> dict:
             indicator_config_spaces=indicator_config_spaces,
         )
 
-    timeframe_range = TIMEFRAME_DATE_RANGES[timeframe]
+    timeframe_range = TIMEFRAME_DATE_RANGES_PHASE3[timeframe]
     from_date, to_date = timeframe_range["from_date"], timeframe_range["to_date"]
 
     # callback_n = IMPROVEMENT_CUTOFF_BY_TIMEFRAME[timeframe]

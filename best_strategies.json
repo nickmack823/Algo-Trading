@@ -84,6 +84,172 @@
     }
   },
   {
+    "strategy_id": 271881,
+    "pair": "USD/JPY",
+    "score": 22.3848,
+    "timeframe": "4_hour",
+    "indicators": {
+      "ATR": {
+        "name": "ATR",
+        "parameters": {
+          "timeperiod": 18
+        }
+      },
+      "BASELINE": {
+        "name": "McGinleyDI",
+        "parameters": {
+          "period": 3,
+          "mcg_constant": 6
+        }
+      },
+      "C1": {
+        "name": "BullsBearsImpulse",
+        "parameters": {
+          "ma_period": 45
+        }
+      },
+      "C2": {
+        "name": "KalmanFilter",
+        "parameters": {
+          "k": 20,
+          "sharpness": 20
+        }
+      },
+      "VOLUME": {
+        "name": "FantailVMA",
+        "parameters": {
+          "adx_length": 3,
+          "weighting": 5.5,
+          "ma_length": 1
+        }
+      },
+      "EXIT": {
+        "name": "HalfTrend",
+        "parameters": {
+          "amplitude": 4
+        }
+      }
+    },
+    "metrics": {
+      "id": 354925,
+      "Pair_ID": 2,
+      "Strategy_ID": 271881,
+      "Timeframe": "4_hour",
+      "Data_Start_Date": "2023-05-08",
+      "Data_End_Date": "2025-05-07",
+      "Trading_Start_Date": "2023-05-29",
+      "Total_Trades": 216,
+      "Winning_Trades": 132,
+      "Gross_Profit": 8510.65,
+      "Gross_Loss": -3582.32,
+      "Net_Profit": 4575.71,
+      "Total_Return_Pct": 45.76,
+      "Win_Rate": 0.61,
+      "Profit_Factor": 2.38,
+      "Max_Drawdown": 248.18,
+      "Max_Drawdown_Pct": 1.86,
+      "Average_Trade_Duration_Minutes": 895.56,
+      "Initial_Balance": 10000.0,
+      "Final_Balance": 14575.71,
+      "Sharpe_Ratio": 0.4,
+      "Sortino_Ratio": 0.89,
+      "Calmar_Ratio": 24.56,
+      "Recovery_Factor": 18.44,
+      "Win_Loss_Ratio": 1.51,
+      "Trade_Expectancy_Pct": 0.19,
+      "Expectancy_Per_Day_Pct": 0.06,
+      "Trade_Return_Std": 0.473,
+      "Trades_Per_Day": 0.3,
+      "Max_Consecutive_Wins": 7,
+      "Max_Consecutive_Losses": 6,
+      "Max_Margin_Required_Pct": 11.25
+    }
+  },
+  {
+    "strategy_id": 268654,
+    "pair": "EUR/JPY",
+    "score": 19.2863,
+    "timeframe": "4_hour",
+    "indicators": {
+      "ATR": {
+        "name": "FilteredATR",
+        "parameters": {
+          "period": 32,
+          "ma_period": 32,
+          "ma_shift": 1
+        }
+      },
+      "BASELINE": {
+        "name": "HMA",
+        "parameters": {
+          "period": 17
+        }
+      },
+      "C1": {
+        "name": "BullsBearsImpulse",
+        "parameters": {
+          "ma_period": 10
+        }
+      },
+      "C2": {
+        "name": "HalfTrend",
+        "parameters": {
+          "amplitude": 3
+        }
+      },
+      "VOLUME": {
+        "name": "FantailVMA",
+        "parameters": {
+          "adx_length": 3,
+          "weighting": 5.0,
+          "ma_length": 5
+        }
+      },
+      "EXIT": {
+        "name": "TopTrend",
+        "parameters": {
+          "period": 45,
+          "deviation": 3,
+          "money_risk": 0.1
+        }
+      }
+    },
+    "metrics": {
+      "id": 348914,
+      "Pair_ID": 10,
+      "Strategy_ID": 268654,
+      "Timeframe": "4_hour",
+      "Data_Start_Date": "2023-05-08",
+      "Data_End_Date": "2025-05-07",
+      "Trading_Start_Date": "2023-05-25",
+      "Total_Trades": 131,
+      "Winning_Trades": 89,
+      "Gross_Profit": 5671.87,
+      "Gross_Loss": -1807.34,
+      "Net_Profit": 3691.49,
+      "Total_Return_Pct": 36.91,
+      "Win_Rate": 0.68,
+      "Profit_Factor": 3.14,
+      "Max_Drawdown": 182.9,
+      "Max_Drawdown_Pct": 1.72,
+      "Average_Trade_Duration_Minutes": 1058.93,
+      "Initial_Balance": 10000.0,
+      "Final_Balance": 13691.49,
+      "Sharpe_Ratio": 0.54,
+      "Sortino_Ratio": 0.88,
+      "Calmar_Ratio": 21.5,
+      "Recovery_Factor": 20.18,
+      "Win_Loss_Ratio": 1.52,
+      "Trade_Expectancy_Pct": 0.25,
+      "Expectancy_Per_Day_Pct": 0.05,
+      "Trade_Return_Std": 0.4722,
+      "Trades_Per_Day": 0.18,
+      "Max_Consecutive_Wins": 9,
+      "Max_Consecutive_Losses": 3,
+      "Max_Margin_Required_Pct": 7.01
+    }
+  },
+  {
     "strategy_id": 238866,
     "pair": "NZD/JPY",
     "score": 18.5423,
@@ -167,36 +333,35 @@
     }
   },
   {
-    "strategy_id": 235274,
-    "pair": "EUR/JPY",
-    "score": 18.3565,
+    "strategy_id": 271853,
+    "pair": "CAD/JPY",
+    "score": 17.5244,
     "timeframe": "4_hour",
     "indicators": {
       "ATR": {
-        "name": "NATR",
+        "name": "ATR",
         "parameters": {
-          "timeperiod": 22
+          "timeperiod": 18
         }
       },
       "BASELINE": {
-        "name": "RecursiveMA",
+        "name": "McGinleyDI",
         "parameters": {
-          "period": 2,
-          "recursions": 10
+          "period": 3,
+          "mcg_constant": 6
         }
       },
       "C1": {
         "name": "BullsBearsImpulse",
         "parameters": {
-          "ma_period": 15
+          "ma_period": 35
         }
       },
       "C2": {
-        "name": "MACDZeroLag",
+        "name": "KalmanFilter",
         "parameters": {
-          "short_period": 4,
-          "long_period": 38,
-          "signal_period": 7
+          "k": 20,
+          "sharpness": 20
         }
       },
       "VOLUME": {
@@ -204,242 +369,74 @@
         "parameters": {
           "adx_length": 3,
           "weighting": 5.5,
-          "ma_length": 4
+          "ma_length": 1
         }
       },
       "EXIT": {
-        "name": "TopTrend",
+        "name": "ROCR",
         "parameters": {
-          "period": 40,
-          "deviation": 4,
-          "money_risk": 50
+          "timeperiod": 12
         }
       }
     },
     "metrics": {
-      "id": 306221,
-      "Pair_ID": 10,
-      "Strategy_ID": 235274,
+      "id": 356131,
+      "Pair_ID": 24,
+      "Strategy_ID": 271853,
       "Timeframe": "4_hour",
       "Data_Start_Date": "2023-05-08",
       "Data_End_Date": "2025-05-07",
       "Trading_Start_Date": "2023-05-25",
-      "Total_Trades": 168,
-      "Winning_Trades": 103,
-      "Gross_Profit": 6368.33,
-      "Gross_Loss": -2512.88,
-      "Net_Profit": 3512.67,
-      "Total_Return_Pct": 35.13,
-      "Win_Rate": 0.61,
-      "Profit_Factor": 2.53,
-      "Max_Drawdown": 199.48,
-      "Max_Drawdown_Pct": 1.61,
-      "Average_Trade_Duration_Minutes": 707.14,
+      "Total_Trades": 254,
+      "Winning_Trades": 127,
+      "Gross_Profit": 6963.76,
+      "Gross_Loss": -3277.29,
+      "Net_Profit": 3315.67,
+      "Total_Return_Pct": 33.16,
+      "Win_Rate": 0.5,
+      "Profit_Factor": 2.12,
+      "Max_Drawdown": 244.32,
+      "Max_Drawdown_Pct": 2.31,
+      "Average_Trade_Duration_Minutes": 783.31,
       "Initial_Balance": 10000.0,
-      "Final_Balance": 13512.67,
-      "Sharpe_Ratio": 0.43,
-      "Sortino_Ratio": 0.83,
-      "Calmar_Ratio": 21.77,
-      "Recovery_Factor": 17.61,
-      "Win_Loss_Ratio": 1.66,
-      "Trade_Expectancy_Pct": 0.2,
-      "Expectancy_Per_Day_Pct": 0.05,
-      "Trade_Return_Std": 0.4569,
-      "Trades_Per_Day": 0.23,
-      "Max_Consecutive_Wins": 6,
-      "Max_Consecutive_Losses": 4,
-      "Max_Margin_Required_Pct": 11.46
-    }
-  },
-  {
-    "strategy_id": 238866,
-    "pair": "GBP/NZD",
-    "score": 16.6696,
-    "timeframe": "4_hour",
-    "indicators": {
-      "ATR": {
-        "name": "ATR",
-        "parameters": {
-          "timeperiod": 14
-        }
-      },
-      "BASELINE": {
-        "name": "RecursiveMA",
-        "parameters": {
-          "period": 5,
-          "recursions": 30
-        }
-      },
-      "C1": {
-        "name": "BullsBearsImpulse",
-        "parameters": {
-          "ma_period": 5
-        }
-      },
-      "C2": {
-        "name": "KalmanFilter",
-        "parameters": {
-          "k": 20,
-          "sharpness": 20
-        }
-      },
-      "VOLUME": {
-        "name": "FantailVMA",
-        "parameters": {
-          "adx_length": 5,
-          "weighting": 4.0,
-          "ma_length": 9
-        }
-      },
-      "EXIT": {
-        "name": "SuperTrend",
-        "parameters": {
-          "period": 35,
-          "multiplier": 10
-        }
-      }
-    },
-    "metrics": {
-      "id": 299913,
-      "Pair_ID": 19,
-      "Strategy_ID": 238866,
-      "Timeframe": "4_hour",
-      "Data_Start_Date": "2023-05-08",
-      "Data_End_Date": "2025-05-07",
-      "Trading_Start_Date": "2023-05-29",
-      "Total_Trades": 366,
-      "Winning_Trades": 174,
-      "Gross_Profit": 8441.15,
-      "Gross_Loss": -4848.5,
-      "Net_Profit": 3209.49,
-      "Total_Return_Pct": 32.09,
-      "Win_Rate": 0.48,
-      "Profit_Factor": 1.74,
-      "Max_Drawdown": 390.48,
-      "Max_Drawdown_Pct": 3.33,
-      "Average_Trade_Duration_Minutes": 595.41,
-      "Initial_Balance": 10000.0,
-      "Final_Balance": 13209.49,
-      "Sharpe_Ratio": 0.23,
-      "Sortino_Ratio": 0.55,
-      "Calmar_Ratio": 9.63,
-      "Recovery_Factor": 8.22,
-      "Win_Loss_Ratio": 1.93,
-      "Trade_Expectancy_Pct": 0.09,
+      "Final_Balance": 13315.67,
+      "Sharpe_Ratio": 0.31,
+      "Sortino_Ratio": 0.7,
+      "Calmar_Ratio": 14.34,
+      "Recovery_Factor": 13.57,
+      "Win_Loss_Ratio": 2.17,
+      "Trade_Expectancy_Pct": 0.13,
       "Expectancy_Per_Day_Pct": 0.04,
-      "Trade_Return_Std": 0.3723,
-      "Trades_Per_Day": 0.5,
-      "Max_Consecutive_Wins": 8,
-      "Max_Consecutive_Losses": 9,
-      "Max_Margin_Required_Pct": 5.98
+      "Trade_Return_Std": 0.4019,
+      "Trades_Per_Day": 0.35,
+      "Max_Consecutive_Wins": 9,
+      "Max_Consecutive_Losses": 5,
+      "Max_Margin_Required_Pct": 6.83
     }
   },
   {
-    "strategy_id": 238866,
-    "pair": "AUD/JPY",
-    "score": 16.0513,
-    "timeframe": "2_hour",
-    "indicators": {
-      "ATR": {
-        "name": "ATR",
-        "parameters": {
-          "timeperiod": 14
-        }
-      },
-      "BASELINE": {
-        "name": "RecursiveMA",
-        "parameters": {
-          "period": 5,
-          "recursions": 30
-        }
-      },
-      "C1": {
-        "name": "BullsBearsImpulse",
-        "parameters": {
-          "ma_period": 5
-        }
-      },
-      "C2": {
-        "name": "KalmanFilter",
-        "parameters": {
-          "k": 20,
-          "sharpness": 20
-        }
-      },
-      "VOLUME": {
-        "name": "FantailVMA",
-        "parameters": {
-          "adx_length": 5,
-          "weighting": 4.0,
-          "ma_length": 9
-        }
-      },
-      "EXIT": {
-        "name": "SuperTrend",
-        "parameters": {
-          "period": 35,
-          "multiplier": 10
-        }
-      }
-    },
-    "metrics": {
-      "id": 299926,
-      "Pair_ID": 20,
-      "Strategy_ID": 238866,
-      "Timeframe": "2_hour",
-      "Data_Start_Date": "2023-11-07",
-      "Data_End_Date": "2025-05-07",
-      "Trading_Start_Date": "2023-11-15",
-      "Total_Trades": 550,
-      "Winning_Trades": 250,
-      "Gross_Profit": 11572.2,
-      "Gross_Loss": -7422.92,
-      "Net_Profit": 3118.72,
-      "Total_Return_Pct": 31.19,
-      "Win_Rate": 0.45,
-      "Profit_Factor": 1.56,
-      "Max_Drawdown": 562.18,
-      "Max_Drawdown_Pct": 5.04,
-      "Average_Trade_Duration_Minutes": 325.31,
-      "Initial_Balance": 10000.0,
-      "Final_Balance": 13118.72,
-      "Sharpe_Ratio": 0.18,
-      "Sortino_Ratio": 0.4,
-      "Calmar_Ratio": 6.18,
-      "Recovery_Factor": 5.55,
-      "Win_Loss_Ratio": 1.87,
-      "Trade_Expectancy_Pct": 0.07,
-      "Expectancy_Per_Day_Pct": 0.07,
-      "Trade_Return_Std": 0.3719,
-      "Trades_Per_Day": 1.0,
-      "Max_Consecutive_Wins": 10,
-      "Max_Consecutive_Losses": 7,
-      "Max_Margin_Required_Pct": 7.26
-    }
-  },
-  {
-    "strategy_id": 238866,
+    "strategy_id": 271881,
     "pair": "NZD/USD",
-    "score": 15.9999,
+    "score": 17.1245,
     "timeframe": "2_hour",
     "indicators": {
       "ATR": {
         "name": "ATR",
         "parameters": {
-          "timeperiod": 14
+          "timeperiod": 18
         }
       },
       "BASELINE": {
-        "name": "RecursiveMA",
+        "name": "McGinleyDI",
         "parameters": {
-          "period": 5,
-          "recursions": 30
+          "period": 3,
+          "mcg_constant": 6
         }
       },
       "C1": {
         "name": "BullsBearsImpulse",
         "parameters": {
-          "ma_period": 5
+          "ma_period": 45
         }
       },
       "C2": {
@@ -452,396 +449,236 @@
       "VOLUME": {
         "name": "FantailVMA",
         "parameters": {
-          "adx_length": 5,
-          "weighting": 4.0,
-          "ma_length": 9
+          "adx_length": 3,
+          "weighting": 5.5,
+          "ma_length": 1
         }
       },
       "EXIT": {
-        "name": "SuperTrend",
+        "name": "HalfTrend",
         "parameters": {
-          "period": 35,
-          "multiplier": 10
+          "amplitude": 4
         }
       }
     },
     "metrics": {
-      "id": 299886,
+      "id": 354945,
       "Pair_ID": 7,
-      "Strategy_ID": 238866,
+      "Strategy_ID": 271881,
       "Timeframe": "2_hour",
       "Data_Start_Date": "2023-11-07",
       "Data_End_Date": "2025-05-07",
       "Trading_Start_Date": "2023-11-17",
-      "Total_Trades": 505,
-      "Winning_Trades": 240,
-      "Gross_Profit": 10091.67,
-      "Gross_Loss": -5966.71,
-      "Net_Profit": 3050.78,
-      "Total_Return_Pct": 30.51,
-      "Win_Rate": 0.48,
-      "Profit_Factor": 1.69,
-      "Max_Drawdown": 487.66,
-      "Max_Drawdown_Pct": 4.28,
-      "Average_Trade_Duration_Minutes": 287.29,
+      "Total_Trades": 327,
+      "Winning_Trades": 169,
+      "Gross_Profit": 8587.52,
+      "Gross_Loss": -4573.37,
+      "Net_Profit": 3338.91,
+      "Total_Return_Pct": 33.39,
+      "Win_Rate": 0.52,
+      "Profit_Factor": 1.88,
+      "Max_Drawdown": 420.31,
+      "Max_Drawdown_Pct": 3.91,
+      "Average_Trade_Duration_Minutes": 415.78,
       "Initial_Balance": 10000.0,
-      "Final_Balance": 13050.78,
-      "Sharpe_Ratio": 0.21,
-      "Sortino_Ratio": 0.48,
-      "Calmar_Ratio": 7.12,
-      "Recovery_Factor": 6.26,
-      "Win_Loss_Ratio": 1.86,
-      "Trade_Expectancy_Pct": 0.07,
+      "Final_Balance": 13338.91,
+      "Sharpe_Ratio": 0.26,
+      "Sortino_Ratio": 0.57,
+      "Calmar_Ratio": 8.55,
+      "Recovery_Factor": 7.94,
+      "Win_Loss_Ratio": 1.75,
+      "Trade_Expectancy_Pct": 0.11,
       "Expectancy_Per_Day_Pct": 0.07,
-      "Trade_Return_Std": 0.3415,
-      "Trades_Per_Day": 0.92,
+      "Trade_Return_Std": 0.413,
+      "Trades_Per_Day": 0.6,
       "Max_Consecutive_Wins": 6,
       "Max_Consecutive_Losses": 8,
-      "Max_Margin_Required_Pct": 6.26
+      "Max_Margin_Required_Pct": 6.08
     }
   },
   {
-    "strategy_id": 238866,
-    "pair": "USD/JPY",
-    "score": 15.5855,
+    "strategy_id": 265805,
+    "pair": "AUD/JPY",
+    "score": 16.9294,
     "timeframe": "4_hour",
     "indicators": {
       "ATR": {
-        "name": "ATR",
+        "name": "NATR",
         "parameters": {
-          "timeperiod": 14
+          "timeperiod": 20
         }
       },
       "BASELINE": {
-        "name": "RecursiveMA",
+        "name": "ALMA",
         "parameters": {
-          "period": 5,
-          "recursions": 30
+          "period": 7,
+          "sigma": 5,
+          "offset": 1.0
         }
       },
       "C1": {
         "name": "BullsBearsImpulse",
         "parameters": {
-          "ma_period": 5
+          "ma_period": 20
         }
       },
       "C2": {
-        "name": "KalmanFilter",
+        "name": "KijunSen",
         "parameters": {
-          "k": 20,
-          "sharpness": 20
+          "period": 50,
+          "shift": 4
         }
       },
       "VOLUME": {
         "name": "FantailVMA",
         "parameters": {
           "adx_length": 5,
-          "weighting": 4.0,
-          "ma_length": 9
+          "weighting": 5.5,
+          "ma_length": 8
         }
       },
       "EXIT": {
-        "name": "SuperTrend",
+        "name": "SchaffTrendCycle",
         "parameters": {
-          "period": 35,
-          "multiplier": 10
+          "period": 40,
+          "fast_ma_period": 25,
+          "slow_ma_period": 41,
+          "signal_period": 5
         }
       }
     },
     "metrics": {
-      "id": 299861,
-      "Pair_ID": 2,
-      "Strategy_ID": 238866,
-      "Timeframe": "4_hour",
-      "Data_Start_Date": "2023-05-08",
-      "Data_End_Date": "2025-05-07",
-      "Trading_Start_Date": "2023-05-29",
-      "Total_Trades": 354,
-      "Winning_Trades": 171,
-      "Gross_Profit": 9467.13,
-      "Gross_Loss": -5909.11,
-      "Net_Profit": 3007.76,
-      "Total_Return_Pct": 30.08,
-      "Win_Rate": 0.48,
-      "Profit_Factor": 1.6,
-      "Max_Drawdown": 486.95,
-      "Max_Drawdown_Pct": 3.74,
-      "Average_Trade_Duration_Minutes": 621.69,
-      "Initial_Balance": 10000.0,
-      "Final_Balance": 13007.76,
-      "Sharpe_Ratio": 0.2,
-      "Sortino_Ratio": 0.41,
-      "Calmar_Ratio": 8.04,
-      "Recovery_Factor": 6.18,
-      "Win_Loss_Ratio": 1.72,
-      "Trade_Expectancy_Pct": 0.09,
-      "Expectancy_Per_Day_Pct": 0.04,
-      "Trade_Return_Std": 0.4369,
-      "Trades_Per_Day": 0.48,
-      "Max_Consecutive_Wins": 9,
-      "Max_Consecutive_Losses": 10,
-      "Max_Margin_Required_Pct": 12.61
-    }
-  },
-  {
-    "strategy_id": 238866,
-    "pair": "CAD/JPY",
-    "score": 14.7162,
-    "timeframe": "2_hour",
-    "indicators": {
-      "ATR": {
-        "name": "ATR",
-        "parameters": {
-          "timeperiod": 14
-        }
-      },
-      "BASELINE": {
-        "name": "RecursiveMA",
-        "parameters": {
-          "period": 5,
-          "recursions": 30
-        }
-      },
-      "C1": {
-        "name": "BullsBearsImpulse",
-        "parameters": {
-          "ma_period": 5
-        }
-      },
-      "C2": {
-        "name": "KalmanFilter",
-        "parameters": {
-          "k": 20,
-          "sharpness": 20
-        }
-      },
-      "VOLUME": {
-        "name": "FantailVMA",
-        "parameters": {
-          "adx_length": 5,
-          "weighting": 4.0,
-          "ma_length": 9
-        }
-      },
-      "EXIT": {
-        "name": "SuperTrend",
-        "parameters": {
-          "period": 35,
-          "multiplier": 10
-        }
-      }
-    },
-    "metrics": {
-      "id": 299936,
-      "Pair_ID": 24,
-      "Strategy_ID": 238866,
-      "Timeframe": "2_hour",
-      "Data_Start_Date": "2023-11-07",
-      "Data_End_Date": "2025-05-07",
-      "Trading_Start_Date": "2023-11-15",
-      "Total_Trades": 547,
-      "Winning_Trades": 258,
-      "Gross_Profit": 10906.58,
-      "Gross_Loss": -7184.79,
-      "Net_Profit": 2751.23,
-      "Total_Return_Pct": 27.51,
-      "Win_Rate": 0.47,
-      "Profit_Factor": 1.52,
-      "Max_Drawdown": 459.03,
-      "Max_Drawdown_Pct": 3.82,
-      "Average_Trade_Duration_Minutes": 286.29,
-      "Initial_Balance": 10000.0,
-      "Final_Balance": 12751.23,
-      "Sharpe_Ratio": 0.17,
-      "Sortino_Ratio": 0.35,
-      "Calmar_Ratio": 7.21,
-      "Recovery_Factor": 5.99,
-      "Win_Loss_Ratio": 1.69,
-      "Trade_Expectancy_Pct": 0.06,
-      "Expectancy_Per_Day_Pct": 0.06,
-      "Trade_Return_Std": 0.3702,
-      "Trades_Per_Day": 1.0,
-      "Max_Consecutive_Wins": 7,
-      "Max_Consecutive_Losses": 7,
-      "Max_Margin_Required_Pct": 11.35
-    }
-  },
-  {
-    "strategy_id": 238866,
-    "pair": "AUD/USD",
-    "score": 13.6609,
-    "timeframe": "2_hour",
-    "indicators": {
-      "ATR": {
-        "name": "ATR",
-        "parameters": {
-          "timeperiod": 14
-        }
-      },
-      "BASELINE": {
-        "name": "RecursiveMA",
-        "parameters": {
-          "period": 5,
-          "recursions": 30
-        }
-      },
-      "C1": {
-        "name": "BullsBearsImpulse",
-        "parameters": {
-          "ma_period": 5
-        }
-      },
-      "C2": {
-        "name": "KalmanFilter",
-        "parameters": {
-          "k": 20,
-          "sharpness": 20
-        }
-      },
-      "VOLUME": {
-        "name": "FantailVMA",
-        "parameters": {
-          "adx_length": 5,
-          "weighting": 4.0,
-          "ma_length": 9
-        }
-      },
-      "EXIT": {
-        "name": "SuperTrend",
-        "parameters": {
-          "period": 35,
-          "multiplier": 10
-        }
-      }
-    },
-    "metrics": {
-      "id": 299878,
-      "Pair_ID": 5,
-      "Strategy_ID": 238866,
-      "Timeframe": "2_hour",
-      "Data_Start_Date": "2023-11-07",
-      "Data_End_Date": "2025-05-07",
-      "Trading_Start_Date": "2023-11-17",
-      "Total_Trades": 514,
-      "Winning_Trades": 251,
-      "Gross_Profit": 11117.86,
-      "Gross_Loss": -7405.13,
-      "Net_Profit": 2515.73,
-      "Total_Return_Pct": 25.16,
-      "Win_Rate": 0.49,
-      "Profit_Factor": 1.5,
-      "Max_Drawdown": 491.12,
-      "Max_Drawdown_Pct": 4.21,
-      "Average_Trade_Duration_Minutes": 306.3,
-      "Initial_Balance": 10000.0,
-      "Final_Balance": 12515.73,
-      "Sharpe_Ratio": 0.17,
-      "Sortino_Ratio": 0.36,
-      "Calmar_Ratio": 5.97,
-      "Recovery_Factor": 5.12,
-      "Win_Loss_Ratio": 1.6,
-      "Trade_Expectancy_Pct": 0.06,
-      "Expectancy_Per_Day_Pct": 0.06,
-      "Trade_Return_Std": 0.3748,
-      "Trades_Per_Day": 0.94,
-      "Max_Consecutive_Wins": 6,
-      "Max_Consecutive_Losses": 10,
-      "Max_Margin_Required_Pct": 7.74
-    }
-  },
-  {
-    "strategy_id": 238866,
-    "pair": "NZD/CHF",
-    "score": 12.884,
-    "timeframe": "4_hour",
-    "indicators": {
-      "ATR": {
-        "name": "ATR",
-        "parameters": {
-          "timeperiod": 14
-        }
-      },
-      "BASELINE": {
-        "name": "RecursiveMA",
-        "parameters": {
-          "period": 5,
-          "recursions": 30
-        }
-      },
-      "C1": {
-        "name": "BullsBearsImpulse",
-        "parameters": {
-          "ma_period": 5
-        }
-      },
-      "C2": {
-        "name": "KalmanFilter",
-        "parameters": {
-          "k": 20,
-          "sharpness": 20
-        }
-      },
-      "VOLUME": {
-        "name": "FantailVMA",
-        "parameters": {
-          "adx_length": 5,
-          "weighting": 4.0,
-          "ma_length": 9
-        }
-      },
-      "EXIT": {
-        "name": "SuperTrend",
-        "parameters": {
-          "period": 35,
-          "multiplier": 10
-        }
-      }
-    },
-    "metrics": {
-      "id": 299938,
-      "Pair_ID": 27,
-      "Strategy_ID": 238866,
+      "id": 345644,
+      "Pair_ID": 20,
+      "Strategy_ID": 265805,
       "Timeframe": "4_hour",
       "Data_Start_Date": "2023-05-08",
       "Data_End_Date": "2025-05-07",
       "Trading_Start_Date": "2023-05-25",
-      "Total_Trades": 374,
-      "Winning_Trades": 176,
-      "Gross_Profit": 6878.82,
-      "Gross_Loss": -4003.05,
-      "Net_Profit": 2261.01,
-      "Total_Return_Pct": 22.61,
-      "Win_Rate": 0.47,
-      "Profit_Factor": 1.72,
-      "Max_Drawdown": 429.31,
-      "Max_Drawdown_Pct": 3.67,
-      "Average_Trade_Duration_Minutes": 630.16,
+      "Total_Trades": 255,
+      "Winning_Trades": 127,
+      "Gross_Profit": 6423.14,
+      "Gross_Loss": -2957.89,
+      "Net_Profit": 3129.13,
+      "Total_Return_Pct": 31.29,
+      "Win_Rate": 0.5,
+      "Profit_Factor": 2.17,
+      "Max_Drawdown": 205.23,
+      "Max_Drawdown_Pct": 1.59,
+      "Average_Trade_Duration_Minutes": 832.0,
       "Initial_Balance": 10000.0,
-      "Final_Balance": 12261.01,
-      "Sharpe_Ratio": 0.21,
-      "Sortino_Ratio": 0.5,
-      "Calmar_Ratio": 6.15,
-      "Recovery_Factor": 5.27,
-      "Win_Loss_Ratio": 1.92,
-      "Trade_Expectancy_Pct": 0.07,
+      "Final_Balance": 13129.13,
+      "Sharpe_Ratio": 0.31,
+      "Sortino_Ratio": 0.82,
+      "Calmar_Ratio": 19.62,
+      "Recovery_Factor": 15.25,
+      "Win_Loss_Ratio": 2.19,
+      "Trade_Expectancy_Pct": 0.12,
       "Expectancy_Per_Day_Pct": 0.04,
-      "Trade_Return_Std": 0.331,
-      "Trades_Per_Day": 0.51,
-      "Max_Consecutive_Wins": 15,
-      "Max_Consecutive_Losses": 12,
-      "Max_Margin_Required_Pct": 4.78
+      "Trade_Return_Std": 0.381,
+      "Trades_Per_Day": 0.35,
+      "Max_Consecutive_Wins": 8,
+      "Max_Consecutive_Losses": 11,
+      "Max_Margin_Required_Pct": 5.29
     }
   },
   {
-    "strategy_id": 174048,
-    "pair": "GBP/USD",
-    "score": 12.7126,
+    "strategy_id": 241176,
+    "pair": "GBP/NZD",
+    "score": 16.7202,
     "timeframe": "4_hour",
     "indicators": {
       "ATR": {
         "name": "ATR",
         "parameters": {
-          "timeperiod": 22
+          "timeperiod": 16
+        }
+      },
+      "BASELINE": {
+        "name": "RecursiveMA",
+        "parameters": {
+          "period": 2,
+          "recursions": 30
+        }
+      },
+      "C1": {
+        "name": "BullsBearsImpulse",
+        "parameters": {
+          "ma_period": 45
+        }
+      },
+      "C2": {
+        "name": "KalmanFilter",
+        "parameters": {
+          "k": 20,
+          "sharpness": 20
+        }
+      },
+      "VOLUME": {
+        "name": "FantailVMA",
+        "parameters": {
+          "adx_length": 6,
+          "weighting": 4.0,
+          "ma_length": 5
+        }
+      },
+      "EXIT": {
+        "name": "KASE",
+        "parameters": {
+          "pstLength": 5,
+          "pstX": 5,
+          "pstSmooth": 4,
+          "smoothPeriod": 45
+        }
+      }
+    },
+    "metrics": {
+      "id": 354138,
+      "Pair_ID": 19,
+      "Strategy_ID": 241176,
+      "Timeframe": "4_hour",
+      "Data_Start_Date": "2023-05-08",
+      "Data_End_Date": "2025-05-07",
+      "Trading_Start_Date": "2023-05-29",
+      "Total_Trades": 382,
+      "Winning_Trades": 180,
+      "Gross_Profit": 8604.95,
+      "Gross_Loss": -4982.01,
+      "Net_Profit": 3224.3,
+      "Total_Return_Pct": 32.24,
+      "Win_Rate": 0.47,
+      "Profit_Factor": 1.73,
+      "Max_Drawdown": 401.82,
+      "Max_Drawdown_Pct": 3.42,
+      "Average_Trade_Duration_Minutes": 576.13,
+      "Initial_Balance": 10000.0,
+      "Final_Balance": 13224.3,
+      "Sharpe_Ratio": 0.23,
+      "Sortino_Ratio": 0.56,
+      "Calmar_Ratio": 9.42,
+      "Recovery_Factor": 8.02,
+      "Win_Loss_Ratio": 1.95,
+      "Trade_Expectancy_Pct": 0.08,
+      "Expectancy_Per_Day_Pct": 0.04,
+      "Trade_Return_Std": 0.3648,
+      "Trades_Per_Day": 0.52,
+      "Max_Consecutive_Wins": 8,
+      "Max_Consecutive_Losses": 10,
+      "Max_Margin_Required_Pct": 5.87
+    }
+  },
+  {
+    "strategy_id": 221533,
+    "pair": "NZD/CHF",
+    "score": 15.7172,
+    "timeframe": "4_hour",
+    "indicators": {
+      "ATR": {
+        "name": "FilteredATR",
+        "parameters": {
+          "period": 30,
+          "ma_period": 24,
+          "ma_shift": -2
         }
       },
       "BASELINE": {
@@ -853,396 +690,838 @@
       "C1": {
         "name": "BullsBearsImpulse",
         "parameters": {
-          "ma_period": 15
+          "ma_period": 40
         }
       },
       "C2": {
-        "name": "GruchaIndex",
+        "name": "MACDEXT",
         "parameters": {
-          "period": 40,
-          "ma_period": 30
-        }
-      },
-      "VOLUME": {
-        "name": "FantailVMA",
-        "parameters": {
-          "adx_length": 3,
-          "weighting": 1.5,
-          "ma_length": 6
-        }
-      },
-      "EXIT": {
-        "name": "AROON",
-        "parameters": {
-          "timeperiod": 22
-        }
-      }
-    },
-    "metrics": {
-      "id": 212022,
-      "Pair_ID": 3,
-      "Strategy_ID": 174048,
-      "Timeframe": "4_hour",
-      "Data_Start_Date": "2023-05-08",
-      "Data_End_Date": "2025-05-07",
-      "Trading_Start_Date": "2023-05-29",
-      "Total_Trades": 135,
-      "Winning_Trades": 78,
-      "Gross_Profit": 4278.01,
-      "Gross_Loss": -1935.57,
-      "Net_Profit": 2170.36,
-      "Total_Return_Pct": 21.7,
-      "Win_Rate": 0.58,
-      "Profit_Factor": 2.21,
-      "Max_Drawdown": 210.86,
-      "Max_Drawdown_Pct": 1.96,
-      "Average_Trade_Duration_Minutes": 670.22,
-      "Initial_Balance": 10000.0,
-      "Final_Balance": 12170.36,
-      "Sharpe_Ratio": 0.36,
-      "Sortino_Ratio": 0.79,
-      "Calmar_Ratio": 11.08,
-      "Recovery_Factor": 10.29,
-      "Win_Loss_Ratio": 1.61,
-      "Trade_Expectancy_Pct": 0.16,
-      "Expectancy_Per_Day_Pct": 0.03,
-      "Trade_Return_Std": 0.445,
-      "Trades_Per_Day": 0.18,
-      "Max_Consecutive_Wins": 7,
-      "Max_Consecutive_Losses": 6,
-      "Max_Margin_Required_Pct": 7.27
-    }
-  },
-  {
-    "strategy_id": 178629,
-    "pair": "EUR/USD",
-    "score": 12.151,
-    "timeframe": "4_hour",
-    "indicators": {
-      "ATR": {
-        "name": "ATR",
-        "parameters": {
-          "timeperiod": 24
-        }
-      },
-      "BASELINE": {
-        "name": "RecursiveMA",
-        "parameters": {
-          "period": 3,
-          "recursions": 30
-        }
-      },
-      "C1": {
-        "name": "MACDZeroLag",
-        "parameters": {
-          "short_period": 19,
-          "long_period": 24,
-          "signal_period": 7
-        }
-      },
-      "C2": {
-        "name": "BullsBearsImpulse",
-        "parameters": {
-          "ma_period": 10
+          "fastperiod": 11,
+          "fastmatype": 5,
+          "slowperiod": 18,
+          "slowmatype": 4,
+          "signalperiod": 10,
+          "signalmatype": 0
         }
       },
       "VOLUME": {
         "name": "FantailVMA",
         "parameters": {
           "adx_length": 4,
-          "weighting": 2.5,
+          "weighting": 5.5,
           "ma_length": 5
         }
       },
       "EXIT": {
-        "name": "TDFI",
+        "name": "APO",
         "parameters": {
-          "period": 28
+          "fastperiod": 14,
+          "slowperiod": 24,
+          "matype": 4
         }
       }
     },
     "metrics": {
-      "id": 321339,
-      "Pair_ID": 1,
-      "Strategy_ID": 178629,
-      "Timeframe": "4_hour",
-      "Data_Start_Date": "2023-05-08",
-      "Data_End_Date": "2025-05-07",
-      "Trading_Start_Date": "2023-05-29",
-      "Total_Trades": 210,
-      "Winning_Trades": 101,
-      "Gross_Profit": 5308.11,
-      "Gross_Loss": -2907.85,
-      "Net_Profit": 2065.94,
-      "Total_Return_Pct": 20.66,
-      "Win_Rate": 0.48,
-      "Profit_Factor": 1.83,
-      "Max_Drawdown": 321.27,
-      "Max_Drawdown_Pct": 3.18,
-      "Average_Trade_Duration_Minutes": 760.0,
-      "Initial_Balance": 10000.0,
-      "Final_Balance": 12065.94,
-      "Sharpe_Ratio": 0.26,
-      "Sortino_Ratio": 0.65,
-      "Calmar_Ratio": 6.51,
-      "Recovery_Factor": 6.43,
-      "Win_Loss_Ratio": 1.96,
-      "Trade_Expectancy_Pct": 0.11,
-      "Expectancy_Per_Day_Pct": 0.03,
-      "Trade_Return_Std": 0.4113,
-      "Trades_Per_Day": 0.29,
-      "Max_Consecutive_Wins": 5,
-      "Max_Consecutive_Losses": 10,
-      "Max_Margin_Required_Pct": 8.06
-    }
-  },
-  {
-    "strategy_id": 238866,
-    "pair": "EUR/CAD",
-    "score": 11.9729,
-    "timeframe": "1_day",
-    "indicators": {
-      "ATR": {
-        "name": "ATR",
-        "parameters": {
-          "timeperiod": 14
-        }
-      },
-      "BASELINE": {
-        "name": "RecursiveMA",
-        "parameters": {
-          "period": 5,
-          "recursions": 30
-        }
-      },
-      "C1": {
-        "name": "BullsBearsImpulse",
-        "parameters": {
-          "ma_period": 5
-        }
-      },
-      "C2": {
-        "name": "KalmanFilter",
-        "parameters": {
-          "k": 20,
-          "sharpness": 20
-        }
-      },
-      "VOLUME": {
-        "name": "FantailVMA",
-        "parameters": {
-          "adx_length": 5,
-          "weighting": 4.0,
-          "ma_length": 9
-        }
-      },
-      "EXIT": {
-        "name": "SuperTrend",
-        "parameters": {
-          "period": 35,
-          "multiplier": 10
-        }
-      }
-    },
-    "metrics": {
-      "id": 299882,
-      "Pair_ID": 13,
-      "Strategy_ID": 238866,
-      "Timeframe": "1_day",
-      "Data_Start_Date": "2022-05-08",
-      "Data_End_Date": "2025-05-07",
-      "Trading_Start_Date": "2022-08-23",
-      "Total_Trades": 89,
-      "Winning_Trades": 56,
-      "Gross_Profit": 2771.8,
-      "Gross_Loss": -885.29,
-      "Net_Profit": 1824.83,
-      "Total_Return_Pct": 18.25,
-      "Win_Rate": 0.63,
-      "Profit_Factor": 3.13,
-      "Max_Drawdown": 114.02,
-      "Max_Drawdown_Pct": 1.03,
-      "Average_Trade_Duration_Minutes": 3511.01,
-      "Initial_Balance": 10000.0,
-      "Final_Balance": 11824.83,
-      "Sharpe_Ratio": 0.48,
-      "Sortino_Ratio": 1.1,
-      "Calmar_Ratio": 17.79,
-      "Recovery_Factor": 16.0,
-      "Win_Loss_Ratio": 1.86,
-      "Trade_Expectancy_Pct": 0.2,
-      "Expectancy_Per_Day_Pct": 0.02,
-      "Trade_Return_Std": 0.4073,
-      "Trades_Per_Day": 0.08,
-      "Max_Consecutive_Wins": 5,
-      "Max_Consecutive_Losses": 4,
-      "Max_Margin_Required_Pct": 3.82
-    }
-  },
-  {
-    "strategy_id": 238866,
-    "pair": "EUR/NZD",
-    "score": 11.7161,
-    "timeframe": "4_hour",
-    "indicators": {
-      "ATR": {
-        "name": "ATR",
-        "parameters": {
-          "timeperiod": 14
-        }
-      },
-      "BASELINE": {
-        "name": "RecursiveMA",
-        "parameters": {
-          "period": 5,
-          "recursions": 30
-        }
-      },
-      "C1": {
-        "name": "BullsBearsImpulse",
-        "parameters": {
-          "ma_period": 5
-        }
-      },
-      "C2": {
-        "name": "KalmanFilter",
-        "parameters": {
-          "k": 20,
-          "sharpness": 20
-        }
-      },
-      "VOLUME": {
-        "name": "FantailVMA",
-        "parameters": {
-          "adx_length": 5,
-          "weighting": 4.0,
-          "ma_length": 9
-        }
-      },
-      "EXIT": {
-        "name": "SuperTrend",
-        "parameters": {
-          "period": 35,
-          "multiplier": 10
-        }
-      }
-    },
-    "metrics": {
-      "id": 299900,
-      "Pair_ID": 14,
-      "Strategy_ID": 238866,
-      "Timeframe": "4_hour",
-      "Data_Start_Date": "2023-05-08",
-      "Data_End_Date": "2025-05-07",
-      "Trading_Start_Date": "2023-05-29",
-      "Total_Trades": 347,
-      "Winning_Trades": 166,
-      "Gross_Profit": 7113.02,
-      "Gross_Loss": -4686.58,
-      "Net_Profit": 2028.22,
-      "Total_Return_Pct": 20.28,
-      "Win_Rate": 0.48,
-      "Profit_Factor": 1.52,
-      "Max_Drawdown": 399.87,
-      "Max_Drawdown_Pct": 3.55,
-      "Average_Trade_Duration_Minutes": 612.1,
-      "Initial_Balance": 10000.0,
-      "Final_Balance": 12028.22,
-      "Sharpe_Ratio": 0.17,
-      "Sortino_Ratio": 0.4,
-      "Calmar_Ratio": 5.71,
-      "Recovery_Factor": 5.07,
-      "Win_Loss_Ratio": 1.69,
-      "Trade_Expectancy_Pct": 0.07,
-      "Expectancy_Per_Day_Pct": 0.03,
-      "Trade_Return_Std": 0.3686,
-      "Trades_Per_Day": 0.47,
-      "Max_Consecutive_Wins": 7,
-      "Max_Consecutive_Losses": 8,
-      "Max_Margin_Required_Pct": 5.68
-    }
-  },
-  {
-    "strategy_id": 238866,
-    "pair": "GBP/AUD",
-    "score": 11.6845,
-    "timeframe": "4_hour",
-    "indicators": {
-      "ATR": {
-        "name": "ATR",
-        "parameters": {
-          "timeperiod": 14
-        }
-      },
-      "BASELINE": {
-        "name": "RecursiveMA",
-        "parameters": {
-          "period": 5,
-          "recursions": 30
-        }
-      },
-      "C1": {
-        "name": "BullsBearsImpulse",
-        "parameters": {
-          "ma_period": 5
-        }
-      },
-      "C2": {
-        "name": "KalmanFilter",
-        "parameters": {
-          "k": 20,
-          "sharpness": 20
-        }
-      },
-      "VOLUME": {
-        "name": "FantailVMA",
-        "parameters": {
-          "adx_length": 5,
-          "weighting": 4.0,
-          "ma_length": 9
-        }
-      },
-      "EXIT": {
-        "name": "SuperTrend",
-        "parameters": {
-          "period": 35,
-          "multiplier": 10
-        }
-      }
-    },
-    "metrics": {
-      "id": 299910,
-      "Pair_ID": 17,
-      "Strategy_ID": 238866,
+      "id": 357485,
+      "Pair_ID": 27,
+      "Strategy_ID": 221533,
       "Timeframe": "4_hour",
       "Data_Start_Date": "2023-05-08",
       "Data_End_Date": "2025-05-07",
       "Trading_Start_Date": "2023-05-25",
-      "Total_Trades": 392,
-      "Winning_Trades": 176,
-      "Gross_Profit": 6907.95,
-      "Gross_Loss": -4605.13,
-      "Net_Profit": 1993.4,
-      "Total_Return_Pct": 19.93,
-      "Win_Rate": 0.45,
-      "Profit_Factor": 1.5,
-      "Max_Drawdown": 395.86,
-      "Max_Drawdown_Pct": 3.49,
-      "Average_Trade_Duration_Minutes": 562.65,
+      "Total_Trades": 152,
+      "Winning_Trades": 91,
+      "Gross_Profit": 4610.89,
+      "Gross_Loss": -1583.37,
+      "Net_Profit": 2763.22,
+      "Total_Return_Pct": 27.63,
+      "Win_Rate": 0.6,
+      "Profit_Factor": 2.91,
+      "Max_Drawdown": 219.74,
+      "Max_Drawdown_Pct": 1.78,
+      "Average_Trade_Duration_Minutes": 1043.68,
       "Initial_Balance": 10000.0,
-      "Final_Balance": 11993.4,
-      "Sharpe_Ratio": 0.16,
-      "Sortino_Ratio": 0.26,
-      "Calmar_Ratio": 5.72,
-      "Recovery_Factor": 5.04,
-      "Win_Loss_Ratio": 1.87,
-      "Trade_Expectancy_Pct": 0.06,
+      "Final_Balance": 12763.22,
+      "Sharpe_Ratio": 0.46,
+      "Sortino_Ratio": 1.24,
+      "Calmar_Ratio": 15.53,
+      "Recovery_Factor": 12.57,
+      "Win_Loss_Ratio": 1.99,
+      "Trade_Expectancy_Pct": 0.18,
+      "Expectancy_Per_Day_Pct": 0.04,
+      "Trade_Return_Std": 0.382,
+      "Trades_Per_Day": 0.21,
+      "Max_Consecutive_Wins": 9,
+      "Max_Consecutive_Losses": 5,
+      "Max_Margin_Required_Pct": 4.48
+    }
+  },
+  {
+    "strategy_id": 221533,
+    "pair": "AUD/USD",
+    "score": 15.5938,
+    "timeframe": "2_hour",
+    "indicators": {
+      "ATR": {
+        "name": "FilteredATR",
+        "parameters": {
+          "period": 30,
+          "ma_period": 24,
+          "ma_shift": -2
+        }
+      },
+      "BASELINE": {
+        "name": "HMA",
+        "parameters": {
+          "period": 9
+        }
+      },
+      "C1": {
+        "name": "BullsBearsImpulse",
+        "parameters": {
+          "ma_period": 40
+        }
+      },
+      "C2": {
+        "name": "MACDEXT",
+        "parameters": {
+          "fastperiod": 11,
+          "fastmatype": 5,
+          "slowperiod": 18,
+          "slowmatype": 4,
+          "signalperiod": 10,
+          "signalmatype": 0
+        }
+      },
+      "VOLUME": {
+        "name": "FantailVMA",
+        "parameters": {
+          "adx_length": 4,
+          "weighting": 5.5,
+          "ma_length": 5
+        }
+      },
+      "EXIT": {
+        "name": "APO",
+        "parameters": {
+          "fastperiod": 14,
+          "slowperiod": 24,
+          "matype": 4
+        }
+      }
+    },
+    "metrics": {
+      "id": 357421,
+      "Pair_ID": 5,
+      "Strategy_ID": 221533,
+      "Timeframe": "2_hour",
+      "Data_Start_Date": "2023-11-07",
+      "Data_End_Date": "2025-05-07",
+      "Trading_Start_Date": "2023-11-17",
+      "Total_Trades": 207,
+      "Winning_Trades": 131,
+      "Gross_Profit": 6283.62,
+      "Gross_Loss": -2877.38,
+      "Net_Profit": 2943.88,
+      "Total_Return_Pct": 29.44,
+      "Win_Rate": 0.63,
+      "Profit_Factor": 2.18,
+      "Max_Drawdown": 336.61,
+      "Max_Drawdown_Pct": 3.0,
+      "Average_Trade_Duration_Minutes": 528.7,
+      "Initial_Balance": 10000.0,
+      "Final_Balance": 12943.88,
+      "Sharpe_Ratio": 0.34,
+      "Sortino_Ratio": 0.56,
+      "Calmar_Ratio": 9.81,
+      "Recovery_Factor": 8.75,
+      "Win_Loss_Ratio": 1.28,
+      "Trade_Expectancy_Pct": 0.15,
+      "Expectancy_Per_Day_Pct": 0.06,
+      "Trade_Return_Std": 0.4339,
+      "Trades_Per_Day": 0.38,
+      "Max_Consecutive_Wins": 12,
+      "Max_Consecutive_Losses": 6,
+      "Max_Margin_Required_Pct": 6.56
+    }
+  },
+  {
+    "strategy_id": 181734,
+    "pair": "EUR/USD",
+    "score": 14.2551,
+    "timeframe": "4_hour",
+    "indicators": {
+      "ATR": {
+        "name": "ATR",
+        "parameters": {
+          "timeperiod": 26
+        }
+      },
+      "BASELINE": {
+        "name": "ALMA",
+        "parameters": {
+          "period": 5,
+          "sigma": 9,
+          "offset": 0.5
+        }
+      },
+      "C1": {
+        "name": "MACDZeroLag",
+        "parameters": {
+          "short_period": 7,
+          "long_period": 24,
+          "signal_period": 14
+        }
+      },
+      "C2": {
+        "name": "BullsBearsImpulse",
+        "parameters": {
+          "ma_period": 20
+        }
+      },
+      "VOLUME": {
+        "name": "FantailVMA",
+        "parameters": {
+          "adx_length": 2,
+          "weighting": 3.5,
+          "ma_length": 7
+        }
+      },
+      "EXIT": {
+        "name": "Laguerre",
+        "parameters": {
+          "gamma": 0.4
+        }
+      }
+    },
+    "metrics": {
+      "id": 353153,
+      "Pair_ID": 1,
+      "Strategy_ID": 181734,
+      "Timeframe": "4_hour",
+      "Data_Start_Date": "2023-05-08",
+      "Data_End_Date": "2025-05-07",
+      "Trading_Start_Date": "2023-05-29",
+      "Total_Trades": 138,
+      "Winning_Trades": 86,
+      "Gross_Profit": 4687.99,
+      "Gross_Loss": -1914.49,
+      "Net_Profit": 2545.56,
+      "Total_Return_Pct": 25.46,
+      "Win_Rate": 0.62,
+      "Profit_Factor": 2.45,
+      "Max_Drawdown": 231.98,
+      "Max_Drawdown_Pct": 1.99,
+      "Average_Trade_Duration_Minutes": 911.3,
+      "Initial_Balance": 10000.0,
+      "Final_Balance": 12545.56,
+      "Sharpe_Ratio": 0.39,
+      "Sortino_Ratio": 0.66,
+      "Calmar_Ratio": 12.82,
+      "Recovery_Factor": 10.97,
+      "Win_Loss_Ratio": 1.46,
+      "Trade_Expectancy_Pct": 0.18,
       "Expectancy_Per_Day_Pct": 0.03,
-      "Trade_Return_Std": 0.3461,
-      "Trades_Per_Day": 0.54,
+      "Trade_Return_Std": 0.4637,
+      "Trades_Per_Day": 0.19,
+      "Max_Consecutive_Wins": 7,
+      "Max_Consecutive_Losses": 4,
+      "Max_Margin_Required_Pct": 7.84
+    }
+  },
+  {
+    "strategy_id": 181734,
+    "pair": "GBP/USD",
+    "score": 13.914,
+    "timeframe": "4_hour",
+    "indicators": {
+      "ATR": {
+        "name": "ATR",
+        "parameters": {
+          "timeperiod": 26
+        }
+      },
+      "BASELINE": {
+        "name": "ALMA",
+        "parameters": {
+          "period": 5,
+          "sigma": 9,
+          "offset": 0.5
+        }
+      },
+      "C1": {
+        "name": "MACDZeroLag",
+        "parameters": {
+          "short_period": 7,
+          "long_period": 24,
+          "signal_period": 14
+        }
+      },
+      "C2": {
+        "name": "BullsBearsImpulse",
+        "parameters": {
+          "ma_period": 20
+        }
+      },
+      "VOLUME": {
+        "name": "FantailVMA",
+        "parameters": {
+          "adx_length": 2,
+          "weighting": 3.5,
+          "ma_length": 7
+        }
+      },
+      "EXIT": {
+        "name": "Laguerre",
+        "parameters": {
+          "gamma": 0.4
+        }
+      }
+    },
+    "metrics": {
+      "id": 353158,
+      "Pair_ID": 3,
+      "Strategy_ID": 181734,
+      "Timeframe": "4_hour",
+      "Data_Start_Date": "2023-05-08",
+      "Data_End_Date": "2025-05-07",
+      "Trading_Start_Date": "2023-05-29",
+      "Total_Trades": 126,
+      "Winning_Trades": 77,
+      "Gross_Profit": 4421.43,
+      "Gross_Loss": -1798.78,
+      "Net_Profit": 2461.85,
+      "Total_Return_Pct": 24.62,
+      "Win_Rate": 0.61,
+      "Profit_Factor": 2.46,
+      "Max_Drawdown": 254.09,
+      "Max_Drawdown_Pct": 2.47,
+      "Average_Trade_Duration_Minutes": 780.95,
+      "Initial_Balance": 10000.0,
+      "Final_Balance": 12461.85,
+      "Sharpe_Ratio": 0.41,
+      "Sortino_Ratio": 1.06,
+      "Calmar_Ratio": 9.96,
+      "Recovery_Factor": 9.69,
+      "Win_Loss_Ratio": 1.54,
+      "Trade_Expectancy_Pct": 0.19,
+      "Expectancy_Per_Day_Pct": 0.03,
+      "Trade_Return_Std": 0.4567,
+      "Trades_Per_Day": 0.17,
       "Max_Consecutive_Wins": 6,
-      "Max_Consecutive_Losses": 10,
-      "Max_Margin_Required_Pct": 5.81
+      "Max_Consecutive_Losses": 6,
+      "Max_Margin_Required_Pct": 7.21
+    }
+  },
+  {
+    "strategy_id": 181749,
+    "pair": "GBP/AUD",
+    "score": 13.5795,
+    "timeframe": "4_hour",
+    "indicators": {
+      "ATR": {
+        "name": "ATR",
+        "parameters": {
+          "timeperiod": 26
+        }
+      },
+      "BASELINE": {
+        "name": "ALMA",
+        "parameters": {
+          "period": 5,
+          "sigma": 5,
+          "offset": 0.5
+        }
+      },
+      "C1": {
+        "name": "MACDZeroLag",
+        "parameters": {
+          "short_period": 7,
+          "long_period": 24,
+          "signal_period": 14
+        }
+      },
+      "C2": {
+        "name": "BullsBearsImpulse",
+        "parameters": {
+          "ma_period": 20
+        }
+      },
+      "VOLUME": {
+        "name": "FantailVMA",
+        "parameters": {
+          "adx_length": 9,
+          "weighting": 3.5,
+          "ma_length": 7
+        }
+      },
+      "EXIT": {
+        "name": "Laguerre",
+        "parameters": {
+          "gamma": 0.1
+        }
+      }
+    },
+    "metrics": {
+      "id": 353407,
+      "Pair_ID": 17,
+      "Strategy_ID": 181749,
+      "Timeframe": "4_hour",
+      "Data_Start_Date": "2023-05-08",
+      "Data_End_Date": "2025-05-07",
+      "Trading_Start_Date": "2023-05-25",
+      "Total_Trades": 172,
+      "Winning_Trades": 88,
+      "Gross_Profit": 4290.94,
+      "Gross_Loss": -1840.59,
+      "Net_Profit": 2309.65,
+      "Total_Return_Pct": 23.1,
+      "Win_Rate": 0.51,
+      "Profit_Factor": 2.33,
+      "Max_Drawdown": 325.17,
+      "Max_Drawdown_Pct": 2.84,
+      "Average_Trade_Duration_Minutes": 793.95,
+      "Initial_Balance": 10000.0,
+      "Final_Balance": 12309.65,
+      "Sharpe_Ratio": 0.34,
+      "Sortino_Ratio": 0.89,
+      "Calmar_Ratio": 8.14,
+      "Recovery_Factor": 7.1,
+      "Win_Loss_Ratio": 2.27,
+      "Trade_Expectancy_Pct": 0.13,
+      "Expectancy_Per_Day_Pct": 0.03,
+      "Trade_Return_Std": 0.3733,
+      "Trades_Per_Day": 0.24,
+      "Max_Consecutive_Wins": 10,
+      "Max_Consecutive_Losses": 7,
+      "Max_Margin_Required_Pct": 5.14
+    }
+  },
+  {
+    "strategy_id": 271881,
+    "pair": "EUR/NZD",
+    "score": 13.1901,
+    "timeframe": "4_hour",
+    "indicators": {
+      "ATR": {
+        "name": "ATR",
+        "parameters": {
+          "timeperiod": 18
+        }
+      },
+      "BASELINE": {
+        "name": "McGinleyDI",
+        "parameters": {
+          "period": 3,
+          "mcg_constant": 6
+        }
+      },
+      "C1": {
+        "name": "BullsBearsImpulse",
+        "parameters": {
+          "ma_period": 45
+        }
+      },
+      "C2": {
+        "name": "KalmanFilter",
+        "parameters": {
+          "k": 20,
+          "sharpness": 20
+        }
+      },
+      "VOLUME": {
+        "name": "FantailVMA",
+        "parameters": {
+          "adx_length": 3,
+          "weighting": 5.5,
+          "ma_length": 1
+        }
+      },
+      "EXIT": {
+        "name": "HalfTrend",
+        "parameters": {
+          "amplitude": 4
+        }
+      }
+    },
+    "metrics": {
+      "id": 354958,
+      "Pair_ID": 14,
+      "Strategy_ID": 271881,
+      "Timeframe": "4_hour",
+      "Data_Start_Date": "2023-05-08",
+      "Data_End_Date": "2025-05-07",
+      "Trading_Start_Date": "2023-05-29",
+      "Total_Trades": 228,
+      "Winning_Trades": 117,
+      "Gross_Profit": 5929.78,
+      "Gross_Loss": -3322.93,
+      "Net_Profit": 2351.07,
+      "Total_Return_Pct": 23.51,
+      "Win_Rate": 0.51,
+      "Profit_Factor": 1.78,
+      "Max_Drawdown": 298.77,
+      "Max_Drawdown_Pct": 2.76,
+      "Average_Trade_Duration_Minutes": 924.21,
+      "Initial_Balance": 10000.0,
+      "Final_Balance": 12351.07,
+      "Sharpe_Ratio": 0.24,
+      "Sortino_Ratio": 0.53,
+      "Calmar_Ratio": 8.51,
+      "Recovery_Factor": 7.87,
+      "Win_Loss_Ratio": 1.72,
+      "Trade_Expectancy_Pct": 0.11,
+      "Expectancy_Per_Day_Pct": 0.03,
+      "Trade_Return_Std": 0.4304,
+      "Trades_Per_Day": 0.31,
+      "Max_Consecutive_Wins": 7,
+      "Max_Consecutive_Losses": 6,
+      "Max_Margin_Required_Pct": 5.53
+    }
+  },
+  {
+    "strategy_id": 265954,
+    "pair": "AUD/CAD",
+    "score": 12.8922,
+    "timeframe": "2_hour",
+    "indicators": {
+      "ATR": {
+        "name": "FilteredATR",
+        "parameters": {
+          "period": 38,
+          "ma_period": 38,
+          "ma_shift": -2
+        }
+      },
+      "BASELINE": {
+        "name": "HMA",
+        "parameters": {
+          "period": 19
+        }
+      },
+      "C1": {
+        "name": "BullsBearsImpulse",
+        "parameters": {
+          "ma_period": 35
+        }
+      },
+      "C2": {
+        "name": "HalfTrend",
+        "parameters": {
+          "amplitude": 10
+        }
+      },
+      "VOLUME": {
+        "name": "FantailVMA",
+        "parameters": {
+          "adx_length": 3,
+          "weighting": 5.0,
+          "ma_length": 5
+        }
+      },
+      "EXIT": {
+        "name": "BullsBearsImpulse",
+        "parameters": {
+          "ma_period": 35
+        }
+      }
+    },
+    "metrics": {
+      "id": 354465,
+      "Pair_ID": 22,
+      "Strategy_ID": 265954,
+      "Timeframe": "2_hour",
+      "Data_Start_Date": "2023-11-07",
+      "Data_End_Date": "2025-05-07",
+      "Trading_Start_Date": "2023-11-17",
+      "Total_Trades": 139,
+      "Winning_Trades": 83,
+      "Gross_Profit": 4664.67,
+      "Gross_Loss": -2081.34,
+      "Net_Profit": 2208.03,
+      "Total_Return_Pct": 22.08,
+      "Win_Rate": 0.6,
+      "Profit_Factor": 2.24,
+      "Max_Drawdown": 184.0,
+      "Max_Drawdown_Pct": 1.72,
+      "Average_Trade_Duration_Minutes": 587.05,
+      "Initial_Balance": 10000.0,
+      "Final_Balance": 12208.03,
+      "Sharpe_Ratio": 0.37,
+      "Sortino_Ratio": 0.84,
+      "Calmar_Ratio": 12.84,
+      "Recovery_Factor": 12.0,
+      "Win_Loss_Ratio": 1.51,
+      "Trade_Expectancy_Pct": 0.17,
+      "Expectancy_Per_Day_Pct": 0.04,
+      "Trade_Return_Std": 0.4613,
+      "Trades_Per_Day": 0.25,
+      "Max_Consecutive_Wins": 8,
+      "Max_Consecutive_Losses": 5,
+      "Max_Margin_Required_Pct": 7.17
+    }
+  },
+  {
+    "strategy_id": 267046,
+    "pair": "EUR/CAD",
+    "score": 12.2047,
+    "timeframe": "1_day",
+    "indicators": {
+      "ATR": {
+        "name": "FilteredATR",
+        "parameters": {
+          "period": 26,
+          "ma_period": 34,
+          "ma_shift": 0
+        }
+      },
+      "BASELINE": {
+        "name": "RecursiveMA",
+        "parameters": {
+          "period": 4,
+          "recursions": 30
+        }
+      },
+      "C1": {
+        "name": "Fisher",
+        "parameters": {
+          "range_periods": 5,
+          "price_smoothing": 0.9,
+          "index_smoothing": 0.2
+        }
+      },
+      "C2": {
+        "name": "BullsBearsImpulse",
+        "parameters": {
+          "ma_period": 20
+        }
+      },
+      "VOLUME": {
+        "name": "FantailVMA",
+        "parameters": {
+          "adx_length": 9,
+          "weighting": 5.0,
+          "ma_length": 10
+        }
+      },
+      "EXIT": {
+        "name": "UF2018",
+        "parameters": {
+          "period": 50
+        }
+      }
+    },
+    "metrics": {
+      "id": 362422,
+      "Pair_ID": 13,
+      "Strategy_ID": 267046,
+      "Timeframe": "1_day",
+      "Data_Start_Date": "2022-05-08",
+      "Data_End_Date": "2025-05-07",
+      "Trading_Start_Date": "2022-08-23",
+      "Total_Trades": 63,
+      "Winning_Trades": 42,
+      "Gross_Profit": 2365.36,
+      "Gross_Loss": -584.61,
+      "Net_Profit": 1736.41,
+      "Total_Return_Pct": 17.36,
+      "Win_Rate": 0.67,
+      "Profit_Factor": 4.05,
+      "Max_Drawdown": 115.75,
+      "Max_Drawdown_Pct": 0.98,
+      "Average_Trade_Duration_Minutes": 3817.14,
+      "Initial_Balance": 10000.0,
+      "Final_Balance": 11736.41,
+      "Sharpe_Ratio": 0.64,
+      "Sortino_Ratio": 1.56,
+      "Calmar_Ratio": 17.77,
+      "Recovery_Factor": 15.0,
+      "Win_Loss_Ratio": 2.07,
+      "Trade_Expectancy_Pct": 0.26,
+      "Expectancy_Per_Day_Pct": 0.02,
+      "Trade_Return_Std": 0.4116,
+      "Trades_Per_Day": 0.06,
+      "Max_Consecutive_Wins": 6,
+      "Max_Consecutive_Losses": 3,
+      "Max_Margin_Required_Pct": 3.52
+    }
+  },
+  {
+    "strategy_id": 221533,
+    "pair": "USD/CHF",
+    "score": 11.5047,
+    "timeframe": "4_hour",
+    "indicators": {
+      "ATR": {
+        "name": "FilteredATR",
+        "parameters": {
+          "period": 30,
+          "ma_period": 24,
+          "ma_shift": -2
+        }
+      },
+      "BASELINE": {
+        "name": "HMA",
+        "parameters": {
+          "period": 9
+        }
+      },
+      "C1": {
+        "name": "BullsBearsImpulse",
+        "parameters": {
+          "ma_period": 40
+        }
+      },
+      "C2": {
+        "name": "MACDEXT",
+        "parameters": {
+          "fastperiod": 11,
+          "fastmatype": 5,
+          "slowperiod": 18,
+          "slowmatype": 4,
+          "signalperiod": 10,
+          "signalmatype": 0
+        }
+      },
+      "VOLUME": {
+        "name": "FantailVMA",
+        "parameters": {
+          "adx_length": 4,
+          "weighting": 5.5,
+          "ma_length": 5
+        }
+      },
+      "EXIT": {
+        "name": "APO",
+        "parameters": {
+          "fastperiod": 14,
+          "slowperiod": 24,
+          "matype": 4
+        }
+      }
+    },
+    "metrics": {
+      "id": 357414,
+      "Pair_ID": 4,
+      "Strategy_ID": 221533,
+      "Timeframe": "4_hour",
+      "Data_Start_Date": "2023-05-08",
+      "Data_End_Date": "2025-05-07",
+      "Trading_Start_Date": "2023-05-25",
+      "Total_Trades": 143,
+      "Winning_Trades": 84,
+      "Gross_Profit": 4311.33,
+      "Gross_Loss": -2125.94,
+      "Net_Profit": 1972.27,
+      "Total_Return_Pct": 19.72,
+      "Win_Rate": 0.59,
+      "Profit_Factor": 2.03,
+      "Max_Drawdown": 410.42,
+      "Max_Drawdown_Pct": 3.87,
+      "Average_Trade_Duration_Minutes": 919.72,
+      "Initial_Balance": 10000.0,
+      "Final_Balance": 11972.27,
+      "Sharpe_Ratio": 0.3,
+      "Sortino_Ratio": 0.52,
+      "Calmar_Ratio": 5.09,
+      "Recovery_Factor": 4.81,
+      "Win_Loss_Ratio": 1.43,
+      "Trade_Expectancy_Pct": 0.14,
+      "Expectancy_Per_Day_Pct": 0.03,
+      "Trade_Return_Std": 0.4631,
+      "Trades_Per_Day": 0.2,
+      "Max_Consecutive_Wins": 11,
+      "Max_Consecutive_Losses": 8,
+      "Max_Margin_Required_Pct": 6.7
+    }
+  },
+  {
+    "strategy_id": 221533,
+    "pair": "AUD/CHF",
+    "score": 10.8576,
+    "timeframe": "4_hour",
+    "indicators": {
+      "ATR": {
+        "name": "FilteredATR",
+        "parameters": {
+          "period": 30,
+          "ma_period": 24,
+          "ma_shift": -2
+        }
+      },
+      "BASELINE": {
+        "name": "HMA",
+        "parameters": {
+          "period": 9
+        }
+      },
+      "C1": {
+        "name": "BullsBearsImpulse",
+        "parameters": {
+          "ma_period": 40
+        }
+      },
+      "C2": {
+        "name": "MACDEXT",
+        "parameters": {
+          "fastperiod": 11,
+          "fastmatype": 5,
+          "slowperiod": 18,
+          "slowmatype": 4,
+          "signalperiod": 10,
+          "signalmatype": 0
+        }
+      },
+      "VOLUME": {
+        "name": "FantailVMA",
+        "parameters": {
+          "adx_length": 4,
+          "weighting": 5.5,
+          "ma_length": 5
+        }
+      },
+      "EXIT": {
+        "name": "APO",
+        "parameters": {
+          "fastperiod": 14,
+          "slowperiod": 24,
+          "matype": 4
+        }
+      }
+    },
+    "metrics": {
+      "id": 357469,
+      "Pair_ID": 21,
+      "Strategy_ID": 221533,
+      "Timeframe": "4_hour",
+      "Data_Start_Date": "2023-05-08",
+      "Data_End_Date": "2025-05-07",
+      "Trading_Start_Date": "2023-05-29",
+      "Total_Trades": 150,
+      "Winning_Trades": 85,
+      "Gross_Profit": 3787.4,
+      "Gross_Loss": -1840.31,
+      "Net_Profit": 1737.39,
+      "Total_Return_Pct": 17.37,
+      "Win_Rate": 0.57,
+      "Profit_Factor": 2.06,
+      "Max_Drawdown": 232.74,
+      "Max_Drawdown_Pct": 1.96,
+      "Average_Trade_Duration_Minutes": 1019.2,
+      "Initial_Balance": 10000.0,
+      "Final_Balance": 11737.39,
+      "Sharpe_Ratio": 0.3,
+      "Sortino_Ratio": 0.53,
+      "Calmar_Ratio": 8.87,
+      "Recovery_Factor": 7.46,
+      "Win_Loss_Ratio": 1.57,
+      "Trade_Expectancy_Pct": 0.12,
+      "Expectancy_Per_Day_Pct": 0.02,
+      "Trade_Return_Std": 0.4007,
+      "Trades_Per_Day": 0.21,
+      "Max_Consecutive_Wins": 9,
+      "Max_Consecutive_Losses": 5,
+      "Max_Margin_Required_Pct": 3.95
     }
   },
   {
@@ -1509,268 +1788,263 @@
     }
   },
   {
-    "strategy_id": 153079,
-    "pair": "AUD/CAD",
-    "score": 10.4798,
+    "strategy_id": 221533,
+    "pair": "SGD/JPY",
+    "score": 10.2688,
     "timeframe": "4_hour",
     "indicators": {
       "ATR": {
         "name": "FilteredATR",
         "parameters": {
-          "period": 34,
-          "ma_period": 34,
-          "ma_shift": 0
-        }
-      },
-      "BASELINE": {
-        "name": "TrendLord",
-        "parameters": {
-          "period": 12,
-          "ma_method": "smma",
-          "applied_price": "close",
-          "show_high_low": false,
-          "signal_bar": 1
-        }
-      },
-      "C1": {
-        "name": "TTF",
-        "parameters": {
-          "period": 8,
-          "top_line": 75,
-          "bottom_line": -75,
-          "t3_period": 3,
-          "b": 0.7
-        }
-      },
-      "C2": {
-        "name": "TrendLord",
-        "parameters": {
-          "period": 12,
-          "ma_method": "smma",
-          "applied_price": "close",
-          "show_high_low": false,
-          "signal_bar": 1
-        }
-      },
-      "VOLUME": {
-        "name": "AD",
-        "parameters": {}
-      },
-      "EXIT": {
-        "name": "J_TPO",
-        "parameters": {
-          "period": 14
-        }
-      }
-    },
-    "metrics": {
-      "id": 186259,
-      "Pair_ID": 22,
-      "Strategy_ID": 153079,
-      "Timeframe": "4_hour",
-      "Data_Start_Date": "2023-05-08",
-      "Data_End_Date": "2025-05-07",
-      "Trading_Start_Date": "2023-05-29",
-      "Total_Trades": 174,
-      "Winning_Trades": 113,
-      "Gross_Profit": 6164.69,
-      "Gross_Loss": -3979.37,
-      "Net_Profit": 1848.42,
-      "Total_Return_Pct": 18.48,
-      "Win_Rate": 0.65,
-      "Profit_Factor": 1.55,
-      "Max_Drawdown": 352.07,
-      "Max_Drawdown_Pct": 3.43,
-      "Average_Trade_Duration_Minutes": 2227.59,
-      "Initial_Balance": 10000.0,
-      "Final_Balance": 11848.42,
-      "Sharpe_Ratio": 0.2,
-      "Sortino_Ratio": 0.34,
-      "Calmar_Ratio": 5.39,
-      "Recovery_Factor": 5.25,
-      "Win_Loss_Ratio": 0.83,
-      "Trade_Expectancy_Pct": 0.12,
-      "Expectancy_Per_Day_Pct": 0.03,
-      "Trade_Return_Std": 0.6005,
-      "Trades_Per_Day": 0.24,
-      "Max_Consecutive_Wins": 8,
-      "Max_Consecutive_Losses": 4,
-      "Max_Margin_Required_Pct": 5.61
-    }
-  },
-  {
-    "strategy_id": 50898,
-    "pair": "USD/CHF",
-    "score": 10.2663,
-    "timeframe": "4_hour",
-    "indicators": {
-      "ATR": {
-        "name": "FilteredATR",
-        "parameters": {
-          "period": 34,
-          "ma_period": 34,
-          "ma_shift": 0
+          "period": 30,
+          "ma_period": 24,
+          "ma_shift": -2
         }
       },
       "BASELINE": {
         "name": "HMA",
         "parameters": {
-          "period": 13
+          "period": 9
         }
       },
       "C1": {
-        "name": "TrendLord",
+        "name": "BullsBearsImpulse",
         "parameters": {
-          "period": 12,
-          "ma_method": "smma",
-          "applied_price": "close",
-          "show_high_low": false,
-          "signal_bar": 1
+          "ma_period": 40
         }
       },
       "C2": {
-        "name": "BullsBearsImpulse",
+        "name": "MACDEXT",
         "parameters": {
-          "ma_period": 13
+          "fastperiod": 11,
+          "fastmatype": 5,
+          "slowperiod": 18,
+          "slowmatype": 4,
+          "signalperiod": 10,
+          "signalmatype": 0
         }
       },
       "VOLUME": {
         "name": "FantailVMA",
         "parameters": {
-          "adx_length": 2,
-          "weighting": 2.0,
-          "ma_length": 1
+          "adx_length": 4,
+          "weighting": 5.5,
+          "ma_length": 5
         }
       },
       "EXIT": {
-        "name": "MACDEXT",
+        "name": "APO",
         "parameters": {
-          "fastperiod": 12,
-          "fastmatype": 0,
-          "slowperiod": 26,
-          "slowmatype": 0,
-          "signalperiod": 9,
-          "signalmatype": 0
+          "fastperiod": 14,
+          "slowperiod": 24,
+          "matype": 4
         }
       }
     },
     "metrics": {
-      "id": 88028,
-      "Pair_ID": 4,
-      "Strategy_ID": 50898,
+      "id": 357499,
+      "Pair_ID": 33,
+      "Strategy_ID": 221533,
       "Timeframe": "4_hour",
       "Data_Start_Date": "2023-05-08",
       "Data_End_Date": "2025-05-07",
-      "Trading_Start_Date": "2023-05-25",
-      "Total_Trades": 101,
-      "Winning_Trades": 58,
-      "Gross_Profit": 2835.39,
-      "Gross_Loss": -1166.98,
-      "Net_Profit": 1517.81,
-      "Total_Return_Pct": 15.18,
+      "Trading_Start_Date": "2023-05-30",
+      "Total_Trades": 159,
+      "Winning_Trades": 90,
+      "Gross_Profit": 2865.66,
+      "Gross_Loss": -1214.9,
+      "Net_Profit": 1511.38,
+      "Total_Return_Pct": 15.11,
       "Win_Rate": 0.57,
-      "Profit_Factor": 2.43,
-      "Max_Drawdown": 175.39,
-      "Max_Drawdown_Pct": 1.69,
-      "Average_Trade_Duration_Minutes": 1062.18,
+      "Profit_Factor": 2.36,
+      "Max_Drawdown": 173.7,
+      "Max_Drawdown_Pct": 1.57,
+      "Average_Trade_Duration_Minutes": 1006.79,
       "Initial_Balance": 10000.0,
-      "Final_Balance": 11517.81,
-      "Sharpe_Ratio": 0.37,
-      "Sortino_Ratio": 0.78,
-      "Calmar_Ratio": 8.98,
-      "Recovery_Factor": 8.65,
-      "Win_Loss_Ratio": 1.78,
-      "Trade_Expectancy_Pct": 0.15,
+      "Final_Balance": 11511.38,
+      "Sharpe_Ratio": 0.32,
+      "Sortino_Ratio": 0.57,
+      "Calmar_Ratio": 9.61,
+      "Recovery_Factor": 8.7,
+      "Win_Loss_Ratio": 1.81,
+      "Trade_Expectancy_Pct": 0.1,
       "Expectancy_Per_Day_Pct": 0.02,
-      "Trade_Return_Std": 0.4171,
-      "Trades_Per_Day": 0.14,
-      "Max_Consecutive_Wins": 6,
-      "Max_Consecutive_Losses": 6,
-      "Max_Margin_Required_Pct": 6.37
+      "Trade_Return_Std": 0.3059,
+      "Trades_Per_Day": 0.22,
+      "Max_Consecutive_Wins": 7,
+      "Max_Consecutive_Losses": 7,
+      "Max_Margin_Required_Pct": 5.06
     }
   },
   {
-    "strategy_id": 103741,
-    "pair": "SGD/JPY",
-    "score": 9.7497,
+    "strategy_id": 271881,
+    "pair": "GBP/SGD",
+    "score": 9.9859,
+    "timeframe": "1_day",
+    "indicators": {
+      "ATR": {
+        "name": "ATR",
+        "parameters": {
+          "timeperiod": 18
+        }
+      },
+      "BASELINE": {
+        "name": "McGinleyDI",
+        "parameters": {
+          "period": 3,
+          "mcg_constant": 6
+        }
+      },
+      "C1": {
+        "name": "BullsBearsImpulse",
+        "parameters": {
+          "ma_period": 45
+        }
+      },
+      "C2": {
+        "name": "KalmanFilter",
+        "parameters": {
+          "k": 20,
+          "sharpness": 20
+        }
+      },
+      "VOLUME": {
+        "name": "FantailVMA",
+        "parameters": {
+          "adx_length": 3,
+          "weighting": 5.5,
+          "ma_length": 1
+        }
+      },
+      "EXIT": {
+        "name": "HalfTrend",
+        "parameters": {
+          "amplitude": 4
+        }
+      }
+    },
+    "metrics": {
+      "id": 354992,
+      "Pair_ID": 31,
+      "Strategy_ID": 271881,
+      "Timeframe": "1_day",
+      "Data_Start_Date": "2022-05-08",
+      "Data_End_Date": "2025-05-07",
+      "Trading_Start_Date": "2022-09-01",
+      "Total_Trades": 75,
+      "Winning_Trades": 41,
+      "Gross_Profit": 2300.61,
+      "Gross_Loss": -878.67,
+      "Net_Profit": 1386.66,
+      "Total_Return_Pct": 13.87,
+      "Win_Rate": 0.55,
+      "Profit_Factor": 2.62,
+      "Max_Drawdown": 221.05,
+      "Max_Drawdown_Pct": 1.94,
+      "Average_Trade_Duration_Minutes": 5625.6,
+      "Initial_Balance": 10000.0,
+      "Final_Balance": 11386.66,
+      "Sharpe_Ratio": 0.41,
+      "Sortino_Ratio": 0.93,
+      "Calmar_Ratio": 7.15,
+      "Recovery_Factor": 6.27,
+      "Win_Loss_Ratio": 2.21,
+      "Trade_Expectancy_Pct": 0.18,
+      "Expectancy_Per_Day_Pct": 0.01,
+      "Trade_Return_Std": 0.4303,
+      "Trades_Per_Day": 0.07,
+      "Max_Consecutive_Wins": 4,
+      "Max_Consecutive_Losses": 4,
+      "Max_Margin_Required_Pct": 2.54
+    }
+  },
+  {
+    "strategy_id": 221533,
+    "pair": "CAD/CHF",
+    "score": 9.9229,
     "timeframe": "4_hour",
     "indicators": {
       "ATR": {
         "name": "FilteredATR",
         "parameters": {
-          "period": 34,
-          "ma_period": 34,
-          "ma_shift": 0
+          "period": 30,
+          "ma_period": 24,
+          "ma_shift": -2
         }
       },
       "BASELINE": {
-        "name": "Gen3MA",
+        "name": "HMA",
         "parameters": {
-          "period": 220,
-          "sampling_period": 50
+          "period": 9
         }
       },
       "C1": {
-        "name": "STOCH_Slow",
+        "name": "BullsBearsImpulse",
         "parameters": {
-          "fastk_period": 5,
-          "slowk_period": 3,
-          "slowk_matype": 0,
-          "slowd_period": 3,
-          "slowd_matype": 0
+          "ma_period": 40
         }
       },
       "C2": {
-        "name": "SuperTrend",
+        "name": "MACDEXT",
         "parameters": {
-          "period": 10,
-          "multiplier": 3.0
+          "fastperiod": 11,
+          "fastmatype": 5,
+          "slowperiod": 18,
+          "slowmatype": 4,
+          "signalperiod": 10,
+          "signalmatype": 0
         }
       },
       "VOLUME": {
-        "name": "AD",
-        "parameters": {}
+        "name": "FantailVMA",
+        "parameters": {
+          "adx_length": 4,
+          "weighting": 5.5,
+          "ma_length": 5
+        }
       },
       "EXIT": {
-        "name": "J_TPO",
+        "name": "APO",
         "parameters": {
-          "period": 14
+          "fastperiod": 14,
+          "slowperiod": 24,
+          "matype": 4
         }
       }
     },
     "metrics": {
-      "id": 124912,
-      "Pair_ID": 33,
-      "Strategy_ID": 103741,
+      "id": 357481,
+      "Pair_ID": 25,
+      "Strategy_ID": 221533,
       "Timeframe": "4_hour",
       "Data_Start_Date": "2023-05-08",
       "Data_End_Date": "2025-05-07",
       "Trading_Start_Date": "2023-05-30",
-      "Total_Trades": 101,
-      "Winning_Trades": 65,
-      "Gross_Profit": 3696.2,
-      "Gross_Loss": -2011.48,
-      "Net_Profit": 1600.12,
-      "Total_Return_Pct": 16.0,
-      "Win_Rate": 0.64,
-      "Profit_Factor": 1.84,
-      "Max_Drawdown": 348.43,
-      "Max_Drawdown_Pct": 3.32,
-      "Average_Trade_Duration_Minutes": 3875.64,
+      "Total_Trades": 131,
+      "Winning_Trades": 78,
+      "Gross_Profit": 3409.11,
+      "Gross_Loss": -1651.72,
+      "Net_Profit": 1527.41,
+      "Total_Return_Pct": 15.27,
+      "Win_Rate": 0.6,
+      "Profit_Factor": 2.06,
+      "Max_Drawdown": 241.26,
+      "Max_Drawdown_Pct": 2.05,
+      "Average_Trade_Duration_Minutes": 972.82,
       "Initial_Balance": 10000.0,
-      "Final_Balance": 11600.12,
-      "Sharpe_Ratio": 0.28,
-      "Sortino_Ratio": 0.45,
-      "Calmar_Ratio": 4.82,
-      "Recovery_Factor": 4.59,
-      "Win_Loss_Ratio": 1.04,
-      "Trade_Expectancy_Pct": 0.16,
+      "Final_Balance": 11527.41,
+      "Sharpe_Ratio": 0.31,
+      "Sortino_Ratio": 0.63,
+      "Calmar_Ratio": 7.44,
+      "Recovery_Factor": 6.33,
+      "Win_Loss_Ratio": 1.42,
+      "Trade_Expectancy_Pct": 0.13,
       "Expectancy_Per_Day_Pct": 0.02,
-      "Trade_Return_Std": 0.5534,
-      "Trades_Per_Day": 0.14,
-      "Max_Consecutive_Wins": 11,
-      "Max_Consecutive_Losses": 7,
-      "Max_Margin_Required_Pct": 3.77
+      "Trade_Return_Std": 0.4058,
+      "Trades_Per_Day": 0.18,
+      "Max_Consecutive_Wins": 7,
+      "Max_Consecutive_Losses": 4,
+      "Max_Margin_Required_Pct": 5.24
     }
   },
   {
@@ -1861,6 +2135,89 @@
     }
   },
   {
+    "strategy_id": 268872,
+    "pair": "GBP/CAD",
+    "score": 9.654,
+    "timeframe": "4_hour",
+    "indicators": {
+      "ATR": {
+        "name": "FilteredATR",
+        "parameters": {
+          "period": 30,
+          "ma_period": 28,
+          "ma_shift": 2
+        }
+      },
+      "BASELINE": {
+        "name": "LSMA",
+        "parameters": {
+          "period": 11,
+          "shift": 0
+        }
+      },
+      "C1": {
+        "name": "SSL",
+        "parameters": {
+          "period": 15
+        }
+      },
+      "C2": {
+        "name": "BullsBearsImpulse",
+        "parameters": {
+          "ma_period": 25
+        }
+      },
+      "VOLUME": {
+        "name": "FantailVMA",
+        "parameters": {
+          "adx_length": 4,
+          "weighting": 5.5,
+          "ma_length": 5
+        }
+      },
+      "EXIT": {
+        "name": "Laguerre",
+        "parameters": {
+          "gamma": 0.5
+        }
+      }
+    },
+    "metrics": {
+      "id": 362344,
+      "Pair_ID": 18,
+      "Strategy_ID": 268872,
+      "Timeframe": "4_hour",
+      "Data_Start_Date": "2023-05-08",
+      "Data_End_Date": "2025-05-07",
+      "Trading_Start_Date": "2023-05-25",
+      "Total_Trades": 90,
+      "Winning_Trades": 51,
+      "Gross_Profit": 2796.22,
+      "Gross_Loss": -1289.68,
+      "Net_Profit": 1423.56,
+      "Total_Return_Pct": 14.24,
+      "Win_Rate": 0.57,
+      "Profit_Factor": 2.17,
+      "Max_Drawdown": 190.61,
+      "Max_Drawdown_Pct": 1.91,
+      "Average_Trade_Duration_Minutes": 1472.0,
+      "Initial_Balance": 10000.0,
+      "Final_Balance": 11423.56,
+      "Sharpe_Ratio": 0.34,
+      "Sortino_Ratio": 0.64,
+      "Calmar_Ratio": 7.47,
+      "Recovery_Factor": 7.47,
+      "Win_Loss_Ratio": 1.65,
+      "Trade_Expectancy_Pct": 0.16,
+      "Expectancy_Per_Day_Pct": 0.02,
+      "Trade_Return_Std": 0.4675,
+      "Trades_Per_Day": 0.12,
+      "Max_Consecutive_Wins": 8,
+      "Max_Consecutive_Losses": 4,
+      "Max_Margin_Required_Pct": 5.47
+    }
+  },
+  {
     "strategy_id": 15316,
     "pair": "EUR/CHF",
     "score": 9.4875,
@@ -1941,174 +2298,6 @@
       "Max_Consecutive_Wins": 6,
       "Max_Consecutive_Losses": 4,
       "Max_Margin_Required_Pct": 10.63
-    }
-  },
-  {
-    "strategy_id": 238866,
-    "pair": "GBP/SGD",
-    "score": 9.301,
-    "timeframe": "1_day",
-    "indicators": {
-      "ATR": {
-        "name": "ATR",
-        "parameters": {
-          "timeperiod": 14
-        }
-      },
-      "BASELINE": {
-        "name": "RecursiveMA",
-        "parameters": {
-          "period": 5,
-          "recursions": 30
-        }
-      },
-      "C1": {
-        "name": "BullsBearsImpulse",
-        "parameters": {
-          "ma_period": 5
-        }
-      },
-      "C2": {
-        "name": "KalmanFilter",
-        "parameters": {
-          "k": 20,
-          "sharpness": 20
-        }
-      },
-      "VOLUME": {
-        "name": "FantailVMA",
-        "parameters": {
-          "adx_length": 5,
-          "weighting": 4.0,
-          "ma_length": 9
-        }
-      },
-      "EXIT": {
-        "name": "SuperTrend",
-        "parameters": {
-          "period": 35,
-          "multiplier": 10
-        }
-      }
-    },
-    "metrics": {
-      "id": 299933,
-      "Pair_ID": 31,
-      "Strategy_ID": 238866,
-      "Timeframe": "1_day",
-      "Data_Start_Date": "2022-05-08",
-      "Data_End_Date": "2025-05-07",
-      "Trading_Start_Date": "2022-09-01",
-      "Total_Trades": 102,
-      "Winning_Trades": 52,
-      "Gross_Profit": 2171.04,
-      "Gross_Loss": -905.4,
-      "Net_Profit": 1217.28,
-      "Total_Return_Pct": 12.17,
-      "Win_Rate": 0.51,
-      "Profit_Factor": 2.4,
-      "Max_Drawdown": 104.93,
-      "Max_Drawdown_Pct": 0.96,
-      "Average_Trade_Duration_Minutes": 3727.06,
-      "Initial_Balance": 10000.0,
-      "Final_Balance": 11217.28,
-      "Sharpe_Ratio": 0.34,
-      "Sortino_Ratio": 0.85,
-      "Calmar_Ratio": 12.63,
-      "Recovery_Factor": 11.6,
-      "Win_Loss_Ratio": 2.32,
-      "Trade_Expectancy_Pct": 0.12,
-      "Expectancy_Per_Day_Pct": 0.01,
-      "Trade_Return_Std": 0.3483,
-      "Trades_Per_Day": 0.09,
-      "Max_Consecutive_Wins": 6,
-      "Max_Consecutive_Losses": 5,
-      "Max_Margin_Required_Pct": 2.58
-    }
-  },
-  {
-    "strategy_id": 225509,
-    "pair": "GBP/CAD",
-    "score": 9.181,
-    "timeframe": "1_day",
-    "indicators": {
-      "ATR": {
-        "name": "ATR",
-        "parameters": {
-          "timeperiod": 8
-        }
-      },
-      "BASELINE": {
-        "name": "TrendLord",
-        "parameters": {
-          "period": 3,
-          "ma_method": "lwma",
-          "signal_bar": 2
-        }
-      },
-      "C1": {
-        "name": "MACD",
-        "parameters": {
-          "fastperiod": 13,
-          "slowperiod": 26,
-          "signalperiod": 7
-        }
-      },
-      "C2": {
-        "name": "HalfTrend",
-        "parameters": {
-          "amplitude": 1
-        }
-      },
-      "VOLUME": {
-        "name": "KVO",
-        "parameters": {
-          "fast_ema": 25,
-          "slow_ema": 70,
-          "signal_ema": 10
-        }
-      },
-      "EXIT": {
-        "name": "MAMA",
-        "parameters": {
-          "fastlimit": 0.35,
-          "slowlimit": 0.15
-        }
-      }
-    },
-    "metrics": {
-      "id": 272085,
-      "Pair_ID": 18,
-      "Strategy_ID": 225509,
-      "Timeframe": "1_day",
-      "Data_Start_Date": "2022-05-08",
-      "Data_End_Date": "2025-05-07",
-      "Trading_Start_Date": "2022-08-17",
-      "Total_Trades": 41,
-      "Winning_Trades": 34,
-      "Gross_Profit": 1251.89,
-      "Gross_Loss": -167.45,
-      "Net_Profit": 1070.7,
-      "Total_Return_Pct": 10.71,
-      "Win_Rate": 0.83,
-      "Profit_Factor": 7.48,
-      "Max_Drawdown": 78.13,
-      "Max_Drawdown_Pct": 0.72,
-      "Average_Trade_Duration_Minutes": 3793.17,
-      "Initial_Balance": 10000.0,
-      "Final_Balance": 11070.7,
-      "Sharpe_Ratio": 0.83,
-      "Sortino_Ratio": 1.15,
-      "Calmar_Ratio": 14.96,
-      "Recovery_Factor": 13.7,
-      "Win_Loss_Ratio": 1.56,
-      "Trade_Expectancy_Pct": 0.25,
-      "Expectancy_Per_Day_Pct": 0.01,
-      "Trade_Return_Std": 0.3027,
-      "Trades_Per_Day": 0.04,
-      "Max_Consecutive_Wins": 21,
-      "Max_Consecutive_Losses": 2,
-      "Max_Margin_Required_Pct": 2.16
     }
   },
   {
@@ -2371,95 +2560,6 @@
     }
   },
   {
-    "strategy_id": 165431,
-    "pair": "CAD/CHF",
-    "score": 8.3248,
-    "timeframe": "2_hour",
-    "indicators": {
-      "ATR": {
-        "name": "FilteredATR",
-        "parameters": {
-          "period": 34,
-          "ma_period": 34,
-          "ma_shift": 0
-        }
-      },
-      "BASELINE": {
-        "name": "TrendLord",
-        "parameters": {
-          "period": 12,
-          "ma_method": "smma",
-          "applied_price": "close",
-          "show_high_low": false,
-          "signal_bar": 1
-        }
-      },
-      "C1": {
-        "name": "ROC",
-        "parameters": {
-          "timeperiod": 10
-        }
-      },
-      "C2": {
-        "name": "MACDZeroLag",
-        "parameters": {
-          "short_period": 12,
-          "long_period": 26,
-          "signal_period": 9
-        }
-      },
-      "VOLUME": {
-        "name": "FantailVMA",
-        "parameters": {
-          "adx_length": 2,
-          "weighting": 2.0,
-          "ma_length": 1
-        }
-      },
-      "EXIT": {
-        "name": "SuperTrend",
-        "parameters": {
-          "period": 10,
-          "multiplier": 3.0
-        }
-      }
-    },
-    "metrics": {
-      "id": 201170,
-      "Pair_ID": 25,
-      "Strategy_ID": 165431,
-      "Timeframe": "2_hour",
-      "Data_Start_Date": "2023-11-07",
-      "Data_End_Date": "2025-05-07",
-      "Trading_Start_Date": "2023-11-17",
-      "Total_Trades": 63,
-      "Winning_Trades": 51,
-      "Gross_Profit": 2673.17,
-      "Gross_Loss": -1030.49,
-      "Net_Profit": 1505.1,
-      "Total_Return_Pct": 15.05,
-      "Win_Rate": 0.81,
-      "Profit_Factor": 2.59,
-      "Max_Drawdown": 215.39,
-      "Max_Drawdown_Pct": 2.15,
-      "Average_Trade_Duration_Minutes": 1520.0,
-      "Initial_Balance": 10000.0,
-      "Final_Balance": 11505.1,
-      "Sharpe_Ratio": 0.43,
-      "Sortino_Ratio": 0.74,
-      "Calmar_Ratio": 7.01,
-      "Recovery_Factor": 6.99,
-      "Win_Loss_Ratio": 0.56,
-      "Trade_Expectancy_Pct": 0.23,
-      "Expectancy_Per_Day_Pct": 0.03,
-      "Trade_Return_Std": 0.5686,
-      "Trades_Per_Day": 0.11,
-      "Max_Consecutive_Wins": 10,
-      "Max_Consecutive_Losses": 2,
-      "Max_Margin_Required_Pct": 6.32
-    }
-  },
-  {
     "strategy_id": 206122,
     "pair": "NZD/SGD",
     "score": 8.1144,
@@ -2625,32 +2725,31 @@
     }
   },
   {
-    "strategy_id": 188477,
-    "pair": "AUD/CHF",
-    "score": 7.8985,
-    "timeframe": "4_hour",
+    "strategy_id": 181734,
+    "pair": "EUR/SGD",
+    "score": 7.4599,
+    "timeframe": "1_day",
     "indicators": {
       "ATR": {
         "name": "ATR",
         "parameters": {
-          "timeperiod": 16
+          "timeperiod": 26
         }
       },
       "BASELINE": {
-        "name": "TrendLord",
+        "name": "ALMA",
         "parameters": {
-          "period": 9,
-          "ma_method": "sma",
-          "signal_bar": 4
+          "period": 5,
+          "sigma": 9,
+          "offset": 0.5
         }
       },
       "C1": {
-        "name": "SchaffTrendCycle",
+        "name": "MACDZeroLag",
         "parameters": {
-          "period": 5,
-          "fast_ma_period": 4,
-          "slow_ma_period": 44,
-          "signal_period": 7
+          "short_period": 7,
+          "long_period": 24,
+          "signal_period": 14
         }
       },
       "C2": {
@@ -2662,138 +2761,51 @@
       "VOLUME": {
         "name": "FantailVMA",
         "parameters": {
-          "adx_length": 7,
-          "weighting": 4.5,
-          "ma_length": 9
+          "adx_length": 2,
+          "weighting": 3.5,
+          "ma_length": 7
         }
       },
       "EXIT": {
-        "name": "KijunSen",
+        "name": "Laguerre",
         "parameters": {
-          "period": 40,
-          "shift": 6
+          "gamma": 0.4
         }
       }
     },
     "metrics": {
-      "id": 229202,
-      "Pair_ID": 21,
-      "Strategy_ID": 188477,
-      "Timeframe": "4_hour",
-      "Data_Start_Date": "2023-05-08",
-      "Data_End_Date": "2025-05-07",
-      "Trading_Start_Date": "2023-05-29",
-      "Total_Trades": 60,
-      "Winning_Trades": 45,
-      "Gross_Profit": 1594.4,
-      "Gross_Loss": -481.5,
-      "Net_Profit": 1031.9,
-      "Total_Return_Pct": 10.32,
-      "Win_Rate": 0.75,
-      "Profit_Factor": 3.31,
-      "Max_Drawdown": 226.62,
-      "Max_Drawdown_Pct": 2.08,
-      "Average_Trade_Duration_Minutes": 1320.0,
-      "Initial_Balance": 10000.0,
-      "Final_Balance": 11031.9,
-      "Sharpe_Ratio": 0.49,
-      "Sortino_Ratio": 0.56,
-      "Calmar_Ratio": 4.97,
-      "Recovery_Factor": 4.55,
-      "Win_Loss_Ratio": 1.12,
-      "Trade_Expectancy_Pct": 0.18,
-      "Expectancy_Per_Day_Pct": 0.01,
-      "Trade_Return_Std": 0.3644,
-      "Trades_Per_Day": 0.08,
-      "Max_Consecutive_Wins": 8,
-      "Max_Consecutive_Losses": 2,
-      "Max_Margin_Required_Pct": 3.78
-    }
-  },
-  {
-    "strategy_id": 94787,
-    "pair": "EUR/SGD",
-    "score": 6.8124,
-    "timeframe": "1_day",
-    "indicators": {
-      "ATR": {
-        "name": "FilteredATR",
-        "parameters": {
-          "period": 34,
-          "ma_period": 34,
-          "ma_shift": 0
-        }
-      },
-      "BASELINE": {
-        "name": "TrendLord",
-        "parameters": {
-          "period": 12,
-          "ma_method": "smma",
-          "applied_price": "close",
-          "show_high_low": false,
-          "signal_bar": 1
-        }
-      },
-      "C1": {
-        "name": "Fisher",
-        "parameters": {
-          "range_periods": 10,
-          "price_smoothing": 0.3,
-          "index_smoothing": 0.3
-        }
-      },
-      "C2": {
-        "name": "MACDFIX",
-        "parameters": {
-          "signalperiod": 9
-        }
-      },
-      "VOLUME": {
-        "name": "OBV",
-        "parameters": {}
-      },
-      "EXIT": {
-        "name": "ULTOSC",
-        "parameters": {
-          "timeperiod1": 7,
-          "timeperiod2": 14,
-          "timeperiod3": 28
-        }
-      }
-    },
-    "metrics": {
-      "id": 114300,
+      "id": 353217,
       "Pair_ID": 29,
-      "Strategy_ID": 94787,
+      "Strategy_ID": 181734,
       "Timeframe": "1_day",
       "Data_Start_Date": "2022-05-08",
       "Data_End_Date": "2025-05-07",
       "Trading_Start_Date": "2022-08-23",
-      "Total_Trades": 19,
-      "Winning_Trades": 16,
-      "Gross_Profit": 771.85,
-      "Gross_Loss": -64.19,
-      "Net_Profit": 696.38,
-      "Total_Return_Pct": 6.96,
-      "Win_Rate": 0.84,
-      "Profit_Factor": 12.02,
-      "Max_Drawdown": 65.51,
-      "Max_Drawdown_Pct": 0.61,
-      "Average_Trade_Duration_Minutes": 13869.47,
+      "Total_Trades": 59,
+      "Winning_Trades": 34,
+      "Gross_Profit": 1282.08,
+      "Gross_Loss": -476.25,
+      "Net_Profit": 770.13,
+      "Total_Return_Pct": 7.7,
+      "Win_Rate": 0.58,
+      "Profit_Factor": 2.69,
+      "Max_Drawdown": 83.95,
+      "Max_Drawdown_Pct": 0.79,
+      "Average_Trade_Duration_Minutes": 4930.17,
       "Initial_Balance": 10000.0,
-      "Final_Balance": 10696.38,
-      "Sharpe_Ratio": 1.17,
-      "Sortino_Ratio": 2.99,
-      "Calmar_Ratio": 11.37,
-      "Recovery_Factor": 10.63,
-      "Win_Loss_Ratio": 2.33,
-      "Trade_Expectancy_Pct": 0.36,
+      "Final_Balance": 10770.13,
+      "Sharpe_Ratio": 0.39,
+      "Sortino_Ratio": 1.18,
+      "Calmar_Ratio": 9.78,
+      "Recovery_Factor": 9.17,
+      "Win_Loss_Ratio": 2.09,
+      "Trade_Expectancy_Pct": 0.14,
       "Expectancy_Per_Day_Pct": 0.01,
-      "Trade_Return_Std": 0.3088,
-      "Trades_Per_Day": 0.02,
-      "Max_Consecutive_Wins": 15,
-      "Max_Consecutive_Losses": 3,
-      "Max_Margin_Required_Pct": 3.01
+      "Trade_Return_Std": 0.339,
+      "Trades_Per_Day": 0.05,
+      "Max_Consecutive_Wins": 5,
+      "Max_Consecutive_Losses": 4,
+      "Max_Margin_Required_Pct": 3.07
     }
   },
   {

@@ -4,6 +4,8 @@
 *.feather
 *.txt
 *.pdf
+*.wav
+*.pyc
 /scripts/__pycache__
 /resources/
 windsurf.txt

@@ -694,9 +694,6 @@ class Backtester:
         # --- Profitability metrics ---
         net_profit = self.get_metric("Net_Profit")
 
-        if net_profit == 185.6:
-            x = 1
-
         score += math.log1p(max(net_profit, 0)) * 0.3
         score += max(net_profit, 0) / 250
         # score += net_profit / 250

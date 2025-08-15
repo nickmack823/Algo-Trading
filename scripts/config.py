@@ -55,10 +55,10 @@ MAJOR_FOREX_PAIRS = [
 ]
 
 TIMEFRAMES = [
-    # "5_minute",
-    # "15_minute",
-    # "30_minute",
-    # "1_hour",
+    "5_minute",
+    "15_minute",
+    "30_minute",
+    "1_hour",
     "2_hour",
     "4_hour",
     "1_day",
@@ -122,7 +122,49 @@ INCONCLUSIVE = "INCONCLUSIVE"
 # Data start/end dates
 START_DATE = "2022-05-08"
 END_DATE = "2025-05-07"  # one day before last in data
-TIMEFRAME_DATE_RANGES = {
+TIMEFRAME_DATE_RANGES_PHASE_1_AND_2 = {
+    "1_day": {
+        "from_date": START_DATE,  # full 3 years
+        "to_date": END_DATE,
+    },
+    "4_hour": {
+        "from_date": (pd.to_datetime(END_DATE) - pd.Timedelta(days=365)).strftime(
+            "%Y-%m-%d"
+        ),  # last 1 year
+        "to_date": END_DATE,
+    },
+    "2_hour": {
+        "from_date": (pd.to_datetime(END_DATE) - pd.Timedelta(days=182)).strftime(
+            "%Y-%m-%d"
+        ),  # last 0.5 years
+        "to_date": END_DATE,
+    },
+    "1_hour": {
+        "from_date": (pd.to_datetime(END_DATE) - pd.Timedelta(days=120)).strftime(
+            "%Y-%m-%d"
+        ),  # last 4 months
+        "to_date": END_DATE,
+    },
+    "30_minute": {
+        "from_date": (pd.to_datetime(END_DATE) - pd.Timedelta(days=90)).strftime(
+            "%Y-%m-%d"
+        ),  # last 3 months
+        "to_date": END_DATE,
+    },
+    "15_minute": {
+        "from_date": (pd.to_datetime(END_DATE) - pd.Timedelta(days=60)).strftime(
+            "%Y-%m-%d"
+        ),  # last 2 months
+        "to_date": END_DATE,
+    },
+    "5_minute": {
+        "from_date": (pd.to_datetime(END_DATE) - pd.Timedelta(days=30)).strftime(
+            "%Y-%m-%d"
+        ),  # last 1 months
+        "to_date": END_DATE,
+    },
+}
+TIMEFRAME_DATE_RANGES_PHASE3 = {
     "1_day": {
         "from_date": START_DATE,  # full 3 years
         "to_date": END_DATE,
@@ -164,7 +206,6 @@ TIMEFRAME_DATE_RANGES = {
         "to_date": END_DATE,
     },
 }
-
 
 PRUNE_THRESHOLD_FACTOR = 0.2  # Prune if strategy executes < 20% of expected trades
 # Baseline number of trades per day (for calculating composite score)
@@ -209,3 +250,5 @@ PHASE2_TOP_PERCENT = 10
 # === OANDA Config ===
 OANDA_API_KEY = "9dc7d56d2f3c584dcd04947f2c773983-f3c6f66bb43e9f533c910a636908995f"
 OANDA_ACCOUNT_ID = "101-001-9539917-002"
+
+MY_LOCAL_TIMEZONE = "America/New_York"
