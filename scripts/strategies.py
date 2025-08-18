@@ -313,7 +313,7 @@ class PositionCalculator:
             pip_value_in_quote = units * pip_size
             pip_value = pip_value_in_quote * quote_to_usd_rate
 
-        return round(pip_value, 2)
+        return pip_value
 
     def calculate_stop_loss_pips(
         forex_pair: str, atr: float, atr_multiplier: float = 1.5
@@ -323,12 +323,14 @@ class PositionCalculator:
         """
         return PositionCalculator.calculate_atr_pips(forex_pair, atr) * atr_multiplier
 
-    def calculate_stop_loss_price(direction: str, entry_price: float, atr: float):
+    def calculate_stop_loss_price(
+        forex_pair: str, direction: str, entry_price: float, atr: float
+    ):
         """
         Calculates the stop loss to be ATR * multiplier AWAY from the entry price. (NNFX)
         """
         # Calculate stop loss distance in pips
-        stop_loss_in_pips = PositionCalculator.calculate_stop_loss_pips(atr)
+        stop_loss_in_pips = PositionCalculator.calculate_stop_loss_pips(forex_pair, atr)
 
         if direction == "BUY":
             stop_loss_in_pips = -stop_loss_in_pips

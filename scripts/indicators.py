@@ -6,7 +6,6 @@ import talib as ta
 
 from scripts.indicator_functions import (
     ALMA,
-    EHLERS,
     HMA,
     J_TPO,
     KASE,
@@ -14,7 +13,6 @@ from scripts.indicator_functions import (
     LSMA,
     LWPI,
     SSL,
-    TCF,
     TDFI,
     TTF,
     UF2018,
@@ -22,10 +20,8 @@ from scripts.indicator_functions import (
     WAE,
     AcceleratorLSMA,
     BraidFilter,
-    BraidFilterHist,
     BullsBearsImpulse,
     CenterOfGravity,
-    Coral,
     FantailVMA,
     FilteredATR,
     Fisher,
@@ -40,13 +36,11 @@ from scripts.indicator_functions import (
     NormalizedVolume,
     RecursiveMA,
     SchaffTrendCycle,
-    SmoothStep,
     SuperTrend,
     TopTrend,
     TrendLord,
     TwiggsMF,
     VolatilityRatio,
-    Vortex,
 )
 from scripts.signal_functions import *
 

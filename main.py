@@ -10,7 +10,9 @@ import time
 import traceback
 import winsound
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from dataclasses import dataclass
 from statistics import mean, stdev
+from typing import Optional
 
 import optuna
 import pandas as pd
@@ -53,8 +55,12 @@ logging.basicConfig(
     level=20, datefmt="%m/%d/%Y %H:%M:%S", format="[%(asctime)s] %(message)s"
 )
 
-# db_queue = mp.Queue()
-# done_flag = mp.Value("b", False)
+
+@dataclass
+class Acknowledgement:
+    ok: bool
+    payload: Optional[dict] = None
+    error: Optional[str] = None
 
 
 def log_error(message: str, filename: str = "error_log.txt"):
@@ -99,17 +105,24 @@ def test_one():
     trades = backtester.save_trades()
 
 
-def wait_for_ack(ack_dict: dict, ack_id, timeout=10):
-    start = time.time()
-    while True:
-        if ack_dict.get(ack_id) is not None:
-            del ack_dict[ack_id]  # Cleanup
-            return
-        if time.time() - start > timeout:
-            raise TimeoutError(f"Ack timeout for {ack_id}")
-        time.sleep(0.1)
-
-    return
+def wait_for_ack(
+    ack_dict: dict, ack_id: str, timeout: float = 10.0, poll: float = 0.02
+) -> Acknowledgement:
+    """Block until ack_dict[ack_id] is present or timeout.
+    Pops the key when done and returns an Acknowledgement."""
+    # Monotonic is immune to system time adjustments
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        ack = ack_dict.get(ack_id)
+        if ack is not None:
+            # Pop to avoid leaking keys
+            try:
+                del ack_dict[ack_id]
+            except KeyError:
+                pass
+            return ack
+        time.sleep(poll)
+    return Acknowledgement(ok=False, error=f"ACK timeout for {ack_id}")
 
 
 def run_fixed_strategy_evaluation(
@@ -287,7 +300,7 @@ def db_writer_process(queue: mp.Queue, done_flag, ack_dict: dict):
 
     while True:
         while not queue.empty():
-            queue_dict: dict = queue.get()
+            queue_dict: dict = queue.get(timeout=1)
 
             # Determine why queue item was inserted
             purpose = queue_dict.get("purpose")
@@ -300,7 +313,9 @@ def db_writer_process(queue: mp.Queue, done_flag, ack_dict: dict):
                         queue_dict.get("strategy_parameters"),
                     )
                     if ack_dict is not None and queue_dict.get("ack_id"):
-                        ack_dict[queue_dict["ack_id"]] = True
+                        ack_dict[queue_dict["ack_id"]] = Acknowledgement(
+                            ok=True, payload={"strategy_config_id": strategy_config_id}
+                        )
 
                 elif purpose == "indicator_cache":
                     cache_items: list[dict] = queue_dict.get("cache_items")
@@ -412,6 +427,14 @@ def db_writer_process(queue: mp.Queue, done_flag, ack_dict: dict):
                         raise ValueError("Run ID is None but score is not None.")
 
             except Exception as e:
+                if (
+                    purpose == "strategy_config"
+                    and ack_dict is not None
+                    and queue_dict.get("ack_id")
+                ):
+                    ack_dict[queue_dict["ack_id"]] = Acknowledgement(
+                        ok=False, error=str(e)
+                    )
                 log_error(f"DB write error: {e} {traceback.format_exc()}")
 
         if done_flag.value is True:
@@ -502,7 +525,7 @@ def objective(
     )
 
     # Prevent invalid C1/C2 combo
-    if c1["name"] == c2["name"]:
+    if c1["name"] == c2["name"] or c1["function"] == c2["function"]:
         raise optuna.exceptions.TrialPruned()
 
     # Initialize strategy and backtester
@@ -530,7 +553,10 @@ def objective(
         )
 
         # Wait for the job to be acknowledged
-        wait_for_ack(ack_dict, ack_id)  # Blocks until confirmed
+        ack = wait_for_ack(ack_dict, ack_id)  # Blocks until confirmed
+        if not ack.ok:
+            raise RuntimeError(f"Strategy config insert failed: {ack.error}")
+
         strategy_config_id = backtest_sqlhelper.select_strategy_configuration(
             strategy.NAME,
             strategy.DESCRIPTION,
@@ -799,17 +825,16 @@ def run_study_wrapper(args) -> dict:
     )
 
     # Maintain upper bound on number of trials after study resumption
-    completed_trials = [
-        t
-        for t in study.trials
-        if t.state
-        not in [
-            optuna.trial.TrialState.RUNNING,
-            optuna.trial.TrialState.FAIL,
-            optuna.trial.TrialState.WAITING,
-        ]
-    ]
-    remaining_trials = max(n_trials - len(completed_trials), 0)
+    valid_states = {
+        optuna.trial.TrialState.COMPLETE,
+        optuna.trial.TrialState.PRUNED,
+        optuna.trial.TrialState.FAIL,
+    }
+    completed_or_decided = [t for t in study.trials if t.state in valid_states]
+    remaining_trials = max(n_trials - len(completed_or_decided), 0)
+    logging.info(
+        f"[{study_name}]: finished={len(completed_or_decided)} to_run={remaining_trials}"
+    )
 
     # Run study
     study.optimize(

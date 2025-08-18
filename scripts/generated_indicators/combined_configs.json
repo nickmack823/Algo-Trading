@@ -1,0 +1,1265 @@
+# === BEGIN 2nd_order_gaussian_high_pass_filter_mtf_zones_config.py ===
+config = {
+    "name": "2nd Order Gaussian High Pass Filter MTF Zones",
+    "function": SecondOrderGaussianHighPassFilterMtfZones,
+    "signal_function": signal_second_order_gaussian_high_pass_filter_mtf_zones,
+    "raw_function": SecondOrderGaussianHighPassFilterMtfZones,
+    "description": "* A high-pass filter using Gaussian coefficients to remove low-frequency (trend) components and emphasise short-term fluctuations.",
+    "parameters": {
+        "alpha": 0.14,
+        "timeframe": None,
+        "interpolate": True,
+        "maxbars": 2000,
+    },
+    "parameter_space": {
+        "alpha": [0.05, 0.1, 0.14, 0.2, 0.3],
+        "timeframe": [None, "5T", "15T", "1H", "4H", "1D"],
+        "interpolate": [True, False],
+    },
+    "role": "Confirmation",
+}
+# === END 2nd_order_gaussian_high_pass_filter_mtf_zones_config.py ===
+
+# === BEGIN 3rdgenma_config.py ===
+{
+  "name": "3rdgenma",
+  "function": "ThirdGenMA",
+  "signal_function": "signal_ThirdGenMA",
+  "raw_function": "ThirdGenMA",
+  "description": "Third Generation Moving Average (Durschner). Two-pass MA with adaptive alpha to reduce lag while preserving smoothness. Supports SMA, EMA, SMMA, LWMA and multiple applied prices; outputs MA3G and MA1.",
+  "parameters": {"ma_period": 220, "sampling_period": 50, "method": 1, "applied_price": 5},
+  "parameter_space": {
+    "ma_period": [180, 220, 260, 300, 360],
+    "sampling_period": [30, 40, 50, 60, 70],
+    "method": [0, 1, 2, 3],
+    "applied_price": [0, 1, 2, 3, 4, 5, 6]
+  },
+  "role": "Trend"
+}
+# === END 3rdgenma_config.py ===
+
+# === BEGIN adaptive_smoother_triggerlines_mtf_alerts_nmc_config.py ===
+{
+  "name": "AdaptiveSmootherTriggerlinesMtfAlertsNmc",
+  "function": AdaptiveSmootherTriggerlinesMtfAlertsNmc,
+  "signal_function": None,
+  "raw_function": AdaptiveSmootherTriggerlinesMtfAlertsNmc,
+  "description": "Adaptive smoother (iSmooth) with dynamic period from std-dev ratio; outputs current lsma, previous-bar lsma (lwma), slope-based trends (+1/-1), and optional multi-color segmented down-trend series.",
+  "parameters": {"LsmaPeriod": 50, "LsmaPrice": 0, "AdaptPeriod": 21, "MultiColor": True},
+  "parameter_space": {
+    "LsmaPeriod": [10, 21, 34, 50, 100],
+    "LsmaPrice": [0, 1, 2, 3, 4, 5, 6],
+    "AdaptPeriod": [10, 14, 21, 30, 50],
+    "MultiColor": [True, False]
+  },
+  "role": "Confirmation"
+}
+# === END adaptive_smoother_triggerlines_mtf_alerts_nmc_config.py ===
+
+# === BEGIN aso_config.py ===
+{
+  "name": "ASO",
+  "function": ASO,
+  "signal_function": signal_aso,
+  "raw_function": ASO,
+  "description": "* This oscillator attempts to quantify market sentiment by averaging momentum readings from several timeframes.",
+  "parameters": {"period": 10, "mode": 0, "bulls": True, "bears": True},
+  "parameter_space": {
+    "period": [5, 10, 14, 20, 30],
+    "mode": [0, 1, 2],
+    "bulls": [True, False],
+    "bears": [True, False]
+  },
+  "role": "Confirmation"
+}
+# === END aso_config.py ===
+
+# === BEGIN atr_based_ema_variant_1_config.py ===
+{
+  "name": "ATRBasedEMAVariant1",
+  "function": ATRBasedEMAVariant1,
+  "signal_function": lambda df, ema_fastest=14.0, multiplier=300.0: ATRBasedEMAVariant1(df, ema_fastest=ema_fastest, multiplier=multiplier)["EMA_ATR_var1"],
+  "raw_function": ATRBasedEMAVariant1,
+  "description": "EMA on Close with a dynamic period driven by an EMA(14) of High/Low (ATR proxy). Higher volatility increases the equivalent EMA period, making the baseline slower. Outputs columns ['EMA_ATR_var1', 'EMA_Equivalent'].",
+  "parameters": {"ema_fastest": 14.0, "multiplier": 300.0},
+  "parameter_space": {
+    "ema_fastest": [7.0, 10.0, 14.0, 21.0, 28.0],
+    "multiplier": [100.0, 200.0, 300.0, 400.0, 500.0]
+  },
+  "role": "Baseline"
+}
+# === END atr_based_ema_variant_1_config.py ===
+
+# === BEGIN bams_bung_3_config.py ===
+{
+  "name": "BamsBung3",
+  "function": BamsBung3,
+  "signal_function": None,
+  "raw_function": BamsBung3,
+  "description": "SMA-based Bollinger Band stop-and-signal indicator producing up/down trend stops, entry signals, and optional lines.",
+  "parameters": {"length": 14, "deviation": 2.0, "money_risk": 0.02, "signal_mode": 1, "line_mode": 1},
+  "parameter_space": {
+    "length": [10, 14, 20, 30],
+    "deviation": [1.5, 2.0, 2.5, 3.0],
+    "money_risk": [0.01, 0.02, 0.05, 0.1],
+    "signal_mode": [0, 1, 2],
+    "line_mode": [0, 1]
+  },
+  "role": "ATR/Volatility"
+}
+# === END bams_bung_3_config.py ===
+
+# === BEGIN band_pass_filter_config.py ===
+{
+  "name": "Band Pass Filter",
+  "function": BandPassFilter,
+  "signal_function": signal_band_pass_filter,
+  "raw_function": BandPassFilter,
+  "description": "* Passes price components within a target frequency band (cycle emphasis) while attenuating trend and high-frequency noise; includes slope/trend-segmented histogram outputs.",
+  "parameters": {"period": 50, "price": "median", "delta": 0.1},
+  "parameter_space": {
+    "period": [20, 30, 40, 50, 60, 80],
+    "price": ["median", "close", "typical", "weighted", "average", "ha_median", "ha_typical", "ha_weighted", "hab_median"],
+    "delta": [0.05, 0.1, 0.15, 0.2]
+  },
+  "role": "Confirmation"
+}
+# === END band_pass_filter_config.py ===
+
+# === BEGIN chandelierexit_config.py ===
+{
+  "name": "ChandelierExit",
+  "function": Chandelierexit,
+  "signal_function": signal_chandelierexit,
+  "raw_function": Chandelierexit,
+  "description": "* A trailing stop indicator developed by Chuck LeBeau.  It places the stop a multiple of the Average True Range (ATR) away from the highest high (for long trades) or lowest low (for short trades).",
+  "parameters": {
+    "lookback": 7,
+    "atr_period": 9,
+    "atr_mult": 2.5,
+    "shift": 0
+  },
+  "parameter_space": {
+    "lookback": [5, 7, 10, 14, 20, 30],
+    "atr_period": [7, 9, 14, 21],
+    "atr_mult": [2.0, 2.5, 3.0, 3.5]
+  },
+  "role": "Exit"
+}
+# === END chandelierexit_config.py ===
+
+# === BEGIN cmo_config.py ===
+{
+  "name": "CMO",
+  "function": CMO,
+  "signal_function": signal_cmo,
+  "raw_function": CMO,
+  "description": "Tushar Chande's oscillator measures momentum by comparing the sum of up moves to the sum of down moves over a look-back period.",
+  "parameters": {"length": 9, "price": "Close"},
+  "parameter_space": {
+    "length": [5, 9, 14, 20, 30],
+    "price": ["Close", "Open", "High", "Low", "Median", "Typical", "Weighted"]
+  },
+  "role": "Momentum"
+}
+# === END cmo_config.py ===
+
+# === BEGIN coral_config.py ===
+{
+  "name": "Coral",
+  "function": Coral,
+  "signal_function": signal_coral,
+  "raw_function": Coral,
+  "description": "* A linear lag removal (LLR) filter that produces a very smooth moving average with minimal delay. Often called the “Coral Trend Indicator.”",
+  "parameters": {"length": 34, "coef": 0.4},
+  "parameter_space": {"length": [21, 34, 55, 89], "coef": [0.3, 0.4, 0.5]},
+  "role": "Trend"
+}
+# === END coral_config.py ===
+
+# === BEGIN cvi_multi_config.py ===
+{
+  "name": "CVI_Multi",
+  "function": CVIMulti,
+  "signal_function": None,
+  "raw_function": CVIMulti,
+  "description": "Chartmill Value Indicator (CVI): normalized deviation of Close from a moving average of Median Price ((High+Low)/2). method selects the MA (0=SMA, 1=EMA, 2=SMMA/RMA, 3=LWMA). Denominator is ATR; if use_modified is True, ATR is scaled by sqrt(length).",
+  "parameters": {"length": 14, "method": 0, "use_modified": False},
+  "parameter_space": {"length": [7, 14, 21, 30], "method": [0, 1, 2, 3], "use_modified": [False, True]},
+  "role": "ATR/Volatility"
+}
+# === END cvi_multi_config.py ===
+
+# === BEGIN cyber_cycle_config.py ===
+{
+  "name": "cyber-cycle",
+  "function": CyberCycle,
+  "signal_function": signal_cyber_cycle,
+  "raw_function": CyberCycle,
+  "description": "* John Ehlers’ Cyber Cycle indicator applies smoothing and differentiation to extract a cyclical component from price. It oscillates around zero.",
+  "parameters": {"alpha": 0.07, "price": "hl2"},
+  "parameter_space": {
+    "alpha": [0.03, 0.05, 0.07, 0.1, 0.15],
+    "price": ["close", "hl2", "hlc3", "ohlc4", "wclose"]
+  },
+  "role": "Confirmation"
+}
+# === END cyber_cycle_config.py ===
+
+# === BEGIN decycler_oscillator_config.py ===
+{
+  "name": "Decycler Oscillator",
+  "function": DecyclerOscillator,
+  "signal_function": signal_decycler_oscillator,
+  "raw_function": DecyclerOscillator,
+  "description": "John Ehlers-style decycler oscillator (two-pass) that removes dominant cycle components and highlights trend; includes segmented down-trend buffers.",
+  "parameters": {
+    "hp_period": 125,
+    "k": 1.0,
+    "hp_period2": 100,
+    "k2": 1.2,
+    "price": "close"
+  },
+  "parameter_space": {
+    "hp_period": [75, 100, 125, 150, 200],
+    "k": [0.5, 1.0, 1.5, 2.0],
+    "hp_period2": [40, 60, 80, 100, 125],
+    "k2": [0.8, 1.0, 1.2, 1.5],
+    "price": ["close", "median", "typical", "weighted", "average", "tbiased", "haclose", "hamedian", "haweighted"]
+  },
+  "role": "Confirmation"
+}
+# === END decycler_oscillator_config.py ===
+
+# === BEGIN detrended_synthetic_price_goscillators_config.py ===
+{
+  "name": "DetrendedSyntheticPriceGoscillators",
+  "function": DetrendedSyntheticPriceGoscillators,
+  "signal_function": signal_detrended_synthetic_price_goscillators,
+  "raw_function": DetrendedSyntheticPriceGoscillators,
+  "description": "* This indicator subtracts a moving average from a “synthetic price” (a weighted price) to remove trend and highlight cycles.",
+  "parameters": {
+    "dsp_period": 14,
+    "price_mode": "median",
+    "signal_period": 9,
+    "color_on": "outer"
+  },
+  "parameter_space": {
+    "dsp_period": [7, 14, 21, 30],
+    "price_mode": [
+      "close", "open", "high", "low",
+      "median", "medianb", "typical", "weighted", "average",
+      "tbiased", "tbiased2",
+      "haclose", "haopen", "hahigh", "halow",
+      "hamedian", "hamedianb", "hatypical", "haweighted", "haaverage",
+      "hatbiased", "hatbiased2"
+    ],
+    "signal_period": [5, 9, 13, 21],
+    "color_on": ["outer", "outer2", "zero", "slope"]
+  },
+  "role": "Confirmation"
+}
+# === END detrended_synthetic_price_goscillators_config.py ===
+
+# === BEGIN doda_stochastic_modified_config.py ===
+{
+  "name": "Doda-Stochastic-Modified",
+  "function": DodaStochasticModified,
+  "signal_function": signal_doda_stochastic_modified,
+  "raw_function": DodaStochasticModified,
+  "description": "A modified stochastic oscillator: EMA of Close -> stochastic (0-100) over Pds -> EMA (Slw) -> signal EMA (Slwsignal).",
+  "parameters": {"Slw": 8, "Pds": 13, "Slwsignal": 9},
+  "parameter_space": {
+    "Slw": [5, 8, 13, 21],
+    "Pds": [9, 13, 21, 34],
+    "Slwsignal": [5, 9, 13, 18]
+  },
+  "role": "Confirmation"
+}
+# === END doda_stochastic_modified_config.py ===
+
+# === BEGIN dorsey_inertia_config.py ===
+{
+  "name": "dorsey-inertia",
+  "function": DorseyInertia,
+  "signal_function": signal_dorsey_inertia,
+  "raw_function": DorseyInertia,
+  "description": "Dorsey Inertia (Mladen): EMA-averaged up/down rolling-std RVI components with final SMA smoothing.",
+  "parameters": {"rvi_period": 10, "avg_period": 14, "smoothing_period": 20},
+  "parameter_space": {
+    "rvi_period": [5, 8, 10, 14, 20, 30],
+    "avg_period": [8, 10, 14, 21, 30],
+    "smoothing_period": [10, 14, 20, 30, 50]
+  },
+  "role": "Trend"
+}
+# === END dorsey_inertia_config.py ===
+
+# === BEGIN dpo_histogram_indicator_config.py ===
+config = {
+    "name": "dpo-histogram-indicator",
+    "function": DpoHistogramIndicator,
+    "signal_function": None,
+    "raw_function": DpoHistogramIndicator,
+    "description": "Detrended Price Oscillator with up/down histograms. Computes price minus a forward-shifted moving average; positive values map to DPO_Up and negatives to DPO_Dn.",
+    "parameters": {"period": 14, "ma": "sma"},
+    "parameter_space": {
+        "period": [10, 14, 20, 30, 50],
+        "ma": ["sma", "ema", "smma", "wma"],
+    },
+    "role": "Momentum",
+}
+# === END dpo_histogram_indicator_config.py ===
+
+# === BEGIN ehlers_deli__detrended_leading_indicator_config.py ===
+{
+  "name": "Ehlers_DELI_(Detrended_Leading_Indicator)",
+  "function": EhlersDELIDetrendedLeadingIndicator,
+  "signal_function": signal_ehlers_deli__detrended_leading_indicator,
+  "raw_function": EhlersDELIDetrendedLeadingIndicator,
+  "description": "* A detrended oscillator by John Ehlers that leads price by removing lag and emphasising turning points.",
+  "parameters": {"period": 14},
+  "parameter_space": {"period": [7, 14, 21, 30]},
+  "role": "Confirmation"
+}
+# === END ehlers_deli__detrended_leading_indicator_config.py ===
+
+# === BEGIN ehlers_deli_detrended_leading_indicator_config.py ===
+{
+  "name": "Ehlers DELI (Detrended Leading Indicator)",
+  "function": EhlersDELIDetrendedLeadingIndicator,
+  "signal_function": signal_ehlers_deli_detrended_leading_indicator,
+  "raw_function": EhlersDELIDetrendedLeadingIndicator,
+  "description": "* A detrended oscillator by John Ehlers that leads price by removing lag and emphasising turning points.",
+  "parameters": {"period": 14},
+  "parameter_space": {"period": [7, 14, 21, 30]},
+  "role": "Confirmation"
+}
+# === END ehlers_deli_detrended_leading_indicator_config.py ===
+
+# === BEGIN ehlers_early_onset_trend_config.py ===
+{
+  "name": "Ehlers Early Onset Trend",
+  "function": EhlersEarlyOnsetTrend,
+  "signal_function": signal_ehlers_early_onset_trend,
+  "raw_function": EhlersEarlyOnsetTrend,
+  "description": "A John Ehlers indicator designed to detect the early onset of trends using high-pass filtering, adaptive smoothing, and a quotient transform. Returns two lines (EEOT_Q1, EEOT_Q2).",
+  "parameters": {"period": 20, "q1": 0.8, "q2": 0.4},
+  "parameter_space": {"period": [10, 20, 30, 50], "q1": [0.6, 0.8, 0.9], "q2": [0.2, 0.4, 0.6]},
+  "role": "Trend"
+}
+# === END ehlers_early_onset_trend_config.py ===
+
+# === BEGIN ehlers_reverse_ema_config.py ===
+{
+  "name": "Ehlers Reverse EMA",
+  "function": EhlersReverseEMA,
+  "signal_function": signal_ehlers_reverse_ema,
+  "raw_function": EhlersReverseEMA,
+  "description": "* A variant of the exponential moving average that applies weighting in reverse order (most recent prices receive the least weight). This aims to anticipate turning points.",
+  "parameters": {"alpha": 0.1},
+  "parameter_space": {"alpha": [0.05, 0.1, 0.15, 0.2, 0.3, 0.5]},
+  "role": "Confirmation"
+}
+# === END ehlers_reverse_ema_config.py ===
+
+# === BEGIN ehlers_two_pole_super_smoother_filter_config.py ===
+{
+  "name": "EhlersTwoPoleSuperSmootherFilter",
+  "function": EhlersTwoPoleSuperSmootherFilter,
+  "signal_function": signal_ehlers_two_pole_super_smoother_filter,
+  "raw_function": EhlersTwoPoleSuperSmootherFilter,
+  "description": "John Ehlers' Super Smoother is a two-pole low-pass filter designed to remove noise with minimal lag. Uses Open price, restarts on NaN segments, and preserves length.",
+  "parameters": {"cutoff_period": 15},
+  "parameter_space": {"cutoff_period": [10, 15, 20, 30, 40]},
+  "role": "Baseline"
+}
+# === END ehlers_two_pole_super_smoother_filter_config.py ===
+
+# === BEGIN ehlersroofingfiltera_config.py ===
+{
+  "name": "EhlersRoofingFilterA",
+  "function": EhlersRoofingFilterA,
+  "signal_function": None,
+  "raw_function": EhlersRoofingFilterA,
+  "description": "John Ehlers' roofing filter combining a high-pass and low-pass to isolate tradable trends; returns rfilt, trigger, hp, up, down.",
+  "parameters": {
+    "hp_length": 80,
+    "lp_length": 40,
+    "arrow_distance": 100.0,
+    "point": 1.0
+  },
+  "parameter_space": {
+    "hp_length": [40, 60, 80, 100, 120],
+    "lp_length": [20, 30, 40, 50, 60]
+  },
+  "role": "Confirmation"
+}
+# === END ehlersroofingfiltera_config.py ===
+
+# === BEGIN ergodic_tvi_config.py ===
+{
+  "name": "ErgodicTVI",
+  "function": ErgodicTVI,
+  "signal_function": None,
+  "raw_function": ErgodicTVI,
+  "description": "* This oscillator combines price momentum and volatility information to produce an “ergodic” signal line with a smoothing component. It is similar to an MACD of the True Volume Indicator.",
+  "parameters": {
+    "Period1": 12,
+    "Period2": 12,
+    "Period3": 1,
+    "EPeriod1": 5,
+    "EPeriod2": 5,
+    "EPeriod3": 5,
+    "pip_size": 0.0001
+  },
+  "parameter_space": {
+    "Period1": [8, 12, 16, 20, 34],
+    "Period2": [8, 12, 16, 20, 34],
+    "Period3": [1, 2, 3, 5],
+    "EPeriod1": [3, 5, 8, 13],
+    "EPeriod2": [3, 5, 8, 13],
+    "EPeriod3": [3, 5, 8, 13]
+  },
+  "role": "VolumeIndicator"
+}
+# === END ergodic_tvi_config.py ===
+
+# === BEGIN forecast_config.py ===
+{
+  "name": "forecast",
+  "function": Forecast,
+  "signal_function": signal_forecast,
+  "raw_function": Forecast,
+  "description": "* The Forecast Oscillator measures the difference between the actual price and its regression forecast value, expressed as a percentage of price.",
+  "parameters": {"length": 20, "price": 0},
+  "parameter_space": {"length": [10, 14, 20, 30, 50], "price": [0, 1, 2, 3, 4, 5, 6]},
+  "role": "Confirmation"
+}
+# === END forecast_config.py ===
+
+# === BEGIN frama_indicator_config.py ===
+{
+  "name": "frama-indicator",
+  "function": FramaIndicator,
+  "signal_function": signal_frama_indicator,
+  "raw_function": FramaIndicator,
+  "description": "Developed by John Ehlers, the Fractal Adaptive Moving Average adapts its smoothing via the fractal dimension: faster in trends, slower in choppy markets.",
+  "parameters": {"period": 10, "price_type": 0},
+  "parameter_space": {"period": [5, 10, 14, 20, 30], "price_type": [0, 1, 2, 3, 4, 5, 6]},
+  "role": "Trend"
+}
+# === END frama_indicator_config.py ===
+
+# === BEGIN gchannel_config.py ===
+{
+  "name": "GChannel",
+  "function": Gchannel,
+  "raw_function": Gchannel,
+  "description": "GChannel plots a recursive dynamic price channel (Upper/Middle/Lower). The midline can serve as a baseline; the channel adapts to volatility.",
+  "parameters": {"length": 100, "price": "close"},
+  "parameter_space": {
+    "length": [20, 50, 100, 150, 200],
+    "price": ["close", "open", "high", "low", "median", "typical", "weighted"]
+  },
+  "role": "Baseline"
+}
+# === END gchannel_config.py ===
+
+# === BEGIN gd_config.py ===
+{
+  "name": "Gd",
+  "function": Gd,
+  "signal_function": None,
+  "raw_function": Gd,
+  "description": "Generalized DEMA-style baseline: GD = (1+vf)*EMA - vf*EMA_of_EMA. Returns ['GD','EMA'] aligned to df.index; supports applied price selection.",
+  "parameters": {"length": 20, "vf": 0.7, "price": 0},
+  "parameter_space": {
+    "length": [10, 20, 30, 50],
+    "vf": [0.3, 0.5, 0.7, 1.0],
+    "price": [0, 1, 2, 3, 4, 5, 6]
+  },
+  "role": "Baseline"
+}
+# === END gd_config.py ===
+
+# === BEGIN geomin_ma_config.py ===
+{
+  "name": "GeominMA",
+  "function": GeominMA,
+  "signal_function": None,
+  "raw_function": GeominMA,
+  "description": "Geometric Mean Moving Average indicator.",
+  "parameters": {"length": 10, "price": 0},
+  "parameter_space": {
+    "length": [5, 10, 14, 20, 30, 50],
+    "price": [0, 1, 2, 3, 4, 5, 6]
+  },
+  "role": "Trend"
+}
+# === END geomin_ma_config.py ===
+
+# === BEGIN glitch_index_fixed_config.py ===
+{
+  "name": "GlitchIndexFixed",
+  "function": GlitchIndexFixed,
+  "signal_function": signal_glitch_index_fixed,
+  "raw_function": GlitchIndexFixed,
+  "description": "* An obscure momentum indicator designed to detect unusual “glitches” or anomalies in price movement.  It acts as a smoothed oscillator.",
+  "parameters": {
+    "MaPeriod": 30,
+    "MaMethod": "sma",
+    "Price": "median",
+    "level1": 1.0,
+    "level2": 1.0
+  },
+  "parameter_space": {
+    "MaPeriod": [10, 20, 30, 50, 100],
+    "MaMethod": ["sma", "ema", "smma", "lwma", "slwma", "dsema", "tema", "lsma", "nlma"],
+    "Price": ["close", "median", "typical", "weighted", "haaverage"],
+    "level1": [0.5, 1.0, 1.5],
+    "level2": [1.5, 2.0, 2.5]
+  },
+  "role": "Momentum"
+}
+# === END glitch_index_fixed_config.py ===
+
+# === BEGIN hacolt_2_02_lines_config.py ===
+{
+  "name": "hacolt_2.02_lines",
+  "function": Hacolt202Lines,
+  "signal_function": signal_hacolt_2_02_lines,
+  "raw_function": Hacolt202Lines,
+  "description": "Long-term Heikin-Ashi Candlestick Oscillator (HACO lt) 2.02 lines by Sylvain Vervoort.",
+  "parameters": {"Length": 55, "CandleSize": 1.1, "LtLength": 60},
+  "parameter_space": {
+    "Length": [34, 55, 70, 89],
+    "CandleSize": [0.9, 1.0, 1.1, 1.2, 1.3],
+    "LtLength": [40, 50, 60, 80, 100]
+  },
+  "role": "Trend"
+}
+# === END hacolt_2_02_lines_config.py ===
+
+# === BEGIN hlctrend_config.py ===
+{
+  "name": "HLCTrend",
+  "function": Hlctrend,
+  "signal_function": signal_hlctrend,
+  "raw_function": Hlctrend,
+  "description": "Trend indicator using EMAs of Close, Low, and High; outputs two lines: EMA(Close)-EMA(High) and EMA(Low)-EMA(Close).",
+  "parameters": {"close_period": 5, "low_period": 13, "high_period": 34},
+  "parameter_space": {
+    "close_period": [3, 5, 8, 13],
+    "low_period": [8, 13, 21, 34],
+    "high_period": [21, 34, 55, 89]
+  },
+  "role": "Trend"
+}
+# === END hlctrend_config.py ===
+
+# === BEGIN is_calculation_config.py ===
+{
+  "name": "IS Calculation",
+  "function": ISCalculation,
+  "signal_function": signal_is_calculation,
+  "raw_function": ISCalculation,
+  "description": "* A momentum indicator that applies additional smoothing to a traditional momentum calculation (price – price n periods ago).",
+  "parameters": {"period": 10, "nbchandelier": 10, "lag": 0},
+  "parameter_space": {
+    "period": [5, 10, 14, 20, 30],
+    "nbchandelier": [5, 10, 14, 20],
+    "lag": [0, 1, 2, 3, 5]
+  },
+  "role": "Momentum"
+}
+# === END is_calculation_config.py ===
+
+# === BEGIN jposcillator_config.py ===
+{
+  "name": "JpOscillator",
+  "function": "JpOscillator",
+  "signal_function": "signal_jp_oscillator",
+  "raw_function": "JpOscillator",
+  "description": "Forward-looking buffer 2*Close - 0.5*Close.shift(-1) - 0.5*Close.shift(-2) - Close.shift(-4), optionally smoothed with SMA/EMA/SMMA/LWMA; outputs Jp plus slope-segmented JpUp/JpDown.",
+  "parameters": {"period": 5, "mode": 0, "smoothing": True},
+  "parameter_space": {"period": [3, 5, 8, 13, 21], "mode": [0, 1, 2, 3], "smoothing": [True, False]},
+  "role": "Momentum"
+}
+# === END jposcillator_config.py ===
+
+# === BEGIN mcginley_dynamic_2_3_config.py ===
+{
+  "name": "McGinley Dynamic 2.3",
+  "function": McginleyDynamic23,
+  "signal_function": signal_mcginley_dynamic_2_3,
+  "raw_function": McginleyDynamic23,
+  "description": "Created by J. R. McGinley, this indicator adjusts its smoothing factor dynamically based on the speed of price changes. Unlike a fixed-period moving average, the McGinley Dynamic speeds up in fast markets and slows down in slow markets.",
+  "parameters": {"period": 12, "price": "close", "constant": 5.0, "method": "ema"},
+  "parameter_space": {
+    "period": [5, 8, 12, 14, 20, 24, 30],
+    "price": ["close", "open", "high", "low", "median", "typical", "weighted"],
+    "constant": [3.0, 5.0, 8.0, 10.0],
+    "method": ["sma", "ema", "smma", "lwma", "gen"]
+  },
+  "role": "Baseline"
+}
+# === END mcginley_dynamic_2_3_config.py ===
+
+# === BEGIN metro_advanced_config.py ===
+{
+  "name": "Metro-Advanced",
+  "function": MetroAdvanced,
+  "signal_function": signal_metro_advanced,
+  "raw_function": MetroAdvanced,
+  "description": "RSI-based step oscillator with fast/slow step channels and adaptive levels; provides a simple metro-style trend/momentum display.",
+  "parameters": {
+    "period_rsi": 14,
+    "rsi_type": "rsi",
+    "price": "close",
+    "step_size_fast": 5.0,
+    "step_size_slow": 15.0,
+    "over_sold": 10.0,
+    "over_bought": 90.0,
+    "minmax_period": 49
+  },
+  "parameter_space": {
+    "period_rsi": [7, 14, 21, 28],
+    "rsi_type": ["rsi", "wilder", "rsx", "cutler"],
+    "price": ["close", "open", "high", "low", "median", "typical", "weighted", "median_body", "average", "trend_biased", "volume"],
+    "step_size_fast": [3.0, 5.0, 7.0],
+    "step_size_slow": [10.0, 15.0, 20.0, 25.0],
+    "over_sold": [5.0, 10.0, 20.0],
+    "over_bought": [80.0, 90.0, 95.0],
+    "minmax_period": [21, 34, 49, 63]
+  },
+  "role": "Trend"
+}
+# === END metro_advanced_config.py ===
+
+# === BEGIN metro_fixed_config.py ===
+{
+  "name": "METROFixed",
+  "function": METROFixed,
+  "signal_function": signal_metro_fixed,
+  "raw_function": METROFixed,
+  "description": "Computes Wilder's RSI and StepRSI (fast/slow) via backward clamped recursion with adjustable step sizes. Outputs RSI, StepRSI_fast, and StepRSI_slow aligned to df.index.",
+  "parameters": {
+    "period_rsi": 14,
+    "step_size_fast": 5.0,
+    "step_size_slow": 15.0
+  },
+  "parameter_space": {
+    "period_rsi": [7, 10, 14, 21, 28],
+    "step_size_fast": [3.0, 5.0, 7.0, 10.0],
+    "step_size_slow": [10.0, 15.0, 20.0, 30.0]
+  },
+  "role": "Momentum"
+}
+# === END metro_fixed_config.py ===
+
+# === BEGIN momentum_candles_modified_w_atr_config.py ===
+indicator_config = {
+  "name": "Momentum Candles Modified w ATR",
+  "function": MomentumCandlesModifiedWAtr,
+  "signal_function": signal_momentum_candles_modified_w_atr,
+  "raw_function": MomentumCandlesModifiedWAtr,
+  "description": "ATR-normalized candle momentum with static thresholds at +/- (1/atr_multiplier). Returns Value, Threshold_Pos, Threshold_Neg.",
+  "parameters": {"atr_period": 50, "atr_multiplier": 2.5},
+  "parameter_space": {
+    "atr_period": [14, 21, 50, 100],
+    "atr_multiplier": [1.5, 2.0, 2.5, 3.0, 4.0]
+  },
+  "role": "Confirmation"
+}
+# === END momentum_candles_modified_w_atr_config.py ===
+
+# === BEGIN momentum_candles_w_atr_config.py ===
+{
+  "name": "Momentum Candles w ATR",
+  "function": MomentumCandlesWATR,
+  "signal_function": "signal_momentum_candles_w_atr",
+  "raw_function": MomentumCandlesWATR,
+  "description": "Colours candles based on momentum with an ATR filter: bullish if Close > Open and ATR(atr_period)/abs(Close-Open) < atr_multiplier; bearish if Close < Open under the same filter.",
+  "parameters": {"atr_period": 50, "atr_multiplier": 2.5},
+  "parameter_space": {
+    "atr_period": [14, 21, 50, 100],
+    "atr_multiplier": [1.5, 2.0, 2.5, 3.0, 4.0]
+  },
+  "role": "Confirmation"
+}
+# === END momentum_candles_w_atr_config.py ===
+
+# === BEGIN precision_trend_histogram_config.py ===
+{
+  "name": "precision-trend-histogram",
+  "function": PrecisionTrendHistogram,
+  "signal_function": signal_precision_trend_histogram,
+  "raw_function": PrecisionTrendHistogram,
+  "description": "A histogram that visualises trend strength and direction using an average range band and sequential trend state.",
+  "parameters": {"avg_period": 30, "sensitivity": 3.0},
+  "parameter_space": {
+    "avg_period": [10, 20, 30, 50],
+    "sensitivity": [1.0, 2.0, 3.0, 4.0]
+  },
+  "role": "Confirmation"
+}
+# === END precision_trend_histogram_config.py ===
+
+# === BEGIN price_momentum_oscillator_config.py ===
+{
+  "name": "Price Momentum Oscillator",
+  "function": PriceMomentumOscillator,
+  "signal_function": signal_price_momentum_oscillator,
+  "raw_function": PriceMomentumOscillator,
+  "description": "A momentum oscillator that applies two-stage EMA smoothing to percentage price change (alpha=2/one then 2/two), scaled by 10; the signal is an EMA of the PMO. Oscillates around zero.",
+  "parameters": {"one": 35, "two": 20, "period": 10},
+  "parameter_space": {
+    "one": [20, 25, 30, 35, 40, 45],
+    "two": [10, 14, 20, 26, 30],
+    "period": [5, 10, 14, 20]
+  },
+  "role": "Momentum"
+}
+# === END price_momentum_oscillator_config.py ===
+
+# === BEGIN qqe_with_alerts_config.py ===
+{
+  "name": "QQEWithAlerts",
+  "function": QQEWithAlerts,
+  "signal_function": signal_qqe_with_alerts,
+  "raw_function": QQEWithAlerts,
+  "description": "QQE smooths RSI with an EMA and adds a dynamic trailing level to form a hybrid oscillator with trend-following characteristics.",
+  "parameters": {"rsi_period": 14, "sf": 5},
+  "parameter_space": {
+    "rsi_period": [7, 14, 21, 30],
+    "sf": [3, 5, 7, 9]
+  },
+  "role": "Confirmation"
+}
+# === END qqe_with_alerts_config.py ===
+
+# === BEGIN range_filter_modified_config.py ===
+{
+  "name": "RangeFilterModified",
+  "function": RangeFilterModified,
+  "signal_function": signal_range_filter_modified,
+  "raw_function": RangeFilterModified,
+  "description": "Dynamic filter using Wilder ATR(atr_period) * multiplier to form adaptive bands around a recursive center line.",
+  "parameters": {"atr_period": 14, "multiplier": 3.0},
+  "parameter_space": {
+    "atr_period": [7, 10, 14, 21, 28],
+    "multiplier": [1.5, 2.0, 2.5, 3.0, 3.5]
+  },
+  "role": "Baseline"
+}
+# === END range_filter_modified_config.py ===
+
+# === BEGIN rwi_btf_config.py ===
+{
+  "name": "RWI BTF",
+  "function": RWIBTF,
+  "signal_function": signal_rwi_btf,
+  "raw_function": RWIBTF,
+  "description": "Random Walk Index (BTF-capable): measures deviation from a random walk by comparing price moves to ATR-scaled expected range.",
+  "parameters": {"length": 2, "tf": None},
+  "parameter_space": {"length": [2, 3, 4, 6, 8, 10, 14], "tf": [None, "5T", "15T", "1H", "4H", "1D"]},
+  "role": "Confirmation"
+}
+# === END rwi_btf_config.py ===
+
+# === BEGIN sherif_hilo_config.py ===
+{
+  "name": "SherifHilo",
+  "function": SherifHilo,
+  "signal_function": signal_sherif_hilo,
+  "raw_function": SherifHilo,
+  "description": "Rolling Hi-Lo regime indicator that switches Data to LLV or HHV based on close vs previous value; outputs LineUp/LineDown.",
+  "parameters": {"period_high": 100, "period_lows": 100},
+  "parameter_space": {
+    "period_high": [20, 50, 100, 150, 200],
+    "period_lows": [20, 50, 100, 150, 200]
+  },
+  "role": "Confirmation"
+}
+# === END sherif_hilo_config.py ===
+
+# === BEGIN silence_config.py ===
+{
+  "name": "Silence",
+  "function": Silence,
+  "signal_function": signal_silence,
+  "raw_function": Silence,
+  "description": "Silence indicator producing normalized (0..100, reversed) Aggressiveness and Volatility series over rolling windows; higher values indicate quieter conditions.",
+  "parameters": {"my_period": 12, "buff_size": 96, "point": 0.0001, "redraw": True},
+  "parameter_space": {
+    "my_period": [8, 12, 16, 24],
+    "buff_size": [64, 96, 128, 192]
+  },
+  "role": "ATR/Volatility"
+}
+# === END silence_config.py ===
+
+# === BEGIN sinewma_config.py ===
+{
+  "name": "SineWMA",
+  "function": Sinewma,
+  "signal_function": signal_sinewma,
+  "raw_function": Sinewma,
+  "description": "A moving average that applies half-sine weights across the lookback window. The highest weights are centered, providing a smooth curve that remains responsive to recent price while filtering noise.",
+  "parameters": {"length": 20, "price": 0},
+  "parameter_space": {"length": [10, 14, 20, 30, 50], "price": [0, 1, 2, 3, 4, 5, 6]},
+  "role": "Baseline"
+}
+# === END sinewma_config.py ===
+
+# === BEGIN smoothed_momentum_config.py ===
+{
+  "name": "SmoothedMomentum",
+  "function": SmoothedMomentum,
+  "signal_function": signal_smoothed_momentum,
+  "raw_function": SmoothedMomentum,
+  "description": "Percentage momentum (100 * price / price[n] ago) with optional smoothing via SMA/EMA/SMMA/LWMA on a chosen applied price; returns both smoothed (SM) and raw Momentum.",
+  "parameters": {
+    "momentum_length": 12,
+    "use_smoothing": True,
+    "smoothing_method": 0,
+    "smoothing_length": 20,
+    "price": 0
+  },
+  "parameter_space": {
+    "momentum_length": [5, 10, 12, 14, 20],
+    "use_smoothing": [True, False],
+    "smoothing_method": [0, 1, 2, 3],
+    "smoothing_length": [5, 10, 20, 50, 100],
+    "price": [0, 1, 2, 3, 4, 5, 6]
+  },
+  "role": "Momentum"
+}
+# === END smoothed_momentum_config.py ===
+
+# === BEGIN smoothstep_config.py ===
+{
+  "name": "SmoothStep",
+  "function": Smoothstep,
+  "raw_function": Smoothstep,
+  "description": "A smoothing filter that applies the mathematical smoothstep function to price data, creating a very smooth baseline.",
+  "parameters": {"period": 32, "price": "close"},
+  "parameter_space": {
+    "period": [8, 16, 32, 64],
+    "price": ["close", "open", "high", "low", "median", "typical", "weighted", "lowhigh"]
+  },
+  "role": "Baseline"
+}
+# === END smoothstep_config.py ===
+
+# === BEGIN stiffness_indicator_config.py ===
+{
+  "name": "Stiffness Indicator",
+  "function": StiffnessIndicator,
+  "raw_function": StiffnessIndicator,
+  "description": "Measures price stiffness by comparing Close to a thresholded MA and summing signals; outputs Stiffness and Signal.",
+  "parameters": {
+    "period1": 100,
+    "method1": "sma",
+    "period3": 60,
+    "period2": 3,
+    "method2": "sma"
+  },
+  "parameter_space": {
+    "period1": [50, 100, 150, 200],
+    "method1": ["sma", "ema", "smma", "lwma"],
+    "period3": [30, 60, 90, 120],
+    "period2": [2, 3, 5, 8],
+    "method2": ["sma", "ema", "smma", "lwma"]
+  },
+  "role": "ATR/Volatility"
+}
+# === END stiffness_indicator_config.py ===
+
+# === BEGIN supertrend_config.py ===
+{
+  "name": "SuperTrend",
+  "function": Supertrend,
+  "signal_function": signal_supertrend,
+  "raw_function": Supertrend,
+  "description": "* A trend‑following indicator based on ATR and moving averages. It plots a line above or below price and flips direction when price breaks through.",
+  "parameters": {"period": 10, "multiplier": 3.0},
+  "parameter_space": {"period": [7, 10, 14, 21], "multiplier": [2.0, 2.5, 3.0, 3.5]},
+  "role": "Trend"
+}
+# === END supertrend_config.py ===
+
+# === BEGIN t3_ma_config.py ===
+{
+  "name": "T3MA",
+  "function": T3MA,
+  "signal_function": signal_t3_ma,
+  "raw_function": T3MA,
+  "description": "The T3 moving average applies a triple smoothing process using exponential moving averages, offering a smoother curve with less lag than simple or double EMAs.",
+  "parameters": {"length": 10, "b": 0.88, "price": 0},
+  "parameter_space": {
+    "length": [5, 8, 10, 14, 20, 30],
+    "b": [0.7, 0.8, 0.88, 0.9, 0.95]
+  },
+  "role": "Baseline"
+}
+# === END t3_ma_config.py ===
+
+# === BEGIN tether_line_config.py ===
+{
+  "name": "TetherLine",
+  "function": TetherLine,
+  "signal_function": None,
+  "raw_function": TetherLine,
+  "description": "Baseline from the midpoint of rolling Highest High and Lowest Low over length. Outputs AboveCenter when Close > midpoint and BelowCenter when Close < midpoint; ArrowUp/ArrowDown are NaN placeholders.",
+  "parameters": {"length": 55},
+  "parameter_space": {"length": [21, 34, 55, 89]},
+  "role": "Baseline"
+}
+# === END tether_line_config.py ===
+
+# === BEGIN theturtletradingchannel_config.py ===
+{
+  "name": "TheTurtleTradingChannel",
+  "function": TheTurtleTradingChannel,
+  "signal_function": signal_TheTurtleTradingChannel,
+  "raw_function": TheTurtleTradingChannel,
+  "description": "* Based on the Turtle Trading rules, this channel plots recent highs and lows (Donchian channels) to define breakout levels.",
+  "parameters": {"trade_period": 20, "stop_period": 10, "strict": False},
+  "parameter_space": {
+    "trade_period": [10, 20, 40, 55],
+    "stop_period": [5, 10, 15, 20],
+    "strict": [False, True]
+  },
+  "role": "Trend"
+}
+# === END theturtletradingchannel_config.py ===
+
+# === BEGIN tii_config.py ===
+{
+  "name": "TII",
+  "function": TII,
+  "signal_function": signal_tii,
+  "raw_function": TII,
+  "description": "Trend Intensity Index (TII). Measures the strength of a trend relative to a moving average over a look-back window, ranging from 0 to 100.",
+  "parameters": {"length": 30, "ma_length": 60, "ma_method": 0, "price": 0},
+  "parameter_space": {
+    "length": [14, 20, 30, 40, 50],
+    "ma_length": [30, 60, 90, 120],
+    "ma_method": [0, 1, 2, 3],
+    "price": [0, 1, 2, 3, 4, 5, 6]
+  },
+  "role": "Confirmation"
+}
+# === END tii_config.py ===
+
+# === BEGIN top_bottom_nr_config.py ===
+{
+  "name": "Top Bottom NR",
+  "function": TopBottomNR,
+  "signal_function": None,
+  "raw_function": TopBottomNR,
+  "description": "Computes run-length counts since the most recent breakout of lows/highs over the previous period, returning LongSignal and ShortSignal aligned to the input index.",
+  "parameters": {"per": 14},
+  "parameter_space": {"per": [7, 14, 21, 30]},
+  "role": "Trend"
+}
+# === END top_bottom_nr_config.py ===
+
+# === BEGIN tp_config.py ===
+{
+  "name": "TP",
+  "function": TP,
+  "signal_function": None,
+  "raw_function": TP,
+  "description": "Advance Trend Pressure (TP). Computes rolling sums of up/down contributions over 'length' bars; TP = Up - Dn. Optionally outputs Up and Dn lines when show_updn=True.",
+  "parameters": {"length": 14, "show_updn": False},
+  "parameter_space": {"length": [7, 14, 21, 30], "show_updn": [False, True]},
+  "role": "Trend"
+}
+# === END tp_config.py ===
+
+# === BEGIN trend_akkam_config.py ===
+{
+  "name": "TrendAkkam",
+  "function": TRENDAKKAM,
+  "signal_function": signal_trend_akkam,
+  "raw_function": TRENDAKKAM,
+  "description": "ATR-based trailing stop that flips with price and can use either ATR*factor or a fixed delta for stop distance.",
+  "parameters": {
+    "akk_range": 100,
+    "ima_range": 1,
+    "akk_factor": 6.0,
+    "mode": 0,
+    "delta_price": 30.0,
+    "point": 1.0
+  },
+  "parameter_space": {
+    "akk_range": [14, 50, 100, 200],
+    "ima_range": [1, 3, 5, 10],
+    "akk_factor": [2.0, 3.0, 4.0, 6.0],
+    "mode": [0, 1],
+    "delta_price": [10.0, 20.0, 30.0, 50.0],
+    "point": [0.01, 0.1, 1.0]
+  },
+  "role": "Trend"
+}
+# === END trend_akkam_config.py ===
+
+# === BEGIN trend_direction__force_index___smoothed_4_config.py ===
+{
+  "name": "TrendDirectionForceIndexSmoothed4",
+  "function": TrendDirectionForceIndexSmoothed4,
+  "signal_function": signal_trend_direction_force_index_smoothed_4,
+  "raw_function": TrendDirectionForceIndexSmoothed4,
+  "description": "Trend Direction Force Index (Smoothed v4): compares a chosen moving average to its EMA-like smooth, normalizes and iSmooth-filters the result, and emits up/down triggers and a trend state.",
+  "parameters": {
+    "trend_period": 20,
+    "trend_method": "ema",
+    "price": "close",
+    "trigger_up": 0.05,
+    "trigger_down": -0.05,
+    "smooth_length": 5.0,
+    "smooth_phase": 0.0,
+    "color_change_on_zero_cross": False,
+    "point": 1.0
+  },
+  "parameter_space": {
+    "trend_period": [10, 20, 30, 50],
+    "trend_method": ["sma", "ema", "dsema", "dema", "tema", "smma", "lwma", "pwma", "vwma", "hull", "tma", "sine", "mcg", "zlma", "lead", "ssm", "smoo", "linr", "ilinr", "ie2", "nlma"],
+    "price": ["close", "open", "high", "low", "median", "typical", "weighted", "average", "medianb", "tbiased", "haclose", "haopen", "hahigh", "halow", "hamedian", "hatypical", "haweighted", "haaverage", "hamedianb", "hatbiased"],
+    "trigger_up": [0.02, 0.05, 0.1],
+    "trigger_down": [-0.02, -0.05, -0.1],
+    "smooth_length": [3.0, 5.0, 8.0, 13.0],
+    "smooth_phase": [-50.0, 0.0, 50.0],
+    "color_change_on_zero_cross": [False, True],
+    "point": [0.01, 0.1, 1.0]
+  },
+  "role": "Trend"
+}
+# === END trend_direction__force_index___smoothed_4_config.py ===
+
+# === BEGIN trend_lord_nrp_indicator_config.py ===
+{
+  "name": "trend-lord-nrp-indicator",
+  "function": TrendLordNrpIndicator,
+  "signal_function": signal_trend_lord_nrp_indicator,
+  "raw_function": TrendLordNrpIndicator,
+  "description": "Two-stage moving average (length and sqrt(length)) on selected price. Buy slots to Low/High (or MA) based on up/down; Sell is the second-stage MA.",
+  "parameters": {"length": 12, "mode": "smma", "price": "close", "show_high_low": False},
+  "parameter_space": {
+    "length": [8, 12, 16, 20, 24, 30],
+    "mode": ["sma", "ema", "smma", "lwma"],
+    "price": ["close", "open", "high", "low", "median", "typical", "weighted"],
+    "show_high_low": [False, True]
+  },
+  "role": "Trend"
+}
+# === END trend_lord_nrp_indicator_config.py ===
+
+# === BEGIN trendcontinuation2_config.py ===
+{
+  "name": "TrendContinuation2",
+  "function": Trendcontinuation2,
+  "signal_function": None,
+  "raw_function": Trendcontinuation2,
+  "description": "* An indicator designed to confirm whether an existing trend is continuing or faltering by blending moving averages and momentum.",
+  "parameters": {"n": 20, "t3_period": 5, "b": 0.618},
+  "parameter_space": {
+    "n": [10, 20, 30, 50],
+    "t3_period": [3, 5, 8, 10],
+    "b": [0.5, 0.618, 0.7, 0.8]
+  },
+  "role": "Confirmation"
+}
+# === END trendcontinuation2_config.py ===
+
+# === BEGIN trimagen_config.py ===
+{
+  "name": "Trimagen",
+  "function": Trimagen,
+  "raw_function": Trimagen,
+  "description": "Triangular Moving Average (TriMA): an SMA of an SMA, center-weighted smoothing that is smoother than a standard SMA.",
+  "parameters": {"period": 20, "applied_price": "close"},
+  "parameter_space": {
+    "period": [10, 14, 20, 30, 50],
+    "applied_price": ["close", "open", "high", "low", "median", "typical", "weighted"]
+  },
+  "role": "Baseline"
+}
+# === END trimagen_config.py ===
+
+# === BEGIN true_strength_index_config.py ===
+{
+  "name": "true-strength-index",
+  "function": TrueStrengthIndex,
+  "signal_function": signal_true_strength_index,
+  "raw_function": TrueStrengthIndex,
+  "description": "A momentum oscillator created by William Blau that uses double-smoothed EMAs of price changes. TSI oscillates around zero and ranges roughly between -100 and +100.",
+  "parameters": {"first_r": 5, "second_s": 8},
+  "parameter_space": {
+    "first_r": [3, 5, 8, 13, 25],
+    "second_s": [5, 8, 13, 21]
+  },
+  "role": "Momentum"
+}
+# === END true_strength_index_config.py ===
+
+# === BEGIN ttf_config.py ===
+{
+  "name": "TTF",
+  "function": TTF,
+  "signal_function": None,
+  "raw_function": TTF,
+  "description": "Trend Trigger Factor (TTF) from rolling highs/lows with T3 smoothing; returns TTF and a threshold Signal at top_line/bottom_line.",
+  "parameters": {"ttf_bars": 8, "top_line": 75.0, "bottom_line": -75.0, "t3_period": 3, "b": 0.7},
+  "parameter_space": {
+    "ttf_bars": [5, 8, 12, 20],
+    "top_line": [60.0, 70.0, 75.0, 80.0],
+    "bottom_line": [-80.0, -75.0, -70.0, -60.0],
+    "t3_period": [1, 2, 3, 5],
+    "b": [0.5, 0.6, 0.7, 0.8]
+  },
+  "role": "Confirmation"
+}
+# === END ttf_config.py ===
+
+# === BEGIN ttms_config.py ===
+{
+  "name": "TTMS",
+  "function": TTMS,
+  "signal_function": None,
+  "raw_function": TTMS,
+  "description": "A volatility indicator similar to the TTM Squeeze. It measures the relationship between Bollinger Bands and Keltner Channels to identify low-volatility squeeze conditions.",
+  "parameters": {
+    "bb_length": 20,
+    "bb_deviation": 2.0,
+    "keltner_length": 20,
+    "keltner_smooth_length": 20,
+    "keltner_smooth_method": 0,
+    "keltner_deviation": 2.0
+  },
+  "parameter_space": {
+    "bb_length": [10, 14, 20, 30, 50],
+    "bb_deviation": [1.0, 1.5, 2.0, 2.5, 3.0],
+    "keltner_length": [10, 14, 20, 30, 50],
+    "keltner_smooth_length": [10, 14, 20, 30, 50],
+    "keltner_smooth_method": [0, 1, 2, 3],
+    "keltner_deviation": [1.0, 1.5, 2.0, 2.5]
+  },
+  "role": "ATR/Volatility"
+}
+# === END ttms_config.py ===
+
+# === BEGIN vidya_config.py ===
+{
+  "name": "VIDYA",
+  "function": VIDYA,
+  "signal_function": signal_vidya,
+  "raw_function": VIDYA,
+  "description": "VIDYA is an adaptive moving average that scales an EMA by a volatility ratio (short std divided by long std). Uses Close price only.",
+  "parameters": {"period": 9, "histper": 30},
+  "parameter_space": {"period": [5, 9, 14, 21], "histper": [20, 30, 50, 100]},
+  "role": "Trend"
+}
+# === END vidya_config.py ===
+
+# === BEGIN volatility_ratio_config.py ===
+{
+  "name": "Volatility Ratio",
+  "function": VolatilityRatio,
+  "signal_function": signal_volatility_ratio,
+  "raw_function": VolatilityRatio,
+  "description": "Volatility Ratio (VR) = rolling std of price divided by its SMA over the same period. Outputs VR plus two alternating segments where VR < 1 (VR_below1_a and VR_below1_b).",
+  "parameters": {"period": 25, "price": "Close"},
+  "parameter_space": {
+    "period": [10, 14, 20, 25, 30, 50],
+    "price": ["Close", "HL2", "HLC3", "OHLC4", "Weighted"]
+  },
+  "role": "ATR/Volatility"
+}
+# === END volatility_ratio_config.py ===
+
+# === BEGIN vortex_indicator_config.py ===
+{
+  "name": "Vortex_Indicator",
+  "function": VortexIndicator,
+  "signal_function": signal_vortex_indicator,
+  "raw_function": VortexIndicator,
+  "description": "* The Vortex Indicator plots two lines, VI+ and VI−, derived from up and down price movement. It measures the strength of positive and negative trends.",
+  "parameters": {"length": 14},
+  "parameter_space": {"length": [7, 14, 21, 30]},
+  "role": "Confirmation"
+}
+# === END vortex_indicator_config.py ===
+
+# === BEGIN william_vix_fix_config.py ===
+{
+  "name": "William Vix-Fix",
+  "function": WilliamVixFix,
+  "signal_function": signal_william_vix_fix,
+  "raw_function": WilliamVixFix,
+  "description": "* A volatility indicator created by Larry Williams that emulates the CBOE VIX using price data. It identifies spikes in fear or complacency.",
+  "parameters": {"period": 22},
+  "parameter_space": {"period": [7, 14, 20, 22, 30]},
+  "role": "ATR/Volatility"
+}
+# === END william_vix_fix_config.py ===
+
+# === BEGIN wpr_ma_alerts_config.py ===
+{
+  "name": "wpr + ma (alerts)",
+  "function": WprMaAlerts,
+  "signal_function": signal_wpr_ma_alerts,
+  "raw_function": WprMaAlerts,
+  "description": "Williams %R smoothed by a selectable moving average (sma/ema/smma/lwma), returning WPR, Signal, and Cross states.",
+  "parameters": {"wpr_period": 35, "signal_period": 21, "ma_method": "smma"},
+  "parameter_space": {
+    "wpr_period": [14, 21, 35, 55],
+    "signal_period": [5, 9, 13, 21, 34],
+    "ma_method": ["sma", "ema", "smma", "lwma"]
+  },
+  "role": "Confirmation"
+}
+# === END wpr_ma_alerts_config.py ===
+
+# === BEGIN xma_coloured_updated_for_nnfx_config.py ===
+{
+  "name": "XmaColouredUpdatedForNnfx",
+  "function": XmaColouredUpdatedForNnfx,
+  "signal_function": signal_xma_coloured_updated_for_nnfx,
+  "raw_function": XmaColouredUpdatedForNnfx,
+  "description": "Moving-average threshold indicator producing Signal, Fl, Up, and Dn series; uses two MAs with a point threshold on an applied price.",
+  "parameters": {
+    "period": 12,
+    "porog": 3,
+    "metod": "ema",
+    "metod2": "ema",
+    "price": "close",
+    "tick_size": 0.0001
+  },
+  "parameter_space": {
+    "period": [8, 12, 20, 34, 50],
+    "porog": [1, 2, 3, 5, 8],
+    "metod": ["sma", "ema", "smma", "lwma"],
+    "metod2": ["sma", "ema", "smma", "lwma"],
+    "price": ["close", "open", "high", "low", "median", "typical", "weighted"]
+  },
+  "role": "Confirmation"
+}
+# === END xma_coloured_updated_for_nnfx_config.py ===
+
+# === BEGIN zerolag_macd_mq4_config.py ===
+{
+  "name": "Zerolag_MACD.mq4",
+  "function": ZerolagMACDMq4,
+  "signal_function": signal_zerolag_macd_mq4,
+  "raw_function": ZerolagMACDMq4,
+  "description": "Zero-lag MACD using MT4-style EMA seeding; outputs ZL_MACD and ZL_Signal aligned to input index.",
+  "parameters": {"fast": 12, "slow": 24, "signal": 9},
+  "parameter_space": {"fast": [5, 8, 12, 15], "slow": [20, 24, 26, 30], "signal": [5, 9, 12]},
+  "role": "Momentum"
+}
+# === END zerolag_macd_mq4_config.py ===
+
