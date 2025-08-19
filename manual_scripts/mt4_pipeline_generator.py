@@ -33,7 +33,7 @@ from typing import List, Optional, Tuple
 # ──────────────────────────────────────────────────────────────────────────────
 # 0) OPENAI API KEY — inline default (env var still supported)
 # ──────────────────────────────────────────────────────────────────────────────
-OPENAI_API_KEY = "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"  # ← Put your key here (or set env var OPENAI_OPENAI_API_KEY / OPENAI_API_KEY)
+OPENAI_API_KEY = json.loads("resources/openapi_key.json")["key"]
 OPENAI_MODEL = "gpt-5"
 
 try:
