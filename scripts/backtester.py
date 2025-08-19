@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 from scripts import config, strategies
-from scripts.sql import BacktestSQLHelper, HistoricalDataSQLHelper
+from scripts.data.sql import BacktestSQLHelper, HistoricalDataSQLHelper
 
 
 class Trade:

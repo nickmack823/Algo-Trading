@@ -1,5 +1,5 @@
 from scripts import strategies
-from scripts.indicators import find_indicator_config
+from scripts.indicators.indicator_configs import find_indicator_config
 
 
 def seconds_to_dhms_str(seconds):

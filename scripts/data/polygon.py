@@ -1,4 +1,3 @@
-import json
 import logging
 import multiprocessing
 import sys
@@ -7,10 +6,10 @@ import time
 import pandas as pd
 import urllib3
 from polygon import RESTClient
+from sql import HistoricalDataSQLHelper
 from tqdm import tqdm
 
 import scripts.config as config
-from scripts.sql import HistoricalDataSQLHelper, SQLHelper
 
 logging.basicConfig(
     level=20, datefmt="%m/%d/%Y %H:%M:%S", format="[%(asctime)s] %(message)s"

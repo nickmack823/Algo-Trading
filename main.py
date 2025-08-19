@@ -37,18 +37,18 @@ from scripts.config import (
     TIMEFRAME_DATE_RANGES_PHASE_1_AND_2,
     TIMEFRAMES,
 )
-from scripts.indicators import (
+from scripts.data.sql import (
+    BacktestSQLHelper,
+    HistoricalDataSQLHelper,
+    IndicatorCacheSQLHelper,
+)
+from scripts.indicators.indicator_configs import (
     IndicatorConfig,
     atr_indicators,
     baseline_indicators,
     momentum_indicators,
     trend_indicators,
     volume_indicators,
-)
-from scripts.sql import (
-    BacktestSQLHelper,
-    HistoricalDataSQLHelper,
-    IndicatorCacheSQLHelper,
 )
 
 logging.basicConfig(
@@ -1362,7 +1362,6 @@ if __name__ == "__main__":
         }
 
         if name == "phase1":
-            continue
             kwargs["exploration_space"] = phase["exploration_space"]
             kwargs["trials_by_timeframe"] = phase["trials_by_timeframe"]
             kwargs["seeds"] = phase["seeds"]
@@ -1388,9 +1387,7 @@ if __name__ == "__main__":
             run_all_studies(study_args, max_parallel_studies=N_PROCESSES)
 
         elif name == "phase3":
-            continue
             run_phase3(phase)
-
         else:
             raise ValueError(f"Unknown phase name: {name}")
 

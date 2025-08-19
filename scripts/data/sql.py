@@ -18,6 +18,7 @@ from scripts.config import (
     DATA_FOLDER,
     MAJOR_FOREX_PAIRS,
     TIMESPAN_MULTIPLIER_PAIRS,
+    TRADING_DB_PATH,
 )
 
 logging.basicConfig(
@@ -1227,7 +1228,7 @@ class BacktestSQLHelper(SQLHelper):
 
 
 class OandaSQLHelper(SQLHelper):
-    def __init__(self, db_path: str = "OandaTrading.db"):
+    def __init__(self, db_path: str = TRADING_DB_PATH):
         super().__init__(db_path)
 
         # Create table for live/demo strategies

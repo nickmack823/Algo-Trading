@@ -6,11 +6,13 @@ import pandas as pd
 DATA_FOLDER = "data"
 BACKTESTING_FOLDER = "backtesting"
 BACKTESTING_DB_NAME = "Backtesting.db"
+TRADING_DB_PATH = "trading/OandaTrading.db"
 OPTUNA_STUDIES_FOLDER = "backtesting/optuna_studies"
 OPTUNA_REPORTS_FOLDER = "backtesting/optuna_reports"
 TEMP_CACHE_FOLDER = "temp"
 os.makedirs(DATA_FOLDER, exist_ok=True)
 os.makedirs(BACKTESTING_FOLDER, exist_ok=True)
+os.makedirs(TRADING_DB_PATH, exist_ok=True)
 os.makedirs(OPTUNA_STUDIES_FOLDER, exist_ok=True)
 os.makedirs(OPTUNA_REPORTS_FOLDER, exist_ok=True)
 os.makedirs(TEMP_CACHE_FOLDER, exist_ok=True)

@@ -1402,14 +1402,15 @@ def signal_2nd_order_gaussian_high_pass_filter_mtf_zones(
 # === BEGIN 3rdgenma_signal.py ===
 def signal_3rdgenma(df: pd.DataFrame) -> list[str]:
     # Expect df to contain columns: "MA3G" (the 3rd gen MA) and "MA1" (first-pass MA as price proxy)
-    try:
-        ma3g = df["MA3G"]
-        ma1 = df["MA1"]
-    except Exception:
+    # try:
+    ma3g = df["MA3G"]
+    ma1 = df["MA1"]
+    # except Exception:
+    #     return [NO_SIGNAL, NEUTRAL_TREND]
+    if len(df) < 2:
         return [NO_SIGNAL, NEUTRAL_TREND]
-
-    if ma3g is None or ma1 is None or len(df) < 2:
-        return [NO_SIGNAL, NEUTRAL_TREND]
+    # if ma3g is None or ma1 is None or len(df) < 2:
+    #     return [NO_SIGNAL, NEUTRAL_TREND]
 
     # Use last two bars
     ma3g_prev = ma3g.iloc[-2] if len(ma3g) >= 2 else pd.NA
@@ -1553,10 +1554,10 @@ def signal_aso(df: pd.DataFrame) -> list[str]:
 # === BEGIN atr_based_ema_variant_1_signal.py ===
 def signal_atr_based_ema_variant_1(df: pd.DataFrame) -> list[str]:
     # Expecting columns: ['EMA_ATR_var1', 'EMA_Equivalent']
-    try:
-        ema = pd.to_numeric(df["EMA_ATR_var1"], errors="coerce")
-    except Exception:
-        return [NO_SIGNAL, NEUTRAL_TREND]
+    # try:
+    ema = pd.to_numeric(df["EMA_ATR_var1"], errors="coerce")
+    # except Exception:
+    #     return [NO_SIGNAL, NEUTRAL_TREND]
 
     ema_nonan = ema.dropna()
     n = len(ema_nonan)
@@ -1599,13 +1600,13 @@ def signal_atr_based_ema_variant_1(df: pd.DataFrame) -> list[str]:
 # === BEGIN bams_bung_3_signal.py ===
 def signal_bams_bung_3(df: pd.DataFrame) -> list[str]:
     # Robustness checks
-    try:
-        up_sig = df["UpTrendSignal"]
-        dn_sig = df["DownTrendSignal"]
-        up_stop = df["UpTrendStop"]
-        dn_stop = df["DownTrendStop"]
-    except Exception:
-        return [NO_SIGNAL, NEUTRAL_TREND]
+    # try:
+    up_sig = df["UpTrendSignal"]
+    dn_sig = df["DownTrendSignal"]
+    up_stop = df["UpTrendStop"]
+    dn_stop = df["DownTrendStop"]
+    # except Exception:
+    #     return [NO_SIGNAL, NEUTRAL_TREND]
 
     n = len(df)
     if n < 2:
@@ -1713,11 +1714,11 @@ def signal_band_pass_filter(df: pd.DataFrame) -> list[str]:
 # === BEGIN chandelierexit_signal.py ===
 def signal_chandelierexit(df: pd.DataFrame) -> list[str]:
     # Validate input and coerce to numeric
-    try:
-        long_line = pd.to_numeric(df["Chandelier_Long"], errors="coerce")
-        short_line = pd.to_numeric(df["Chandelier_Short"], errors="coerce")
-    except Exception:
-        return [NO_SIGNAL, NEUTRAL_TREND]
+    # try:
+    long_line = pd.to_numeric(df["Chandelier_Long"], errors="coerce")
+    short_line = pd.to_numeric(df["Chandelier_Short"], errors="coerce")
+    # except Exception:
+    #     return [NO_SIGNAL, NEUTRAL_TREND]
 
     n = len(df)
     if n == 0:
@@ -1901,10 +1902,10 @@ def signal_coral(df: pd.DataFrame) -> list[str]:
 # === BEGIN cvi_multi_signal.py ===
 def signal_cvi_multi(series: pd.Series) -> list[str]:
     # Expecting a CVI Series where sign indicates price relative to baseline
-    try:
-        s = series.astype(float)
-    except Exception:
-        return [NO_SIGNAL, NEUTRAL_TREND]
+    # try:
+    s = series.astype(float)
+    # except Exception:
+    #     return [NO_SIGNAL, NEUTRAL_TREND]
 
     if s.shape[0] < 2:
         return [NO_SIGNAL, NEUTRAL_TREND]
@@ -2105,11 +2106,11 @@ def signal_doda_stochastic_modified(df: pd.DataFrame) -> list[str]:
         return [NO_SIGNAL, NEUTRAL_TREND]
 
     # Extract lines
-    try:
-        k = df["DodaStoch"]
-        d = df["DodaSignal"]
-    except Exception:
-        return [NO_SIGNAL, NEUTRAL_TREND]
+    # try:
+    k = df["DodaStoch"]
+    d = df["DodaSignal"]
+    # except Exception:
+    #     return [NO_SIGNAL, NEUTRAL_TREND]
 
     if len(k) < 2 or len(d) < 2:
         return [NO_SIGNAL, NEUTRAL_TREND]
@@ -2316,10 +2317,10 @@ def signal_ehlers_deli__detrended_leading_indicator(series: pd.Series) -> list[s
 # === BEGIN ehlers_deli_detrended_leading_indicator_signal.py ===
 def signal_ehlers_deli_detrended_leading_indicator(series: pd.Series) -> list[str]:
     # Ensure float dtype and handle edge cases
-    try:
-        s = series.astype(float)
-    except Exception:
-        return [NO_SIGNAL, NEUTRAL_TREND]
+    # try:
+    s = series.astype(float)
+    # except Exception:
+    #     return [NO_SIGNAL, NEUTRAL_TREND]
 
     if s.shape[0] < 2:
         return [NO_SIGNAL, NEUTRAL_TREND]
@@ -2954,11 +2955,11 @@ def signal_hacolt_2_02_lines(df: pd.DataFrame) -> list[str]:
     )
 
     # Use last two bars only
-    try:
-        prev_val = float(s.iloc[-2])
-        curr_val = float(s.iloc[-1])
-    except Exception:
-        return [NO_SIGNAL, NEUTRAL_TREND]
+    # try:
+    prev_val = float(s.iloc[-2])
+    curr_val = float(s.iloc[-1])
+    # except Exception:
+    #     return [NO_SIGNAL, NEUTRAL_TREND]
 
     # Determine signal based on transition across zero line
     if pd.notna(prev_val) and pd.notna(curr_val):
@@ -3521,10 +3522,10 @@ def signal_precision_trend_histogram(df: pd.DataFrame) -> list[str]:
 # === BEGIN price_momentum_oscillator_signal.py ===
 def signal_price_momentum_oscillator(df: pd.DataFrame) -> list[str]:
     # Expecting columns: 'PMO', 'Signal'
-    try:
-        pmo = df["PMO"].astype(float)
-    except Exception:
-        return [NO_SIGNAL, NEUTRAL_TREND]
+    # try:
+    pmo = df["PMO"].astype(float)
+    # except Exception:
+    #     return [NO_SIGNAL, NEUTRAL_TREND]
 
     n = len(pmo)
     pmo_curr = pmo.iloc[-1] if n >= 1 else float("nan")
@@ -4017,11 +4018,11 @@ def signal_smoothstep(df: pd.DataFrame) -> list[str]:
 
 def signal_stiffness_indicator(df: pd.DataFrame) -> list[str]:
     # Validate input
-    try:
-        s = pd.to_numeric(df["Stiffness"], errors="coerce")
-        sig = pd.to_numeric(df["Signal"], errors="coerce")
-    except Exception:
-        return [NO_SIGNAL, NEUTRAL_TREND]
+    # try:
+    s = pd.to_numeric(df["Stiffness"], errors="coerce")
+    sig = pd.to_numeric(df["Signal"], errors="coerce")
+    # except Exception:
+    #     return [NO_SIGNAL, NEUTRAL_TREND]
 
     if len(s) < 2:
         return [NO_SIGNAL, NEUTRAL_TREND]
@@ -4315,10 +4316,10 @@ def signal_top_bottom_nr(df: pd.DataFrame) -> list[str]:
 # === BEGIN tp_signal.py ===
 def signal_tp(df: pd.DataFrame) -> list[str]:
     # Expecting df with columns ['TP','Up','Dn']
-    try:
-        s = df["TP"]
-    except Exception:
-        return [NO_SIGNAL, NEUTRAL_TREND]
+    # try:
+    s = df["TP"]
+    # except Exception:
+    #     return [NO_SIGNAL, NEUTRAL_TREND]
 
     if s is None or len(s) == 0:
         return [NO_SIGNAL, NEUTRAL_TREND]
@@ -4400,7 +4401,7 @@ def signal_trend_akkam(df: pd.DataFrame) -> list[str]:
 
 
 # === BEGIN trend_direction__force_index___smoothed_4_signal.py ===
-def signal_trend_direction__force_index___smoothed_4(df: pd.DataFrame) -> list[str]:
+def signal_trend_direction_force_index_smoothed_4(df: pd.DataFrame) -> list[str]:
     if (
         df is None
         or not isinstance(df, pd.DataFrame)
@@ -4695,13 +4696,13 @@ def signal_ttf(df: pd.DataFrame) -> list[str]:
 
 def signal_ttms(df: pd.DataFrame) -> list[str]:
     # Validate input
-    try:
-        up = df["TTMS_Up"]
-        dn = df["TTMS_Dn"]
-        alert = df["Alert"]
-        noalert = df["NoAlert"]
-    except Exception:
-        return [NO_SIGNAL, NEUTRAL_TREND]
+    # try:
+    up = df["TTMS_Up"]
+    dn = df["TTMS_Dn"]
+    alert = df["Alert"]
+    noalert = df["NoAlert"]
+    # except Exception:
+    #     return [NO_SIGNAL, NEUTRAL_TREND]
 
     if len(df) < 2:
         return [NO_SIGNAL, NEUTRAL_TREND]
@@ -5136,11 +5137,11 @@ def signal_zerolag_macd_mq4(df: pd.DataFrame) -> list[str]:
     tags: list[str] = []
 
     # Validate required columns
-    try:
-        macd = df["ZL_MACD"]
-        sig = df["ZL_Signal"]
-    except Exception:
-        return [NO_SIGNAL, NEUTRAL_TREND]
+    # try:
+    macd = df["ZL_MACD"]
+    sig = df["ZL_Signal"]
+    # except Exception:
+    #     return [NO_SIGNAL, NEUTRAL_TREND]
 
     if len(macd) < 2 or len(sig) < 2:
         return [NO_SIGNAL, NEUTRAL_TREND]

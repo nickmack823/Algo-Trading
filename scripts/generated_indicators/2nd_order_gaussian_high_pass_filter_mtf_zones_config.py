@@ -1,3 +1,5 @@
+from scripts.indicator_functions import SecondOrderGaussianHighPassFilterMtfZones
+
 config = {
     "name": "2nd Order Gaussian High Pass Filter MTF Zones",
     "function": SecondOrderGaussianHighPassFilterMtfZones,

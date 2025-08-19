@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 
 from scripts.config import *
-from scripts.indicators import IndicatorConfig
-from scripts.sql import IndicatorCacheSQLHelper
+from scripts.data.sql import IndicatorCacheSQLHelper
+from scripts.indicators.indicator_configs import IndicatorConfig
 
 
 def convert_np_to_pd(
