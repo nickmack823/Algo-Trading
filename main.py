@@ -4,16 +4,16 @@ import json
 import logging
 import multiprocessing as mp
 import os
-import re
 import sys
 import time
 import traceback
 import warnings
 import winsound
+from abc import ABC, abstractmethod
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from statistics import mean, stdev
-from typing import Optional
+from typing import Dict, Optional
 
 import optuna
 import pandas as pd
@@ -150,7 +150,7 @@ def run_fixed_strategy_evaluation(
         TIMEFRAME_DATE_RANGES_PHASE3[timeframe]["to_date"],
     )
 
-    study_name = f"{phase_name}_{pair.replace('/', '')}_{timeframe}_NNFX_{from_date}to{to_date}_space-{exploration_space}"
+    study_name = f"{phase_name}_{pair.replace('/', '')}_{timeframe}_{strategy.NAME}_{from_date}to{to_date}_space-{exploration_space}"
 
     data_sqlhelper = HistoricalDataSQLHelper(
         f"{DATA_FOLDER}/{pair.replace('/', '')}.db", read_only=True
@@ -493,223 +493,558 @@ def build_indicator_config_for_trial(
     }
 
 
+# ========== Strategy Trial Adapter Framework (ADD) ===========================
+
+ADAPTER_REGISTRY: Dict[str, "StrategyTrialAdapter"] = {}
+
+
+class StrategyTrialAdapter(ABC):
+    """Interface that lets main.py run any strategy without hard-coded NNFX bits."""
+
+    key: str  # short name, e.g., "NNFX"
+
+    @abstractmethod
+    def objective(
+        self,
+        trial: optuna.Trial,
+        forex_pair: str,
+        timeframe: str,
+        db_queue: mp.Queue,
+        ack_dict: dict,
+        context: dict,
+    ) -> float:
+        """Return trial score."""
+
+    # Phase 1/2: return tuples consumed by run_all_studies → run_study_wrapper
+    # Tuple shape: (pair, timeframe, n_trials, exploration_space, phase_name, seed, strategy_key, context)
+    def build_phase1_args(
+        self,
+        pairs: list[str],
+        timeframes: list[str],
+        seeds: list[int],
+        trials_by_timeframe: dict[str, int],
+        exploration_space: str = "default",
+        phase_name: str = "phase1",
+    ) -> list[tuple]:
+        return []
+
+    def build_phase2_args(
+        self,
+        pairs: list[str],
+        timeframes: list[str],
+        seeds: list[int],
+        trials_by_timeframe: dict[str, int],
+        top_percent: float,
+        exploration_space: str = "parameterized",
+        phase_name: str = "phase2",
+    ) -> list[tuple]:
+        return []
+
+    # Phase 3 fixed-evals: (pair, timeframe, strategy_obj)
+    def build_phase3_args(
+        self,
+        pairs: list[str],
+        timeframes: list[str],
+        top_n: int,
+    ) -> list[tuple]:
+        return []
+
+
+def register_adapter(adapter: "StrategyTrialAdapter") -> None:
+    ADAPTER_REGISTRY[adapter.key] = adapter
+
+
+# The list of strategies the suite should run (now only NNFX by default)
+STRATEGY_KEYS_TO_RUN: list[str] = ["NNFX"]
+
+# ============================================================================
+
+# ========== NNFX Adapter (ADD) ==============================================
+
+
+class NNFXAdapter(StrategyTrialAdapter):
+    key = "NNFX"
+
+    def objective(
+        self,
+        trial: optuna.Trial,
+        forex_pair: str,
+        timeframe: str,
+        db_queue: mp.Queue,
+        ack_dict: dict,
+        context: dict,
+    ) -> float:
+        """
+        Exact NNFX objective, adapted to the adapter interface.
+        Inputs are pulled from `context` but behavior matches original.
+        """
+        allowed_indicators: dict = context["allowed_indicators"]
+        indicator_config_spaces: dict[str, list[IndicatorConfig]] = context[
+            "indicator_config_spaces"
+        ]
+
+        # === BEGIN: original objective body (unchanged other than using make_strategy) ===
+        # Check if we're exploring the full indicator space (Phase 1)
+        use_default_params = all(
+            len(v) == 1 and 1 and v[0] == "all" for v in allowed_indicators.values()
+        )
+
+        atr = build_indicator_config_for_trial(
+            trial, "ATR", indicator_config_spaces["ATR"], use_default_params
+        )
+        baseline = build_indicator_config_for_trial(
+            trial, "Baseline", indicator_config_spaces["Baseline"], use_default_params
+        )
+        c1 = build_indicator_config_for_trial(
+            trial, "C1", indicator_config_spaces["C1"], use_default_params
+        )
+        c2 = build_indicator_config_for_trial(
+            trial, "C2", indicator_config_spaces["C2"], use_default_params
+        )
+        volume = build_indicator_config_for_trial(
+            trial, "Volume", indicator_config_spaces["Volume"], use_default_params
+        )
+        exit = build_indicator_config_for_trial(
+            trial, "Exit", indicator_config_spaces["Exit"], use_default_params
+        )
+
+        # Prevent invalid C1/C2 combo
+        if c1["name"] == c2["name"] or c1["function"] == c2["function"]:
+            raise optuna.exceptions.TrialPruned()
+
+        # Initialize strategy + SQL helper
+        backtest_sqlhelper = BacktestSQLHelper(read_only=True)
+        strategy = strategies.make_strategy(
+            "NNFX",
+            atr=atr,
+            baseline=baseline,
+            c1=c1,
+            c2=c2,
+            volume=volume,
+            exit_indicator=exit,
+            forex_pair=forex_pair,
+            timeframe=timeframe,
+        )
+
+        # Get strategy config ID if it already exists; insert if missing (with ACK)
+        strategy_config_id = backtest_sqlhelper.select_strategy_configuration(
+            strategy.NAME, strategy.DESCRIPTION, strategy.PARAMETER_SETTINGS
+        )
+        if strategy_config_id is None:
+            ack_id = f"{forex_pair}_{timeframe}_{trial.number}_{time.time()}"
+            db_queue.put(
+                {
+                    "purpose": "strategy_config",
+                    "strategy_name": strategy.NAME,
+                    "strategy_description": strategy.DESCRIPTION,
+                    "strategy_parameters": strategy.PARAMETER_SETTINGS,
+                    "ack_id": ack_id,
+                }
+            )
+            ack = wait_for_ack(ack_dict, ack_id)
+            if not ack.ok:
+                raise RuntimeError(f"Strategy config insert failed: {ack.error}")
+
+            strategy_config_id = backtest_sqlhelper.select_strategy_configuration(
+                strategy.NAME, strategy.DESCRIPTION, strategy.PARAMETER_SETTINGS
+            )
+
+        # Timeframe slice for Phase 1/2
+        timeframe_range = TIMEFRAME_DATE_RANGES_PHASE_1_AND_2[timeframe]
+        from_date, to_date = timeframe_range["from_date"], timeframe_range["to_date"]
+
+        # Load OHLCV
+        data_sqlhelper = HistoricalDataSQLHelper(
+            f"{DATA_FOLDER}/{forex_pair.replace('/', '')}.db", read_only=True
+        )
+        data: pd.DataFrame = data_sqlhelper.get_historical_data(
+            table=timeframe, from_date=from_date, to_date=to_date
+        )
+
+        # Prepare + cache indicators
+        strategy.prepare_data(data)
+        cache_items: list[dict] = strategy.get_cache_jobs()
+        if len(cache_items) > 0:
+            db_queue.put({"purpose": "indicator_cache", "cache_items": cache_items})
+
+        # Initialize backtester (positional args as in original)
+        backtester = Backtester(
+            strategy,
+            forex_pair,
+            timeframe,
+            data,
+            initial_balance=10_000,
+        )
+
+        pair_id = None
+        run_metrics_df = None
+        score = None
+        manually_pruned = False
+        ran_new_backtest = False
+        calculated_score = False
+
+        try:
+            # Check if this configuration has already been run
+            pair_id = backtest_sqlhelper.select_forex_pair_id(forex_pair)
+            run_id = backtest_sqlhelper.select_backtest_run_by_config(
+                pair_id, strategy_config_id, timeframe, from_date, to_date
+            )
+
+            # If run already exists, check if we've calculated composite score
+            if run_id is not None:
+                score = backtest_sqlhelper.select_composite_score(run_id)
+                # Prune trials with existing score
+                if score is not None:
+                    manually_pruned = True
+                    raise optuna.exceptions.TrialPruned()
+                # Get existing metrics to calculate composite score
+                else:
+                    run_metrics_df = (
+                        backtest_sqlhelper.select_backtest_run_metrics_by_id(run_id)
+                    )
+                    backtester.set_metrics_df(run_metrics_df)
+
+            # Run does not exist
+            else:
+                # Run backtest
+                try:
+                    backtester.run_backtest()
+                except Exception as e:
+                    log_error(
+                        f"[{forex_pair}-{timeframe}] (Strategy Config ID: {strategy.CONFIG_ID}) "
+                        f"Backtest failed with error: {e}. {strategy.CONFIG_ID} PRUNING trial due to backtest failing with error: {e}"
+                    )
+                    manually_pruned = True
+                    raise optuna.exceptions.TrialPruned()
+
+                # Retrieve metrics
+                run_metrics_df = backtester.get_metrics_df()
+                ran_new_backtest = True
+
+            # Close read-only helper before pruning/score (matches original)
+            backtest_sqlhelper.close_connection()
+            backtest_sqlhelper = None
+
+            # Prune trials with too few trades (identical thresholds)
+            min_trades_per_day = MIN_TRADES_PER_DAY[timeframe]
+            prune_threshold = round(min_trades_per_day * PRUNE_THRESHOLD_FACTOR, 2)
+            trades_per_day = backtester.get_metric("Trades_Per_Day")
+            if trades_per_day < prune_threshold:
+                manually_pruned = True
+                raise optuna.exceptions.TrialPruned()
+
+            # Calculate composite score
+            score = backtester.calculate_composite_score()
+            calculated_score = True
+
+            # Replace inf or NaN with None (and prune)
+            if (
+                score is None
+                or score != score
+                or score in (float("inf"), float("-inf"))
+            ):
+                logging.warning("Pruned trial due to invalid score.")
+                manually_pruned = True
+                score = None
+                raise optuna.exceptions.TrialPruned()
+
+            # Optimize for higher score
+            return score
+
+        except Exception as e:
+            # If manually pruned, let error raise normally so Optuna handles it and trials continue
+            if manually_pruned:
+                raise e
+
+            full_traceback = traceback.format_exc()
+            log_error(f"Fatal error on {forex_pair} {timeframe}: {full_traceback}")
+            sys.exit(1)
+
+        finally:
+            # Exact guard: only enqueue when new run OR reused metrics and computed a score
+            if ran_new_backtest or (not ran_new_backtest and calculated_score):
+                trial_id = trial.number
+                trial_start = (
+                    trial.datetime_start.isoformat() if trial.datetime_start else None
+                )
+                study_name = trial.study.study_name
+
+                # Find word after 'space-' and before '_seed' (original behavior)
+                space_index = study_name.find("space-")
+                underscore_index = study_name.find("_seed")
+                exploration_space = study_name[space_index + 6 : underscore_index]
+
+                db_queue.put(
+                    {
+                        "pair_id": pair_id,
+                        "strategy": strategy,
+                        "timeframe": timeframe,
+                        "metrics_df": run_metrics_df,
+                        "study_name": study_name,
+                        "trial_id": trial_id,
+                        "score": score,
+                        "exploration_space": exploration_space,
+                        "trial_start": trial_start,
+                        "purpose": "trial",
+                    }
+                )
+        # === END: original objective body ===
+
+    # ---- Phase 1 ------------------------------------------------------------
+    def build_phase1_args(
+        self,
+        pairs: list[str],
+        timeframes: list[str],
+        seeds: list[int],
+        trials_by_timeframe: dict[str, int],
+        exploration_space: str = "default",
+        phase_name: str = "phase1",
+    ) -> list[tuple]:
+        # Full search space
+        allowed_indicators = {
+            "ATR": ["all"],
+            "Baseline": ["all"],
+            "C1": ["all"],
+            "C2": ["all"],
+            "Volume": ["all"],
+            "Exit": ["all"],
+        }
+        indicator_space = {
+            "ATR": atr_indicators,
+            "Baseline": baseline_indicators,
+            "C1": trend_indicators + momentum_indicators,
+            "C2": trend_indicators + momentum_indicators,
+            "Volume": volume_indicators,
+            "Exit": trend_indicators + momentum_indicators,
+        }
+
+        args: list[tuple] = []
+        for pair in pairs:
+            for timeframe in timeframes:
+                trials = trials_by_timeframe[timeframe]
+                for seed in seeds:
+                    context = {
+                        "allowed_indicators": allowed_indicators,
+                        "indicator_config_spaces": indicator_space,
+                        "exploration_space": exploration_space,
+                    }
+                    args.append(
+                        (
+                            pair,
+                            timeframe,
+                            trials,
+                            exploration_space,
+                            phase_name,
+                            seed,
+                            self.key,  # strategy_key
+                            context,
+                        )
+                    )
+        return args
+
+    # ---- Phase 2 ------------------------------------------------------------
+    def build_phase2_args(
+        self,
+        pairs: list[str],
+        timeframes: list[str],
+        seeds: list[int],
+        trials_by_timeframe: dict[str, int],
+        top_percent: float,
+        exploration_space: str = f"top_{PHASE2_TOP_PERCENT}percent_parameterized",
+        phase_name: str = "phase2",
+    ) -> list[tuple]:
+        """
+        Phase-2 must explore parameterized spaces for the *top* indicator names
+        from Phase-1, exactly like the original.
+        """
+        db = BacktestSQLHelper(read_only=True)
+        top_strategies = db.select_top_percent_strategies("default", top_percent)
+
+        # Gather top indicator *names* by role
+        role_to_names: dict[str, set[str]] = {
+            "ATR": set(),
+            "Baseline": set(),
+            "C1": set(),
+            "C2": set(),
+            "Volume": set(),
+            "Exit": set(),
+        }
+        for strat in top_strategies:
+            params = strat["Parameters"]
+            for role in role_to_names:
+                param_str = params.get(role.lower(), "")
+                name = param_str.split("_")[0]
+                if name:
+                    role_to_names[role].add(name)
+
+        # Filter the IndicatorConfig pools by those names
+        def filter_by_name(configs: list[dict], names: set[str]):
+            return [cfg for cfg in configs if cfg["name"] in names]
+
+        indicator_config_spaces = {
+            "ATR": filter_by_name(atr_indicators, role_to_names["ATR"]),
+            "Baseline": filter_by_name(baseline_indicators, role_to_names["Baseline"]),
+            "C1": filter_by_name(
+                trend_indicators + momentum_indicators, role_to_names["C1"]
+            ),
+            "C2": filter_by_name(
+                trend_indicators + momentum_indicators, role_to_names["C2"]
+            ),
+            "Volume": filter_by_name(volume_indicators, role_to_names["Volume"]),
+            "Exit": filter_by_name(
+                trend_indicators + momentum_indicators, role_to_names["Exit"]
+            ),
+        }
+
+        # IMPORTANT: allowed_indicators is a list of *names* (not ["all"]),
+        # so the objective sets use_default_params = False → parameterized sampling.
+        allowed_indicators = {
+            role: sorted(list(names)) for role, names in role_to_names.items()
+        }
+
+        args: list[tuple] = []
+        for pair in pairs:
+            for timeframe in timeframes:
+                trials = trials_by_timeframe[timeframe]
+                for seed in seeds:
+                    context = {
+                        "allowed_indicators": allowed_indicators,  # <- list of names
+                        "indicator_config_spaces": indicator_config_spaces,  # <- filtered pools
+                        "exploration_space": exploration_space,
+                    }
+                    args.append(
+                        (
+                            pair,
+                            timeframe,
+                            trials,
+                            exploration_space,
+                            phase_name,
+                            seed,
+                            self.key,  # strategy_key
+                            context,  # adapter payload
+                        )
+                    )
+        return args
+
+    # ---- Phase 3 ------------------------------------------------------------
+    def build_phase3_args(
+        self,
+        pairs: list[str],
+        timeframes: list[str],
+        top_n: int,
+    ) -> list[tuple]:
+        """
+        Exact parity with original Phase-3:
+        - select_top_n_strategies_across_studies
+        - skip using get_existing_scored_combinations()
+        - rebuild IndicatorConfigs from stored parameter strings
+        """
+        import ast
+        import re
+
+        def parse_indicator_field(value: str):
+            # "NAME_{...}" → ("NAME", "{...}" -> dict)
+            match = re.match(r"^(.*?)_\{(.*)\}$", value)
+            if not match:
+                return value, {}
+            name = match.group(1)
+            params_str = match.group(2)
+            try:
+                params = ast.literal_eval("{" + params_str + "}")
+            except Exception:
+                params = {}
+            return name, params
+
+        key_map = {
+            "atr": "ATR",
+            "baseline": "Baseline",
+            "c1": "C1",
+            "c2": "C2",
+            "volume": "Volume",
+            "exit": "Exit",
+        }
+
+        db = BacktestSQLHelper(read_only=True)
+        top_rows = db.select_top_n_strategies_across_studies(top_n=top_n)
+        existing_combos = (
+            db.get_existing_scored_combinations()
+        )  # set of (StrategyConfig_ID, pair, timeframe)
+
+        # pools by role
+        pools = {
+            "ATR": atr_indicators,
+            "Baseline": baseline_indicators,
+            "C1": trend_indicators + momentum_indicators,
+            "C2": trend_indicators + momentum_indicators,
+            "Volume": volume_indicators,
+            "Exit": trend_indicators + momentum_indicators,
+        }
+
+        args: list[tuple] = []
+
+        for strategy_row in top_rows:
+            raw_params = strategy_row["Parameters"]
+            role_configs: dict[str, dict] = {}
+
+            # Rebuild IndicatorConfigs
+            for raw_key, full_str in raw_params.items():
+                role = key_map.get(raw_key)
+                if not role:
+                    continue
+                name, parsed_params = parse_indicator_field(full_str)
+
+                matches = [cfg for cfg in pools[role] if cfg["name"] == name]
+                if not matches:
+                    role_configs = {}
+                    break
+                cfg = dict(matches[0])  # copy
+                cfg["parameters"] = parsed_params
+                role_configs[role] = cfg
+
+            if len(role_configs) != 6:
+                continue
+
+            for pair in pairs:
+                for timeframe in timeframes:
+                    combo = (strategy_row["StrategyConfig_ID"], pair, timeframe)
+                    if combo in existing_combos:  # exact original skip rule
+                        continue
+                    strategy_obj = strategies.make_strategy(
+                        "NNFX",
+                        atr=role_configs["ATR"],
+                        baseline=role_configs["Baseline"],
+                        c1=role_configs["C1"],
+                        c2=role_configs["C2"],
+                        volume=role_configs["Volume"],
+                        exit_indicator=role_configs["Exit"],
+                        forex_pair=pair,
+                        timeframe=timeframe,
+                    )
+                    args.append((pair, timeframe, strategy_obj))
+        return args
+
+
+# Register the adapter
+register_adapter(NNFXAdapter())
+
+# ============================================================================
+
+
+# ========== Generic objective delegator (REPLACE old objective) =============
 def objective(
     trial: optuna.Trial,
     forex_pair: str,
     timeframe: str,
     db_queue: mp.Queue,
     ack_dict: dict,
-    allowed_indicators: dict,
-    indicator_config_spaces: dict[str, list[IndicatorConfig]],
+    strategy_key: str,
+    context: dict,
 ) -> float:
-    """
-    Optuna objective function to maximize composite score of an NNFX strategy.
-    Now using safe categorical values (strings) + dictionary lookup.
-    """
-    # Check if we're exploring the full indicator space (Phase 1)
-    use_default_params = all(
-        len(v) == 1 and 1 and v[0] == "all" for v in allowed_indicators.values()
-    )
+    adapter = ADAPTER_REGISTRY[strategy_key]
+    return adapter.objective(trial, forex_pair, timeframe, db_queue, ack_dict, context)
 
-    atr = build_indicator_config_for_trial(
-        trial, "ATR", indicator_config_spaces["ATR"], use_default_params
-    )
-    baseline = build_indicator_config_for_trial(
-        trial, "Baseline", indicator_config_spaces["Baseline"], use_default_params
-    )
-    c1 = build_indicator_config_for_trial(
-        trial, "C1", indicator_config_spaces["C1"], use_default_params
-    )
-    c2 = build_indicator_config_for_trial(
-        trial, "C2", indicator_config_spaces["C2"], use_default_params
-    )
-    volume = build_indicator_config_for_trial(
-        trial, "Volume", indicator_config_spaces["Volume"], use_default_params
-    )
-    exit = build_indicator_config_for_trial(
-        trial, "Exit", indicator_config_spaces["Exit"], use_default_params
-    )
 
-    # Prevent invalid C1/C2 combo
-    if c1["name"] == c2["name"] or c1["function"] == c2["function"]:
-        raise optuna.exceptions.TrialPruned()
-
-    # Initialize strategy and backtester
-    backtest_sqlhelper = BacktestSQLHelper(read_only=True)
-    strategy = strategies.NNFXStrategy(
-        atr, baseline, c1, c2, volume, exit, forex_pair, timeframe
-    )
-
-    # Get strategy config ID if it already exists
-    strategy_config_id = backtest_sqlhelper.select_strategy_configuration(
-        strategy.NAME,
-        strategy.DESCRIPTION,
-        strategy.PARAMETER_SETTINGS,
-    )
-    if strategy_config_id is None:
-        ack_id = f"{forex_pair}_{timeframe}_{trial.number}_{time.time()}"
-        db_queue.put(
-            {
-                "purpose": "strategy_config",
-                "strategy_name": strategy.NAME,
-                "strategy_description": strategy.DESCRIPTION,
-                "strategy_parameters": strategy.PARAMETER_SETTINGS,
-                "ack_id": ack_id,
-            }
-        )
-
-        # Wait for the job to be acknowledged
-        ack = wait_for_ack(ack_dict, ack_id)  # Blocks until confirmed
-        if not ack.ok:
-            raise RuntimeError(f"Strategy config insert failed: {ack.error}")
-
-        strategy_config_id = backtest_sqlhelper.select_strategy_configuration(
-            strategy.NAME,
-            strategy.DESCRIPTION,
-            strategy.PARAMETER_SETTINGS,
-        )
-
-    # Check config for how to slice historical data based on timeframe
-    timeframe_range = TIMEFRAME_DATE_RANGES_PHASE_1_AND_2[timeframe]
-    from_date, to_date = timeframe_range["from_date"], timeframe_range["to_date"]
-
-    # Load historical OHLCV + indicator data
-    data_sqlhelper = HistoricalDataSQLHelper(
-        f"{DATA_FOLDER}/{forex_pair.replace('/', '')}.db", read_only=True
-    )
-    data: pd.DataFrame = data_sqlhelper.get_historical_data(
-        table=timeframe, from_date=from_date, to_date=to_date
-    )
-
-    # Prepare data for strategy
-    strategy.prepare_data(data)
-
-    # Get cache jobs to insert into DB
-    cache_items: list[dict] = strategy.get_cache_jobs()
-
-    # Insert cache jobs into DB
-    if len(cache_items) > 0:
-        db_queue.put({"purpose": "indicator_cache", "cache_items": cache_items})
-
-    # Initialize backtester
-    backtester = Backtester(
-        strategy,
-        forex_pair,
-        timeframe,
-        data,
-        initial_balance=10_000,
-    )
-
-    pair_id = None
-    run_metrics_df = None
-    score = None
-    manually_pruned = False
-    ran_new_backtest = False
-    calculated_score = False
-
-    try:
-        # Check if this configuration has already been run
-        pair_id = backtest_sqlhelper.select_forex_pair_id(forex_pair)
-        run_id = backtest_sqlhelper.select_backtest_run_by_config(
-            pair_id, strategy_config_id, timeframe, from_date, to_date
-        )
-
-        # If run already exists, check if we've calculated composite score
-        if run_id is not None:
-            score = backtest_sqlhelper.select_composite_score(run_id)
-            # Prune trials with existing score
-            if score is not None:
-                # logging.info("Pruned trial due to existing run.")
-                manually_pruned = True
-                raise optuna.exceptions.TrialPruned()
-            # Get existing metrics to calculate composite score
-            elif score is None:
-                run_metrics_df = backtest_sqlhelper.select_backtest_run_metrics_by_id(
-                    run_id
-                )
-                backtester.set_metrics_df(run_metrics_df)
-                # logging.info("Retrieved existing run metrics for score calculation.")
-
-        # Run does not exist
-        else:
-            # Run backtest
-            # logging.info(f"[{forex_pair}-{timeframe}] Running backtest...")
-            try:
-                backtester.run_backtest()
-            except Exception as e:
-                log_error(
-                    f"[{forex_pair}-{timeframe}] (Strategy Config ID: {strategy.CONFIG_ID}) Backtest failed with error: {e}. {strategy.CONFIG_ID} PRUNING trial due to backtest failing with error: {e}"
-                )
-                manually_pruned = True
-                raise optuna.exceptions.TrialPruned()
-
-            # Retrieve metrics
-            run_metrics_df = backtester.get_metrics_df()
-
-            ran_new_backtest = True
-
-        backtest_sqlhelper.close_connection()
-        backtest_sqlhelper = None
-
-        # Prune trials with too few trades to minimize exploring inactive configurations
-        min_trades_per_day = MIN_TRADES_PER_DAY[timeframe]
-        prune_threshold = round(min_trades_per_day * PRUNE_THRESHOLD_FACTOR, 2)
-        trades_per_day = backtester.get_metric("Trades_Per_Day")
-        if trades_per_day < prune_threshold:
-            # logging.info(
-            #     f"Pruned trial due to low activity: {trades_per_day:.2f} trades/day < required {prune_threshold} trades/day for {timeframe} timeframe"
-            # )
-            manually_pruned = True
-            raise optuna.exceptions.TrialPruned()
-
-        # Calculate composite score
-        score = backtester.calculate_composite_score()
-        calculated_score = True
-
-        # Replace inf or NaN with None
-        if score is None or score != score or score in (float("inf"), float("-inf")):
-            logging.warning("Pruned trial due to invalid score.")
-            manually_pruned = True
-            score = None
-            raise optuna.exceptions.TrialPruned()
-
-        # Optimize for higher score
-        return score
-    except Exception as e:
-        # If manually pruned, let error raise normally so Optuna handles it and trials continue
-        if manually_pruned:
-            raise e
-
-        full_traceback = traceback.format_exc()
-        log_error(f"Fatal error on {forex_pair} {timeframe}: {full_traceback}")
-        sys.exit(1)
-    finally:
-        if ran_new_backtest or (not ran_new_backtest and calculated_score):
-            trial_id = trial.number
-            trial_start = (
-                trial.datetime_start.isoformat() if trial.datetime_start else None
-            )
-            study_name = trial.study.study_name
-
-            # Find word after 'space-' and before '_seed'
-            space_index = study_name.find("space-")
-            underscore_index = study_name.find("_seed")
-            exploration_space = study_name[space_index + 6 : underscore_index]
-
-            db_queue.put(
-                {
-                    "pair_id": pair_id,
-                    "strategy": strategy,
-                    "timeframe": timeframe,
-                    "metrics_df": run_metrics_df,
-                    "study_name": study_name,
-                    "trial_id": trial_id,
-                    "score": score,
-                    "exploration_space": exploration_space,
-                    "trial_start": trial_start,
-                    "purpose": "trial",
-                }
-            )
+# ============================================================================
 
 
 def get_study_meta(
@@ -775,11 +1110,12 @@ def run_study_wrapper(args) -> dict:
         exploration_space,
         phase_name,
         seed,
-        allowed_indicators,
-        indicator_config_spaces,
+        strategy_key,  # <-- ADD
+        context,  # <-- ADD (adapter-specific payload)
         db_queue,
         ack_dict,
     ) = args
+
     """Wrapper for multiprocessing
 
     Args:
@@ -796,8 +1132,8 @@ def run_study_wrapper(args) -> dict:
             timeframe=timeframe,
             db_queue=db_queue,
             ack_dict=ack_dict,
-            allowed_indicators=allowed_indicators,
-            indicator_config_spaces=indicator_config_spaces,
+            strategy_key=strategy_key,
+            context=context,
         )
 
     timeframe_range = TIMEFRAME_DATE_RANGES_PHASE_1_AND_2[timeframe]
@@ -806,7 +1142,7 @@ def run_study_wrapper(args) -> dict:
     # callback_n = IMPROVEMENT_CUTOFF_BY_TIMEFRAME[timeframe]
 
     study_name = (
-        f"{phase_name}_{pair.replace('/', '')}_{timeframe}_NNFX_"
+        f"{phase_name}_{pair.replace('/', '')}_{timeframe}_{strategy_key}_"
         f"{from_date}to{to_date}_space-{exploration_space}_seed-{seed}"
     )
 
@@ -934,45 +1270,19 @@ def build_study_args_phase1(
     exploration_space: str = "default",
     phase_name: str = "phase1",
 ) -> list[tuple]:
-    # Use full search space of indicator names
-    allowed_indicators = {
-        "ATR": ["all"],
-        "Baseline": ["all"],  # LSMA
-        "C1": ["all"],
-        "C2": ["all"],
-        "Volume": ["all"],
-        "Exit": ["all"],
-    }
-
-    # Full indicator config sets for name selection
-    indicator_space = {
-        "ATR": atr_indicators,
-        "Baseline": baseline_indicators,
-        "C1": trend_indicators + momentum_indicators,
-        "C2": trend_indicators + momentum_indicators,
-        "Volume": volume_indicators,
-        "Exit": trend_indicators + momentum_indicators,
-    }
-
-    args = []
-    for seed in seeds:
-        for pair in pairs:
-            for timeframe in timeframes:
-                if timeframe not in trials_by_timeframe:
-                    continue
-                trials = trials_by_timeframe[timeframe]
-                args.append(
-                    (
-                        pair,
-                        timeframe,
-                        trials,
-                        exploration_space,
-                        phase_name,
-                        seed,
-                        allowed_indicators,
-                        indicator_space,
-                    )
-                )
+    args: list[tuple] = []
+    for key in STRATEGY_KEYS_TO_RUN:
+        adapter = ADAPTER_REGISTRY[key]
+        args.extend(
+            adapter.build_phase1_args(
+                pairs=pairs,
+                timeframes=timeframes,
+                seeds=seeds,
+                trials_by_timeframe=trials_by_timeframe,
+                exploration_space=exploration_space,
+                phase_name=phase_name,
+            )
+        )
     return args
 
 
@@ -985,70 +1295,20 @@ def build_study_args_phase2(
     exploration_space: str = f"top_{PHASE2_TOP_PERCENT}percent_parameterized",
     phase_name: str = "phase2",
 ) -> list[tuple]:
-    # Get top N% performing strategies
-    db = BacktestSQLHelper(read_only=True)
-    top_strategies = db.select_top_percent_strategies("default", top_percent)
-
-    # Group top indicator names per role
-    role_to_names: dict[str, set[str]] = {
-        "ATR": set(),
-        "Baseline": set(),
-        "C1": set(),
-        "C2": set(),
-        "Volume": set(),
-        "Exit": set(),
-    }
-
-    for strat in top_strategies:
-        params = strat["Parameters"]
-        for role in role_to_names:
-            param = params.get(role.lower(), {})
-            name = param.split("_")[0]
-            if name:
-                role_to_names[role].add(name)
-
-    # Now filter your full indicator pools to only include the ones in the top sets
-    def filter_by_name(configs: list[dict], names: set[str]):
-        return [cfg for cfg in configs if cfg["name"] in names]
-
-    indicator_config_spaces = {
-        "ATR": filter_by_name(atr_indicators, role_to_names["ATR"]),
-        "Baseline": filter_by_name(baseline_indicators, role_to_names["Baseline"]),
-        "C1": filter_by_name(
-            trend_indicators + momentum_indicators, role_to_names["C1"]
-        ),
-        "C2": filter_by_name(
-            trend_indicators + momentum_indicators, role_to_names["C2"]
-        ),
-        "Volume": filter_by_name(volume_indicators, role_to_names["Volume"]),
-        "Exit": filter_by_name(
-            trend_indicators + momentum_indicators, role_to_names["Exit"]
-        ),
-    }
-
-    allowed_indicators = {role: list(names) for role, names in role_to_names.items()}
-
-    # Create study args per pair/timeframe/seed
-    args = []
-    for seed in seeds:
-        for pair in pairs:
-            for timeframe in timeframes:
-                if timeframe not in trials_by_timeframe:
-                    continue
-                trials = trials_by_timeframe[timeframe]
-                args.append(
-                    (
-                        pair,
-                        timeframe,
-                        trials,
-                        exploration_space,
-                        phase_name,
-                        seed,
-                        allowed_indicators,
-                        indicator_config_spaces,
-                    )
-                )
-
+    args: list[tuple] = []
+    for key in STRATEGY_KEYS_TO_RUN:
+        adapter = ADAPTER_REGISTRY[key]
+        args.extend(
+            adapter.build_phase2_args(
+                pairs=pairs,
+                timeframes=timeframes,
+                seeds=seeds,
+                trials_by_timeframe=trials_by_timeframe,
+                top_percent=top_percent,
+                exploration_space=exploration_space,
+                phase_name=phase_name,
+            )
+        )
     return args
 
 
@@ -1057,98 +1317,16 @@ def build_study_args_phase3(
     timeframes: list[str],
     top_n: int,
 ) -> list[tuple]:
-    import ast
-
-    def parse_indicator_field(value: str):
-        match = re.match(r"^(.*?)_\{(.*)\}$", value)
-        if not match:
-            return value, {}
-        name = match.group(1)
-        param_str = "{" + match.group(2) + "}"
-        try:
-            params = ast.literal_eval(param_str)
-        except Exception:
-            params = {}
-        return name, params
-
-    key_map = {
-        "atr": "ATR",
-        "baseline": "Baseline",
-        "c1": "C1",
-        "c2": "C2",
-        "volume": "Volume",
-        "exit": "Exit",
-    }
-
-    db = BacktestSQLHelper(read_only=True)
-    top_strategies = db.select_top_n_strategies_across_studies(top_n=top_n)
-    existing_combos = db.get_existing_scored_combinations()
-
-    args = []
-
-    for strategy_row in top_strategies:
-        raw_params = strategy_row["Parameters"]
-        role_configs = {}
-
-        for raw_key, full_str in raw_params.items():
-            role = key_map.get(raw_key)
-            if not role:
-                continue
-            name, params = parse_indicator_field(full_str)
-
-            if role == "ATR":
-                pool = atr_indicators
-            elif role == "Baseline":
-                pool = baseline_indicators
-            elif role in ["C1", "C2", "Exit"]:
-                pool = trend_indicators + momentum_indicators
-            elif role == "Volume":
-                pool = volume_indicators
-            else:
-                continue
-
-            matched = next((cfg for cfg in pool if cfg["name"] == name), None)
-            if not matched:
-                logging.warning(f"Indicator '{name}' not found for role {role}")
-                break
-
-            # Check if matched parameters are same as the ones from the database
-            if matched["parameters"] != params:
-                x = 1
-
-            role_configs[role] = {**matched, "parameters": params}
-
-        if len(role_configs) != 6:
-            continue  # Skip incomplete strategy
-
-        for pair in pairs:
-            for timeframe in timeframes:
-                strategy_obj = strategies.NNFXStrategy(
-                    atr=role_configs["ATR"],
-                    baseline=role_configs["Baseline"],
-                    c1=role_configs["C1"],
-                    c2=role_configs["C2"],
-                    volume=role_configs["Volume"],
-                    exit_indicator=role_configs["Exit"],
-                    forex_pair=pair,
-                    timeframe=timeframe,
-                )
-
-                if (
-                    strategy_row["StrategyConfig_ID"],
-                    pair,
-                    timeframe,
-                ) in existing_combos:
-                    continue
-
-                args.append(
-                    (
-                        pair,
-                        timeframe,
-                        strategy_obj,
-                    )
-                )
-
+    args: list[tuple] = []
+    for key in STRATEGY_KEYS_TO_RUN:
+        adapter = ADAPTER_REGISTRY[key]
+        args.extend(
+            adapter.build_phase3_args(
+                pairs=pairs,
+                timeframes=timeframes,
+                top_n=top_n,
+            )
+        )
     return args
 
 
@@ -1204,98 +1382,9 @@ def run_phase3(phase: dict):
     return
 
 
-def correct_and_rerun_lsma_strategies_fixed_eval(json_path: str, db_queue: mp.Queue):
-    """
-    Loads best_strategies.json, finds LSMA strategies with shift ≠ 0,
-    deletes them from the DB, sets shift = 0, and re-evaluates each using
-    run_fixed_strategy_evaluation.
-    """
-    with open(json_path, "r") as f:
-        strategy_list = json.load(f)
-
-    sql = BacktestSQLHelper()
-    updated_strategies = []
-
-    for strat in strategy_list:
-        indicators = strat["indicators"]
-        updated = False
-
-        for key, ind in indicators.items():
-            if ind["name"] == "LSMA":
-                print(
-                    f"⚠️ LSMA with shift={ind['parameters']['shift']} found in strategy ID {strat['strategy_id']}"
-                )
-
-                # Reset shift to 0
-                strat["indicators"][key]["parameters"]["shift"] = 0
-                updated = True
-
-        if updated:
-            strategy_id = strat["strategy_id"]
-
-            # Delete old configuration (safe match based on original ID or exact parameters)
-            # Step 1: Find all BacktestRun IDs tied to this strategy
-            sql.safe_execute(
-                sql.cursor,
-                "SELECT id FROM BacktestRuns WHERE Strategy_ID = ?",
-                (strategy_id,),
-            )
-            backtest_ids = [row[0] for row in sql.cursor.fetchall()]
-
-            # Step 2: Delete CompositeScores tied to those backtests
-            if backtest_ids:
-                placeholders = ",".join("?" for _ in backtest_ids)
-                sql.safe_execute(
-                    sql.cursor,
-                    f"DELETE FROM CompositeScores WHERE Backtest_ID IN ({placeholders})",
-                    backtest_ids,
-                )
-
-            # Step 3: Delete BacktestRuns
-            sql.safe_execute(
-                sql.cursor,
-                "DELETE FROM BacktestRuns WHERE Strategy_ID = ?",
-                (strategy_id,),
-            )
-
-            # Step 4: Delete StrategyConfiguration
-            sql.safe_execute(
-                sql.cursor,
-                "DELETE FROM StrategyConfigurations WHERE id = ?",
-                (strategy_id,),
-            )
-
-            print(f"🗑 Fully deleted strategy {strategy_id} and dependencies.")
-
-            # Reload and evaluate
-            print(f"🔄 Re-evaluating strategy {strat['strategy_id']} with LSMA shift=0")
-            strategy_obj = utilities.load_strategy_from_dict(strat)
-
-            sql.insert_strategy_configuration(
-                strategy_obj.NAME,
-                strategy_obj.DESCRIPTION,
-                strategy_obj.PARAMETER_SETTINGS,
-            )
-
-            run_fixed_strategy_evaluation(
-                strategy=strategy_obj,
-                pair=strat["pair"],
-                timeframe=strat["timeframe"],
-                phase_name="Phase4Fix",
-                exploration_space="manual_fix",
-                db_queue=db_queue,
-            )
-
-            updated_strategies.append(strat)
-
-    sql.conn.commit()
-    sql.close_connection()
-    print(f"✅ Reran {len(updated_strategies)} corrected LSMA strategies with shift=0.")
-
-
 if __name__ == "__main__":
     # Run Optuna studies on all pair/timeframe combos
-    N_PROCESSES = mp.cpu_count() - 3
+    N_PROCESSES = 1  # mp.cpu_count() - 3
 
     seed_sets = [
         [42, 1337, 314, 777, 444],  # 1

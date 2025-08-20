@@ -1,6 +1,6 @@
 import inspect
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Dict, List, Optional, Protocol, Type, runtime_checkable
 
 import numpy as np
 import pandas as pd
@@ -8,6 +8,72 @@ import pandas as pd
 from scripts.config import *
 from scripts.data.sql import IndicatorCacheSQLHelper
 from scripts.indicators.indicator_configs import IndicatorConfig
+
+# --- Strategy registry & factory (ADD) --------------------------------------
+
+
+# --- Lightweight ATR (ADD) ---------------------------------------------------
+def _compute_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
+    high = df["High"]
+    low = df["Low"]
+    close = df["Close"]
+    prev_close = close.shift(1)
+    tr = pd.concat(
+        [(high - low), (high - prev_close).abs(), (low - prev_close).abs()], axis=1
+    ).max(axis=1)
+    return tr.rolling(window=period, min_periods=period).mean()
+
+
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class StrategyMeta:
+    key: str
+    cls: Type["BaseStrategy"]
+    required_kwargs: List[str]
+    description: str = ""
+
+
+STRATEGY_REGISTRY: Dict[str, StrategyMeta] = {}
+
+
+def register_strategy(
+    key: str, required_kwargs: List[str] | None = None, description: str = ""
+):
+    """Class decorator to register a strategy so main.py can instantiate by name."""
+
+    def _wrap(cls: Type["BaseStrategy"]):
+        STRATEGY_REGISTRY[key] = StrategyMeta(
+            key=key,
+            cls=cls,
+            required_kwargs=required_kwargs or [],
+            description=description or getattr(cls, "DESCRIPTION", ""),
+        )
+        return cls
+
+    return _wrap
+
+
+def get_registered_strategies() -> Dict[str, StrategyMeta]:
+    """Return a dictionary of all registered strategies."""
+    return dict(STRATEGY_REGISTRY)
+
+
+def make_strategy(key: str, **kwargs) -> "BaseStrategy":
+    """Create a strategy instance by name (key) and kwargs."""
+    meta = STRATEGY_REGISTRY.get(key)
+    if meta is None:
+        raise KeyError(
+            f"Strategy '{key}' is not registered. Known: {list(STRATEGY_REGISTRY)}"
+        )
+    missing = [k for k in meta.required_kwargs if k not in kwargs]
+    if missing:
+        raise TypeError(f"Strategy '{key}' missing required args: {missing}")
+    return meta.cls(**kwargs)
+
+
+# ---------------------------------------------------------------------------
 
 
 def convert_np_to_pd(
@@ -34,58 +100,25 @@ def convert_np_to_pd(
         raise TypeError(f"Unsupported type for conversion: {type(output)}")
 
 
-# def calculate_indicators(
-#     indicator_configs: list[dict], data: pd.DataFrame, forex_pair: str, timeframe: str
-# ) -> pd.DataFrame:
-#     data = data.copy()
-#     cache = IndicatorCacheSQLHelper()
+@runtime_checkable
+class StrategyProtocol(Protocol):
+    NAME: str
+    DESCRIPTION: str
+    PARAMETER_SETTINGS: dict
+    FOREX_PAIR: str
+    TIMEFRAME: str
 
-#     def safe_apply(nnfx_piece_name: str, config: IndicatorConfig):
-#         cached = cache.fetch(
-#             config["name"], config["parameters"], forex_pair, timeframe
-#         )
-#         if cached is not None:
-#             return cached
-
-#         raw_output = config["function"](data, **config["parameters"])
-#         output_df_or_series = convert_np_to_pd(raw_output)
-
-#         if isinstance(output_df_or_series, pd.DataFrame):
-#             renamed = output_df_or_series.add_prefix(f"{nnfx_piece_name}_")
-#             cache.store(
-#                 config["name"],
-#                 config["parameters"],
-#                 forex_pair,
-#                 timeframe,
-#                 renamed,
-#             )
-#             return renamed
-#         else:
-#             df = pd.DataFrame({nnfx_piece_name: output_df_or_series})
-#             cache.store(
-#                 config["name"],
-#                 config["parameters"],
-#                 forex_pair,
-#                 timeframe,
-#                 df,
-#             )
-#             return df
-
-#     # Calculate/retrieve cached indicators and add to data DataFrame
-#     indicator_dfs = [
-#         safe_apply(indicator["type"], indicator["config"])
-#         for indicator in indicator_configs
-#     ]
-
-#     indicator_data = pd.concat(indicator_dfs, axis=1)
-#     data = pd.concat(
-#         [data.reset_index(drop=True), indicator_data.reset_index(drop=True)], axis=1
-#     )
-
-#     cache.close_connection()
-#     cache = None
-
-#     return data
+    def prepare_data(
+        self, historical_data: pd.DataFrame, use_cache: bool = True
+    ) -> None: ...
+    def get_cache_jobs(self) -> list[dict]: ...
+    def generate_trade_plan(
+        self,
+        current_index: int,
+        current_position: int,
+        balance: float,
+        quote_to_usd_rate: Optional[float],
+    ) -> List["TradePlan"]: ...
 
 
 class StrategySignal:
@@ -98,7 +131,7 @@ class StrategySignal:
 
 @dataclass
 class TradePlan:
-    strategy: str
+    strategy: str | None  # default None; fill with self.NAME when emitting
     direction: str
     entry_price: float
     stop_loss: float
@@ -511,12 +544,30 @@ class BaseStrategy:
 
     def generate_trade_plan(
         self,
-        data: pd.DataFrame,
+        current_index: int,
         current_position: int,
         balance: float,
-        leverage: int,
         quote_to_usd_rate: float,
     ) -> list[TradePlan]:
+        """
+        Default no-op. Strategies should override this.
+        Tip: use self._get_slice(current_index) to access precomputed data
+        prepared in prepare_data(...).
+        """
+        return []
+
+    def prepare_data(self, historical_data: pd.DataFrame, use_cache: bool = True):
+        """
+        Default: keep raw data so subclasses can use _get_slice(...)
+        Override in your strategy if you compute indicators.
+        """
+        self.data_with_indicators = historical_data
+
+    def get_cache_jobs(self) -> list[dict]:
+        """
+        Default: no indicator-cache work to persist.
+        Override if your strategy stores indicator outputs (like NNFX).
+        """
         return []
 
     def _generate_signals(
@@ -605,6 +656,20 @@ class BaseStrategy:
         return f"{self.NAME} ({self.PARAMETER_SETTINGS})"
 
 
+@register_strategy(
+    "NNFX",
+    [
+        "atr",
+        "baseline",
+        "c1",
+        "c2",
+        "volume",
+        "exit_indicator",
+        "forex_pair",
+        "timeframe",
+    ],
+    description="No Nonsense Forex (NNFX) Strategy based on complete rule set.",
+)
 class NNFXStrategy(BaseStrategy):
     NAME = "NNFX"
     DESCRIPTION = "No Nonsense Forex (NNFX) Strategy based on complete rule set."
@@ -1274,7 +1339,7 @@ class NNFXStrategy(BaseStrategy):
 
                 # Step 8: Create TradePlan with all necessary parameters
                 entry_trade_plan = TradePlan(
-                    strategy="NNFX",
+                    strategy=self.NAME,
                     direction=direction,
                     entry_price=entry_price,
                     stop_loss=sl_price,
@@ -1309,7 +1374,7 @@ class NNFXStrategy(BaseStrategy):
 
             # Create a single exit signal plan to be handled by the backtester
             exit_plan = TradePlan(
-                strategy="NNFX",
+                strategy=self.NAME,
                 direction=direction,
                 entry_price=row["Close"],
                 stop_loss=None,
@@ -1320,3 +1385,164 @@ class NNFXStrategy(BaseStrategy):
             trade_plans.append(exit_plan)
 
         return trade_plans
+
+
+# --- Simple Moving Average Cross Strategy (ADD) ------------------------------
+@register_strategy("SMAC", ["fast", "slow", "forex_pair", "timeframe"])
+class SMACStrategy(BaseStrategy):
+    """
+    Enter on fast/slow SMA cross; exit on opposite cross.
+    Uses ATR-based SL/TP + the same two-legs (TP1 + Runner) pattern as NNFX
+    so the Backtester and metrics remain compatible.
+    """
+
+    NAME = "SMAC"
+    DESCRIPTION = "Simple MA crossover with ATR-based risk management."
+
+    def __init__(self, fast: int, slow: int, forex_pair: str, timeframe: str):
+        if fast >= slow:
+            raise ValueError("fast must be < slow for SMACStrategy")
+        self.fast = int(fast)
+        self.slow = int(slow)
+        self.atr_period = 14
+        super().__init__(
+            forex_pair=forex_pair,
+            parameters={
+                "fast": self.fast,
+                "slow": self.slow,
+                "atr_period": self.atr_period,
+            },
+            timeframe=timeframe,
+        )
+
+    def prepare_data(self, historical_data: pd.DataFrame, use_cache: bool = True):
+        df = historical_data.copy()
+        df["SMA_fast"] = df["Close"].rolling(self.fast, min_periods=self.fast).mean()
+        df["SMA_slow"] = df["Close"].rolling(self.slow, min_periods=self.slow).mean()
+        df["ATR"] = _compute_atr(df, self.atr_period)
+        self.data_with_indicators = df
+
+    def _generate_signals(
+        self, data: pd.DataFrame, current_position: int, debug: bool = False
+    ):
+        # Need at least 'slow' lookback + one more bar to detect a cross
+        if len(data) < self.slow + 2:
+            return ([NO_SIGNAL], "Warmup")
+
+        f_prev, f_now = data["SMA_fast"].iloc[-2], data["SMA_fast"].iloc[-1]
+        s_prev, s_now = data["SMA_slow"].iloc[-2], data["SMA_slow"].iloc[-1]
+
+        crossed_up = f_prev <= s_prev and f_now > s_now
+        crossed_dn = f_prev >= s_prev and f_now < s_now
+
+        signals: List[str] = []
+        source = "SMAC_Crossover"
+
+        if current_position == 0:
+            if crossed_up:
+                signals.append(ENTER_LONG)
+            elif crossed_dn:
+                signals.append(ENTER_SHORT)
+        else:
+            if current_position > 0 and crossed_dn:
+                signals.append(EXIT_LONG)
+            elif current_position < 0 and crossed_up:
+                signals.append(EXIT_SHORT)
+
+        if not signals:
+            signals = [NO_SIGNAL]
+
+        return signals, source
+
+    def generate_trade_plan(
+        self,
+        current_index: int,
+        current_position: int,
+        balance: float,
+        quote_to_usd_rate: float,
+    ) -> list[TradePlan]:
+        plans: List[TradePlan] = []
+
+        data = self._get_slice(current_index)
+        row = data.iloc[-1]
+
+        signals, source = self._generate_signals(data, current_position)
+
+        if ENTER_LONG in signals or ENTER_SHORT in signals:
+            signal = ENTER_LONG if ENTER_LONG in signals else ENTER_SHORT
+            atr = row["ATR"]
+            entry = row["Close"]
+            direction = "BUY" if signal == ENTER_LONG else "SELL"
+
+            entries = [
+                (RISK_PER_TRADE, DEFAULT_TP_MULTIPLIER, "TP1"),
+                (RISK_PER_TRADE, None, "Runner"),
+            ]
+
+            for risk_pct, tp_mult, tag in entries:
+                sl = (
+                    entry - atr * DEFAULT_ATR_SL_MULTIPLIER
+                    if direction == "BUY"
+                    else entry + atr * DEFAULT_ATR_SL_MULTIPLIER
+                )
+                tp = (
+                    entry + atr * DEFAULT_TP_MULTIPLIER
+                    if (direction == "BUY" and tp_mult)
+                    else (
+                        entry - atr * DEFAULT_TP_MULTIPLIER
+                        if (direction == "SELL" and tp_mult)
+                        else None
+                    )
+                )
+
+                units = PositionCalculator.calculate_trade_units(
+                    self.FOREX_PAIR, balance, risk_pct, entry, atr, quote_to_usd_rate
+                )
+
+                plan = TradePlan(
+                    strategy=self.NAME,
+                    direction=direction,
+                    entry_price=entry,
+                    stop_loss=sl,
+                    take_profit=tp,
+                    units=units,
+                    risk_pct=risk_pct,
+                    tag=tag,
+                    source=source,
+                )
+
+                runner_cfg = {}
+                if tag == "Runner":
+                    runner_cfg = {
+                        "breakeven_trigger": atr,
+                        "trail_start": 2 * atr,
+                        "trail_distance": 1.5 * atr,
+                    }
+
+                plan.position_manager = PositionManager(
+                    entry_price=entry,
+                    initial_stop_loss=sl,
+                    direction=direction,
+                    config=runner_cfg,
+                    take_profit=tp,
+                )
+                plans.append(plan)
+
+        if EXIT_LONG in signals or EXIT_SHORT in signals:
+            # Strategy-initiated exit plan (Backtester will close open trades)
+            direction = "SELL" if EXIT_LONG in signals else "BUY"
+            plans.append(
+                TradePlan(
+                    strategy=self.NAME,
+                    direction=direction,
+                    entry_price=row["Close"],
+                    stop_loss=None,
+                    tag="EXIT",
+                    source=source,
+                )
+            )
+
+        return plans
+
+
+# ---------------------------------------------------------------------------
