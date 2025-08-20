@@ -5,7 +5,7 @@ from itertools import product
 
 from scripts import strategies
 from scripts.backtester import Backtester
-from scripts.config import MAJOR_FOREX_PAIRS, TIMEFRAMES
+from scripts.config import ALL_TIMEFRAMES, MAJOR_FOREX_PAIRS
 from scripts.indicators import (
     baseline_indicators,
     momentum_indicators,
@@ -101,7 +101,7 @@ def generate_combo_tasks():
     ):
         if c1 != c2:
             for forex_pair in MAJOR_FOREX_PAIRS:
-                for timeframe in TIMEFRAMES:
+                for timeframe in ALL_TIMEFRAMES:
                     yield (atr, baseline, c1, c2, volume, exit, forex_pair, timeframe)
 
 
@@ -120,7 +120,7 @@ def estimate_total_tasks():
         * n_vol
         * n_exit
         * len(MAJOR_FOREX_PAIRS)
-        * len(TIMEFRAMES)
+        * len(ALL_TIMEFRAMES)
     )
     return total
 

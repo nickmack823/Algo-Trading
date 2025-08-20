@@ -491,6 +491,10 @@ def trange_func(df, **kwargs):
     return ta.TRANGE(df["High"], df["Low"], df["Close"], **kwargs)
 
 
+def cmo_func(df, **kwargs):
+    return ta.CMO(df["Close"], **kwargs)
+
+
 def bollingerbands_func(df, **kwargs):
     return ta.BBANDS(df["Close"], **kwargs)
 
@@ -2205,14 +2209,14 @@ additional_momentum = [
     },
     {
         "name": "CMO",
-        "function": ta.CMO,
+        "function": cmo_func,
         "signal_function": signal_cmo,
         "raw_function": ta.CMO,
         "description": "Tushar Chande's oscillator measures momentum by comparing the sum of up moves to the sum of down moves over a look-back period.",
-        "parameters": {"length": 9, "price": "Close"},
+        "parameters": {"timeperiod": 9},
         "parameter_space": {
-            "length": [5, 9, 14, 20, 30],
-            "price": ["Close", "Open", "High", "Low", "Median", "Typical", "Weighted"],
+            "timeperiod": [5, 9, 14, 20, 30],
+            # "price": ["Close", "Open", "High", "Low", "Median", "Typical", "Weighted"],
         },
     },
     {
@@ -2819,11 +2823,7 @@ baseline_indicators = [
     {
         "name": "ATRBasedEMAVariant1",
         "function": ATRBasedEMAVariant1,
-        "signal_function": lambda df, ema_fastest=14.0, multiplier=300.0: ATRBasedEMAVariant1(
-            df, ema_fastest=ema_fastest, multiplier=multiplier
-        )[
-            "EMA_ATR_var1"
-        ],
+        "signal_function": signal_atr_based_ema_variant_1,
         "raw_function": ATRBasedEMAVariant1,
         "description": "EMA on Close with a dynamic period driven by an EMA(14) of High/Low (ATR proxy). Higher volatility increases the equivalent EMA period, making the baseline slower. Outputs columns ['EMA_ATR_var1', 'EMA_Equivalent'].",
         "parameters": {"ema_fastest": 14.0, "multiplier": 300.0},
@@ -2856,7 +2856,7 @@ baseline_indicators = [
     {
         "name": "Gd",
         "function": Gd,
-        "signal_function": None,
+        "signal_function": signal_gd,
         "raw_function": Gd,
         "description": "Generalized DEMA-style baseline: GD = (1+vf)*EMA - vf*EMA_of_EMA. Returns ['GD','EMA'] aligned to df.index; supports applied price selection.",
         "parameters": {"length": 20, "vf": 0.7, "price": 0},

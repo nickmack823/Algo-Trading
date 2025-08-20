@@ -56,11 +56,17 @@ MAJOR_FOREX_PAIRS = [
     "CHF/SGD",
 ]
 
-TIMEFRAMES = [
+ALL_TIMEFRAMES = [
     "5_minute",
     "15_minute",
     "30_minute",
     "1_hour",
+    "2_hour",
+    "4_hour",
+    "1_day",
+]
+
+NNFX_TIMEFRAMES = [
     "2_hour",
     "4_hour",
     "1_day",

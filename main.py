@@ -8,6 +8,7 @@ import re
 import sys
 import time
 import traceback
+import warnings
 import winsound
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -26,16 +27,17 @@ from optuna.visualization import (
 from scripts import strategies, utilities
 from scripts.backtester import Backtester
 from scripts.config import (
+    ALL_TIMEFRAMES,
     DATA_FOLDER,
     MAJOR_FOREX_PAIRS,
     MIN_TRADES_PER_DAY,
     N_STARTUP_TRIALS_PERCENTAGE,
+    NNFX_TIMEFRAMES,
     OPTUNA_STUDIES_FOLDER,
     PHASE2_TOP_PERCENT,
     PRUNE_THRESHOLD_FACTOR,
     TIMEFRAME_DATE_RANGES_PHASE3,
     TIMEFRAME_DATE_RANGES_PHASE_1_AND_2,
-    TIMEFRAMES,
 )
 from scripts.data.sql import (
     BacktestSQLHelper,
@@ -54,6 +56,10 @@ from scripts.indicators.indicator_configs import (
 logging.basicConfig(
     level=20, datefmt="%m/%d/%Y %H:%M:%S", format="[%(asctime)s] %(message)s"
 )
+
+
+# Suppress all FutureWarnings (warnings of deprecation in future package versions)
+warnings.simplefilter(action="ignore", category=FutureWarning)
 
 
 @dataclass
@@ -632,7 +638,7 @@ def objective(
                 backtester.run_backtest()
             except Exception as e:
                 log_error(
-                    f"[{forex_pair}-{timeframe}] PRUNING trial due to backtest failing with error: {e}"
+                    f"[{forex_pair}-{timeframe}] (Strategy Config ID: {strategy.CONFIG_ID}) Backtest failed with error: {e}. {strategy.CONFIG_ID} PRUNING trial due to backtest failing with error: {e}"
                 )
                 manually_pruned = True
                 raise optuna.exceptions.TrialPruned()
@@ -902,7 +908,7 @@ def run_all_studies(
                     db_queue.put({"purpose": "study", "meta_df": meta_df})
 
                 except Exception as e:
-                    error_msg = f"[ERROR] Study failed for args: {args} | Error: {e} | Traceback: {traceback.format_exc()}"
+                    error_msg = f"[ERROR] Study failed - Error: {e} | Traceback: {traceback.format_exc()}"
                     logging.error(error_msg)
                     log_error(error_msg)
     finally:
@@ -1149,7 +1155,7 @@ def build_study_args_phase3(
 def run_phase3(phase: dict):
     run_args = build_study_args_phase3(
         pairs=MAJOR_FOREX_PAIRS,
-        timeframes=TIMEFRAMES,
+        timeframes=ALL_TIMEFRAMES,
         top_n=phase["top_n"],
     )
 
@@ -1297,14 +1303,15 @@ if __name__ == "__main__":
         [823, 145, 420, 666],  # 2
         [823, 145],
     ]
+    current_seed = seed_sets[0]
 
     PHASES = [
         {
             "name": "phase1",
             "exploration_space": "default",
-            "seeds": [8675],
+            "seeds": current_seed,
             "trials_by_timeframe": {
-                "1_day": 300,
+                "1_day": 500,
                 "4_hour": 300,
                 "2_hour": 300,
                 "1_hour": 200,
@@ -1316,9 +1323,9 @@ if __name__ == "__main__":
         {
             "name": "phase2",
             "exploration_space": f"top_{PHASE2_TOP_PERCENT}percent_parameterized",
-            "seeds": [8675],
+            "seeds": current_seed,
             "trials_by_timeframe": {
-                "1_day": 300,
+                "1_day": 500,
                 "4_hour": 300,
                 "2_hour": 300,
                 "1_hour": 200,
@@ -1331,35 +1338,29 @@ if __name__ == "__main__":
         {
             "name": "phase3",
             "exploration_space": "generalization_test",
-            "trials_by_timeframe": {
-                "1_day": 1,
-                "4_hour": 1,
-                "2_hour": 1,
-            },
+            # "trials_by_timeframe": {
+            #     "1_day": 1,
+            #     "4_hour": 1,
+            #     "2_hour": 1,
+            # },
             "top_n": 100,
         },
     ]
 
     logging.info(f"Running phases {[phase['name'] for phase in PHASES]}...")
 
-    # Get best pair/timeframe combos bast on previous phase runs
-    sql = BacktestSQLHelper(read_only=True)
-    filtered_pairs_timeframes = sql.get_top_pair_timeframes_by_best_score(
-        min_best_score=15
-    )
-
-    # Use in kwargs for study setup
-    filtered_pairs = sorted(set(pair for pair, tf in filtered_pairs_timeframes))
-    # filtered_timeframes = sorted(set(tf for pair, tf in filtered_pairs_timeframes))
+    pairs = MAJOR_FOREX_PAIRS
 
     for phase in PHASES:
         logging.info(f"Running phase {phase['name']}...")
         name = phase["name"]
         kwargs = {
             "phase_name": name,
-            "pairs": filtered_pairs,
-            "timeframes": TIMEFRAMES,
+            "pairs": pairs,
+            "timeframes": NNFX_TIMEFRAMES,
         }
+        logging.info(f"Using Pairs: {pairs}")
+        logging.info(f"Using Timeframes: {NNFX_TIMEFRAMES}")
 
         if name == "phase1":
             kwargs["exploration_space"] = phase["exploration_space"]
@@ -1374,6 +1375,17 @@ if __name__ == "__main__":
             run_all_studies(study_args, max_parallel_studies=N_PROCESSES)
 
         elif name == "phase2":
+            # For phase 2, use best pair/timeframe combos bast on previous phase runs
+            sql = BacktestSQLHelper(read_only=False)
+            filtered_pairs_timeframes = sql.get_top_pair_timeframes_by_best_score(
+                min_best_score=15
+            )
+
+            # Use in kwargs for study setup
+            kwargs["pairs"] = sorted(
+                set(pair for pair, tf in filtered_pairs_timeframes)
+            )
+
             kwargs["exploration_space"] = phase["exploration_space"]
             kwargs["trials_by_timeframe"] = phase["trials_by_timeframe"]
             kwargs["seeds"] = phase["seeds"]

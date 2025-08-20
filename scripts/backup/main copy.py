@@ -24,6 +24,7 @@ from optuna.visualization import (
 from scripts import strategies, utilities
 from scripts.backtester import Backtester
 from scripts.config import (
+    ALL_TIMEFRAMES,
     DATA_FOLDER,
     MAJOR_FOREX_PAIRS,
     MIN_TRADES_PER_DAY,
@@ -32,7 +33,6 @@ from scripts.config import (
     PHASE2_TOP_PERCENT,
     PRUNE_THRESHOLD_FACTOR,
     TIMEFRAME_DATE_RANGES_PHASE3,
-    TIMEFRAMES,
 )
 from scripts.indicators import (
     IndicatorConfig,
@@ -1121,7 +1121,7 @@ def build_study_args_phase3(
 def run_phase3(phase: dict):
     run_args = build_study_args_phase3(
         pairs=MAJOR_FOREX_PAIRS,
-        timeframes=TIMEFRAMES,
+        timeframes=ALL_TIMEFRAMES,
         top_n=phase["top_n"],
     )
 
