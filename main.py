@@ -1349,7 +1349,7 @@ if __name__ == "__main__":
 
     logging.info(f"Running phases {[phase['name'] for phase in PHASES]}...")
 
-    pairs = MAJOR_FOREX_PAIRS
+    pairs = MAJOR_FOREX_PAIRS  #
 
     for phase in PHASES:
         logging.info(f"Running phase {phase['name']}...")
