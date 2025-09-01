@@ -1,5 +1,31 @@
-from scripts import strategies
-from scripts.indicators.indicator_configs import find_indicator_config
+import numpy as np
+import pandas as pd
+
+
+def convert_np_to_pd(
+    indicator_output: pd.DataFrame | pd.Series | tuple | np.ndarray,
+) -> pd.DataFrame | pd.Series:
+    if isinstance(indicator_output, pd.DataFrame) or isinstance(
+        indicator_output, pd.Series
+    ):
+        return indicator_output
+    elif isinstance(indicator_output, np.ndarray):
+        return pd.Series(indicator_output)
+    elif isinstance(indicator_output, tuple):
+        # If it's a tuple of Series or arrays, build a DataFrame with auto-named columns
+        converted = []
+
+        for i, item in enumerate(indicator_output):
+            if isinstance(item, pd.Series):
+                converted.append(item.reset_index(drop=True))
+            elif isinstance(item, np.ndarray):
+                converted.append(pd.Series(item))
+            else:
+                raise TypeError(f"Unsupported type in tuple at index {i}: {type(item)}")
+
+        return pd.concat(converted, axis=1)
+    else:
+        raise TypeError(f"Unsupported type for conversion: {type(indicator_output)}")
 
 
 def seconds_to_dhms_str(seconds):
@@ -17,33 +43,3 @@ def seconds_to_dhms_str(seconds):
         return f"{hours}h {minutes}m {seconds}s"
 
     return f"""{days}d {hours}h {minutes}m {seconds}s"""
-
-
-def load_strategy_from_dict(d: dict) -> strategies.BaseStrategy:
-    """
-    Expected dict shape (current NNFX):
-      {
-        "strategy_name": "NNFX",            # optional; default "NNFX"
-        "pair": "EURUSD",
-        "timeframe": "4_hour",
-        "parameters": {
-           "ATR": <IndicatorConfig>,
-           "Baseline": <IndicatorConfig>,
-           "C1": <IndicatorConfig>,
-           "C2": <IndicatorConfig>,
-           "Volume": <IndicatorConfig>,
-           "Exit": <IndicatorConfig>,
-        }
-      }
-    """
-    name = d.get("strategy_name", "NNFX")
-    pair = d["pair"]
-    timeframe = d["timeframe"]
-
-    params = d.get("parameters")
-    if params is None:
-        # Reconstruct params dict from your current row shape if needed
-        # (Your existing code that maps raw fields to IndicatorConfig goes here)
-        raise ValueError("Expected 'parameters' dict in strategy row.")
-
-    return strategies.create_strategy(name, params, pair, timeframe)

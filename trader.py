@@ -17,9 +17,9 @@ import pyttsx3
 import pytz
 from oandapyV20.endpoints.positions import OpenPositions
 
-from scripts import strategies
 from scripts.config import MY_LOCAL_TIMEZONE, OANDA_ACCOUNT_ID, OANDA_API_KEY
-from scripts.sql import OandaSQLHelper
+from scripts.data.sql import OandaSQLHelper
+from scripts.strategies import strategy_core
 from scripts.utilities import load_strategy_from_dict, seconds_to_dhms_str
 
 pytts_engine = pyttsx3.init()
@@ -65,7 +65,7 @@ class TradeAction:
 
 @dataclass
 class RunningStrategy:
-    strategy: strategies.NNFXStrategy
+    strategy: strategy_core.NNFXStrategy
     strategy_id: int
     pair: str
     timeframe: str
@@ -270,7 +270,7 @@ class OandaAPI:
 
 def run_strategy(
     oanda: OandaAPI,
-    strategy: strategies.NNFXStrategy,
+    strategy: strategy_core.NNFXStrategy,
     current_position: int,
     balance: float,
     quote_to_usd_rate: float,
@@ -287,7 +287,7 @@ def run_strategy(
     current_index = len(strategy.data_with_indicators) - 1
 
     # Step 3: Generate trade plans
-    trade_plans: list[strategies.TradePlan] = strategy.generate_trade_plan(
+    trade_plans: list[strategy_core.TradePlan] = strategy.generate_trade_plan(
         current_index=current_index,
         current_position=current_position,
         balance=balance,
@@ -395,7 +395,7 @@ def main_loop(n_strategies):
 
         for running_strategy in running_strategies:
 
-            strategy: strategies.NNFXStrategy = running_strategy.strategy
+            strategy: strategy_core.NNFXStrategy = running_strategy.strategy
             live_strategy_id = running_strategy.strategy_id
             pair = running_strategy.pair
             granularity = running_strategy.granularity

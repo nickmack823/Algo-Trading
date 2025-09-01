@@ -3,8 +3,9 @@ import math
 import numpy as np
 import pandas as pd
 
-from scripts import config, strategies
-from scripts.sql import BacktestSQLHelper, HistoricalDataSQLHelper
+from scripts import config
+from scripts.data.sql import BacktestSQLHelper, HistoricalDataSQLHelper
+from scripts.strategies import strategy_core
 
 
 class PositionCalculator:
@@ -342,7 +343,7 @@ class Trade:
 class Backtester:
     def __init__(
         self,
-        strategy: strategies.BaseStrategy,
+        strategy: strategy_core.BaseStrategy,
         forex_pair: str,
         timeframe: str,
         initial_balance=10_000,
@@ -799,9 +800,13 @@ class Backtester:
 # Example Usage
 if __name__ == "__main__":
     forex_pair = "USDJPY"  # Example forex pair
-    strategy = strategies.EMACross({"ema1": 9, "ema2": 21})
+    strategy = strategy_core.EMACross({"ema1": 9, "ema2": 21})
     backtester = Backtester(
-        strategies.EMACross, forex_pair, "4_hour", initial_balance=10_000, leverage=50
+        strategy_core.EMACross,
+        forex_pair,
+        "4_hour",
+        initial_balance=10_000,
+        leverage=50,
     )
 
     # test_price = 149.8300

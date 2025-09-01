@@ -4,8 +4,9 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 
-from scripts import config, strategies
+from scripts import config
 from scripts.data.sql import BacktestSQLHelper, HistoricalDataSQLHelper
+from scripts.strategies import strategy_core
 
 
 class Trade:
@@ -15,7 +16,7 @@ class Trade:
 
     def __init__(
         self,
-        plan: strategies.TradePlan,
+        plan: strategy_core.TradePlan,
         forex_pair: str,
         entry_timestamp,
         entry_price: float,
@@ -68,12 +69,12 @@ class Trade:
 
         self.exit_price = exit_price
 
-        self.net_pips = strategies.PositionCalculator.calculate_pip_change(
+        self.net_pips = strategy_core.PositionCalculator.calculate_pip_change(
             self.forex_pair, self.entry_price, self.exit_price, self.direction
         )
 
         # Calculate PnL based on trade direction
-        self.pnl = strategies.PositionCalculator.calculate_profit_from_pips(
+        self.pnl = strategy_core.PositionCalculator.calculate_profit_from_pips(
             self.forex_pair,
             self.net_pips,
             self.units,
@@ -120,7 +121,7 @@ class Trade:
 class Backtester:
     def __init__(
         self,
-        strategy: strategies.BaseStrategy,
+        strategy: strategy_core.BaseStrategy,
         forex_pair: str,  # e.g. "EURUSD" with no slashes
         timeframe: str,
         data: pd.DataFrame,
@@ -471,7 +472,7 @@ class Backtester:
                 quote_to_usd_rate = quote_to_usd_rates[index]
 
             # Generate zero or more trade plans (entries and/or exits) using strategy logic
-            plans: list[strategies.TradePlan] = self.strategy.generate_trade_plan(
+            plans: list[strategy_core.TradePlan] = self.strategy.generate_trade_plan(
                 # Slice precomputed dataset up to current index to mimic real-time data
                 index,
                 self.position,
@@ -541,7 +542,7 @@ class Backtester:
 
                     # Ensure we have enough margin to open this trade
                     margin_required = (
-                        strategies.PositionCalculator.calculate_required_margin(
+                        strategy_core.PositionCalculator.calculate_required_margin(
                             self.forex_pair,
                             plan.units,
                             self.leverage,
@@ -554,7 +555,7 @@ class Backtester:
 
                     # Estimate pip value
                     pip_value = (
-                        strategies.PositionCalculator.calculate_current_pip_value(
+                        strategy_core.PositionCalculator.calculate_current_pip_value(
                             self.forex_pair, plan.units, entry_price, quote_to_usd_rate
                         )
                     )
@@ -766,9 +767,13 @@ class Backtester:
 # Example Usage
 if __name__ == "__main__":
     forex_pair = "USDJPY"  # Example forex pair
-    strategy = strategies.EMACross({"ema1": 9, "ema2": 21})
+    strategy = strategy_core.EMACross({"ema1": 9, "ema2": 21})
     backtester = Backtester(
-        strategies.EMACross, forex_pair, "4_hour", initial_balance=10_000, leverage=50
+        strategy_core.EMACross,
+        forex_pair,
+        "4_hour",
+        initial_balance=10_000,
+        leverage=50,
     )
 
     # test_price = 149.8300

@@ -3,7 +3,6 @@ import multiprocessing as mp
 import time
 from itertools import product
 
-from scripts import strategies
 from scripts.backtester import Backtester
 from scripts.config import ALL_TIMEFRAMES, MAJOR_FOREX_PAIRS
 from scripts.indicators import (
@@ -13,6 +12,7 @@ from scripts.indicators import (
     volatility_indicators,
     volume_indicators,
 )
+from scripts.strategies import strategy_core
 from scripts.utilities import seconds_to_dhms_str
 
 
@@ -128,7 +128,7 @@ def estimate_total_tasks():
 # Worker builds backtester, runs backtest, returns to queue
 def run_combo_worker(task):
     atr, baseline, c1, c2, volume, exit, forex_pair, timeframe = task
-    strategy = strategies.NNFXStrategy(
+    strategy = strategy_core.NNFXStrategy(
         atr, baseline, c1, c2, volume, exit, forex_pair, timeframe
     )
     backtester = Backtester(
