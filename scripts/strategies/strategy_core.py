@@ -4,11 +4,8 @@ from typing import Callable, Dict, List, Optional, Protocol, Type, runtime_check
 
 import pandas as pd
 
-from scripts.config import *
 
 # --- Strategy registry & factory (ADD) --------------------------------------
-
-
 @dataclass(frozen=True)
 class StrategyMeta:
     key: str
