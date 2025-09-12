@@ -1,4 +1,5 @@
 import inspect
+import json
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Protocol, Type, runtime_checkable
 
@@ -477,6 +478,39 @@ class PositionCalculator:
         return round(pip_change, 1)
 
 
+def _scalarize(v):
+    try:
+        return v.item() if hasattr(v, "item") else v  # numpy scalars → py
+    except Exception:
+        return v
+
+
+def canonicalize_params(d: dict | None) -> dict:
+    if not d:
+        return {}
+    # ensure JSON-serializable, sorted keys, plain scalars
+    out = {}
+    for k in sorted(d.keys()):
+        v = d[k]
+        # strip obviously runtime-only objects
+        if k in {"indicator_registry"}:
+            continue
+        # normalize tuples/sets
+        if isinstance(v, (set, tuple)):
+            v = list(v)
+        # nested dicts/lists: scalarize leaves
+        if isinstance(v, dict):
+            v = {ik: _scalarize(v[ik]) for ik in sorted(v.keys())}
+        elif isinstance(v, list):
+            v = [_scalarize(x) for x in v]
+        else:
+            v = _scalarize(v)
+        # final JSON check
+        json.dumps(v, sort_keys=True)  # will raise if not serializable
+        out[k] = v
+    return out
+
+
 class BaseStrategy:
     NAME = None
     DESCRIPTION = None
@@ -485,10 +519,11 @@ class BaseStrategy:
     TIMEFRAME = None
     CONFIG_ID = None
 
-    def __init__(self, forex_pair: str, parameters: dict = None, timeframe: str = None):
+    def __init__(self, *, forex_pair: str, timeframe: str | None = None, **kwargs):
         self.FOREX_PAIR = forex_pair.replace("/", "")
-        self.PARAMETER_SETTINGS = parameters
         self.TIMEFRAME = timeframe
+        # Build PARAMETER_SETTINGS purely from open kwargs
+        self.PARAMETER_SETTINGS = canonicalize_params(kwargs)
 
     # def prepare_data(self, full_data: pd.DataFrame):
     #     """

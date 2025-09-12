@@ -6,10 +6,10 @@ import time
 import pandas as pd
 import urllib3
 from polygon import RESTClient
-from sql import HistoricalDataSQLHelper
 from tqdm import tqdm
 
 import scripts.config as config
+from scripts.data.sql import HistoricalDataSQLHelper
 
 logging.basicConfig(
     level=20, datefmt="%m/%d/%Y %H:%M:%S", format="[%(asctime)s] %(message)s"
@@ -19,13 +19,13 @@ timespans = ["minute", "hour", "day"]
 
 # Timeframes and how many days back to collect
 timeframe_data_collection = {
-    (5, "minute"): 365 * 3,
-    (15, "minute"): 365 * 3,
-    (30, "minute"): 365 * 3,
-    (1, "hour"): 365 * 3,
-    (2, "hour"): 365 * 3,
-    (4, "hour"): 365 * 3,
-    (1, "day"): 365 * 3,
+    (5, "minute"): 3650,
+    (15, "minute"): 3650,
+    (30, "minute"): 3650,
+    (1, "hour"): 3650,
+    (2, "hour"): 3650,
+    (4, "hour"): 3650,
+    (1, "day"): 3650,
 }
 
 
@@ -112,63 +112,59 @@ class Polygon:
 
     def filter_collected_data_dates(
         self, existing_data: pd.DataFrame, from_date: str, to_date: str
-    ) -> dict:
+    ) -> dict | None:
         """
-        Filter data collection range based on the initial from date.
+        Given existing data and a target [from_date, to_date), return the sub-range
+        that still needs collection.
 
-        Parameters:
-        - data: DataFrame, the data to filter
-        - from_date: str, the initial from date in 'YYYY-MM-DD' format
-        - to_date: str, the initial to date in 'YYYY-MM-DD' format
+        - If existing covers 2021–2025 and you ask for 2015–2025, you’ll get 2015–2021.
+        - If nothing is missing, return None.
+        - Works with full datetime (not just dates).
 
-        Returns:
-        - dict: A dictionary containing the filtered from_date and to_date to collect from
-        - None: If there is no data left to collect within the range
+        Returns
+        -------
+        dict | None
         """
-        filtered_dates = {"from_date": from_date, "to_date": to_date}
+        from_dt = pd.to_datetime(from_date)
+        to_dt = pd.to_datetime(to_date)
 
-        # Date ranges are exclusive
-        day_before_to_date = (pd.to_datetime(to_date) - pd.Timedelta(days=1)).strftime(
-            "%Y-%m-%d"
-        )
-
-        filter_from = existing_data["Timestamp"].str.contains(from_date).any()
-        filter_to = existing_data["Timestamp"].str.contains(day_before_to_date).any()
-
-        # Convert Timestamp to datetime
-        existing_data["Timestamp"] = pd.to_datetime(existing_data["Timestamp"])
-
-        # Check if initial date is in any timestamp, if so, get the most recent date past that point
-        if filter_from:
-            # Get most recent date past initial from date
-            most_recent_date = existing_data[existing_data["Timestamp"] > from_date][
-                "Timestamp"
-            ].max()
-            most_recent_date = most_recent_date.strftime("%Y-%m-%d")
-
-            # Update filtered dates
-            filtered_dates["from_date"] = most_recent_date
-
-        # If from_date and to_date are the same, return None to indicate no data to collect
-        if pd.to_datetime(filtered_dates["from_date"]) == pd.to_datetime(
-            to_date
-        ) - pd.Timedelta(days=1):
+        if from_dt >= to_dt:
             return None
 
-        # Check if to_date is in any timestamp, if so, get the furthest back date before that point
-        if filter_to:
-            # Get most recent date past initial from date
-            least_recent_date = existing_data[existing_data["Timestamp"] < to_date][
-                "Timestamp"
-            ].min()
-            least_recent_date = least_recent_date.strftime("%Y-%m-%d")
+        if existing_data is None or existing_data.empty:
+            return {"from_date": from_date, "to_date": to_date}
 
-            # Update filtered dates
-            filtered_dates["to_date"] = least_recent_date
+        ts = pd.to_datetime(existing_data["Timestamp"])
+        existing_start = ts.min()
+        existing_end = ts.max()
 
-        # logging.info(f"Filtered data collection dates: {filtered_dates['from_date']} to {filtered_dates['to_date']}.")
+        # Already fully covered
+        if existing_start <= from_dt and existing_end >= to_dt:
+            return None
 
-        return filtered_dates
+        # Missing chunk before existing data
+        if existing_start > from_dt:
+            out = {
+                "from_date": from_dt.strftime("%Y-%m-%d"),
+                "to_date": existing_start.strftime("%Y-%m-%d"),
+            }
+            if pd.to_datetime(out["from_date"]) >= pd.to_datetime(out["to_date"]):
+                return None
+            return out
+
+        # Missing chunk after existing data
+        if existing_end < to_dt:
+            start = existing_end + pd.Timedelta(microseconds=1)
+            out = {
+                "from_date": from_dt.strftime("%Y-%m-%d"),
+                "to_date": existing_start.strftime("%Y-%m-%d"),
+            }
+            if pd.to_datetime(out["from_date"]) >= pd.to_datetime(out["to_date"]):
+                return None
+            return out
+
+        # Otherwise: gap in the middle (rare unless data is broken)
+        return None
 
     def collect_data(self, pair: str) -> None:
         # logging.info(f"Collecting data for {pair}...")

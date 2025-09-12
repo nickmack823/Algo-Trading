@@ -17,7 +17,7 @@ from scripts.indicators.indicator_configs import (
 )
 from scripts.strategies import strategy_core
 
-from .base import StrategyTrialAdapter, register_adapter, run_objective_common
+from .base_adapter import StrategyTrialAdapter, register_adapter, run_objective_common
 
 
 def build_indicator_config_for_trial(

@@ -43,7 +43,7 @@ def _compute_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
 
 
 @register_strategy(
-    "CANDLESTICK",
+    "Candlestick",
     [
         "atr",
         "baseline",
@@ -63,7 +63,7 @@ class CandlestickFilteredStrategy(BaseStrategy):
     Plans: Two-leg entries (TP1 + Runner with BE@+1ATR, trail start +2ATR, distance 1.5ATR).
     """
 
-    NAME = "CANDLESTICK"
+    NAME = "Candlestick"
     DESCRIPTION = "Candlestick-driven strategy with baseline and volatility filters; configurable pattern set."
 
     def __init__(

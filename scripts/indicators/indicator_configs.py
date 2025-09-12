@@ -4,110 +4,115 @@ from typing import Callable, TypedDict
 import pandas as pd
 import talib as ta
 
-from scripts.indicators.calculation_functions import (
-    ALMA,
-    ASO,
-    HMA,
-    J_TPO,
-    KASE,
-    KVO,
-    LSMA,
-    LWPI,
-    RWIBTF,
-    SSL,
-    T3MA,
-    TDFI,
-    TII,
-    TP,
-    TRENDAKKAM,
-    TTF,
-    TTMS,
-    UF2018,
-    VIDYA,
-    WAE,
-    AcceleratorLSMA,
-    AdaptiveSmootherTriggerlinesMtfAlertsNmc,
-    ATRBasedEMAVariant1,
-    BamsBung3,
-    BandPassFilter,
-    BraidFilter,
-    BullsBearsImpulse,
-    CenterOfGravity,
-    Chandelierexit,
-    Coral,
-    CVIMulti,
-    CyberCycle,
-    DecyclerOscillator,
-    DetrendedSyntheticPriceGoscillators,
-    DodaStochasticModified,
-    DorseyInertia,
-    DpoHistogramIndicator,
-    EhlersDELIDetrendedLeadingIndicator,
-    EhlersEarlyOnsetTrend,
-    EhlersReverseEMA,
-    EhlersRoofingFilterA,
-    EhlersTwoPoleSuperSmootherFilter,
-    ErgodicTVI,
-    FantailVMA,
-    FilteredATR,
-    Fisher,
-    Forecast,
-    FramaIndicator,
-    Gchannel,
-    Gd,
-    Gen3MA,
-    GeominMA,
-    GlitchIndexFixed,
-    GruchaIndex,
-    Hacolt202Lines,
-    HalfTrend,
-    Hlctrend,
-    ISCalculation,
-    JpOscillator,
-    KalmanFilter,
-    KijunSen,
-    Laguerre,
-    MACDZeroLag,
-    McGinleyDI,
-    McginleyDynamic23,
-    MetroAdvanced,
-    METROFixed,
-    MomentumCandlesModifiedWAtr,
-    MomentumCandlesWATR,
-    NormalizedVolume,
-    PrecisionTrendHistogram,
-    PriceMomentumOscillator,
-    QQEWithAlerts,
-    RangeFilterModified,
-    RecursiveMA,
-    SchaffTrendCycle,
-    SecondOrderGaussianHighPassFilterMtfZones,
-    SherifHilo,
-    Silence,
-    Sinewma,
-    SmoothedMomentum,
-    Smoothstep,
-    StiffnessIndicator,
-    SuperTrend,
-    TetherLine,
-    TheTurtleTradingChannel,
-    ThirdGenMA,
-    TopBottomNR,
-    TopTrend,
-    Trendcontinuation2,
-    TrendDirectionForceIndexSmoothed4,
-    TrendLord,
-    TrendLordNrpIndicator,
-    Trimagen,
-    TrueStrengthIndex,
-    TwiggsMF,
-    VolatilityRatio,
-    VortexIndicator,
-    WilliamVixFix,
-    WprMaAlerts,
-    XmaColouredUpdatedForNnfx,
-    ZerolagMACDMq4,
-)
+from scripts.indicators.calculation_functions import *
+
+# from scripts.indicators.calculation_functions import (
+#     ALMA,
+#     ASO,
+#     EMA,
+#     HMA,
+#     J_TPO,
+#     KASE,
+#     KVO,
+#     LSMA,
+#     LWPI,
+#     RWIBTF,
+#     SMA,
+#     SSL,
+#     T3MA,
+#     TDFI,
+#     TII,
+#     TP,
+#     TRENDAKKAM,
+#     TTF,
+#     TTMS,
+#     UF2018,
+#     VIDYA,
+#     WAE,
+#     WMA,
+#     AcceleratorLSMA,
+#     AdaptiveSmootherTriggerlinesMtfAlertsNmc,
+#     ATRBasedEMAVariant1,
+#     BamsBung3,
+#     BandPassFilter,
+#     BraidFilter,
+#     BullsBearsImpulse,
+#     CenterOfGravity,
+#     Chandelierexit,
+#     Coral,
+#     CVIMulti,
+#     CyberCycle,
+#     DecyclerOscillator,
+#     DetrendedSyntheticPriceGoscillators,
+#     DodaStochasticModified,
+#     DorseyInertia,
+#     DpoHistogramIndicator,
+#     EhlersDELIDetrendedLeadingIndicator,
+#     EhlersEarlyOnsetTrend,
+#     EhlersReverseEMA,
+#     EhlersRoofingFilterA,
+#     EhlersTwoPoleSuperSmootherFilter,
+#     ErgodicTVI,
+#     FantailVMA,
+#     FilteredATR,
+#     Fisher,
+#     Forecast,
+#     FramaIndicator,
+#     Gchannel,
+#     Gd,
+#     Gen3MA,
+#     GeominMA,
+#     GlitchIndexFixed,
+#     GruchaIndex,
+#     Hacolt202Lines,
+#     HalfTrend,
+#     Hlctrend,
+#     ISCalculation,
+#     JpOscillator,
+#     KalmanFilter,
+#     KijunSen,
+#     Laguerre,
+#     MACDZeroLag,
+#     McGinleyDI,
+#     McginleyDynamic23,
+#     MetroAdvanced,
+#     METROFixed,
+#     MomentumCandlesModifiedWAtr,
+#     MomentumCandlesWATR,
+#     NormalizedVolume,
+#     PrecisionTrendHistogram,
+#     PriceMomentumOscillator,
+#     QQEWithAlerts,
+#     RangeFilterModified,
+#     RecursiveMA,
+#     SchaffTrendCycle,
+#     SecondOrderGaussianHighPassFilterMtfZones,
+#     SherifHilo,
+#     Silence,
+#     Sinewma,
+#     SmoothedMomentum,
+#     Smoothstep,
+#     StiffnessIndicator,
+#     SuperTrend,
+#     TetherLine,
+#     TheTurtleTradingChannel,
+#     ThirdGenMA,
+#     TopBottomNR,
+#     TopTrend,
+#     Trendcontinuation2,
+#     TrendDirectionForceIndexSmoothed4,
+#     TrendLord,
+#     TrendLordNrpIndicator,
+#     Trimagen,
+#     TrueStrengthIndex,
+#     TwiggsMF,
+#     VolatilityRatio,
+#     VortexIndicator,
+#     WilliamVixFix,
+#     WprMaAlerts,
+#     XmaColouredUpdatedForNnfx,
+#     ZerolagMACDMq4,
+# )
 from scripts.indicators.signal_functions import *
 
 logging.basicConfig(
@@ -124,6 +129,14 @@ class IndicatorConfig(TypedDict):
     raw_function: Callable
     parameters: dict
     parameter_space = dict
+    category: str
+
+
+def _tag_category(lst: list[IndicatorConfig], category: str):
+    for cfg in lst:
+        # don't overwrite if already set
+        if "category" not in cfg:
+            cfg["category"] = category
 
 
 # Utility to find config by name in a pool
@@ -139,420 +152,6 @@ def find_indicator_config(name, params) -> IndicatorConfig:
                 "parameters": params,
             }
     raise ValueError(f"Indicator {name} not found in provided pool.")
-
-
-def candle_2crows_func(df):
-    return ta.CDL2CROWS(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_3blackcrows_func(df):
-    return ta.CDL3BLACKCROWS(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_3inside_func(df):
-    return ta.CDL3INSIDE(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_3linestrike_func(df):
-    return ta.CDL3LINESTRIKE(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_3starsinsouth_func(df):
-    return ta.CDL3STARSINSOUTH(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_3whitesoldiers_func(df):
-    return ta.CDL3WHITESOLDIERS(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_abandonedbaby_func(df):
-    return ta.CDLABANDONEDBABY(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_advanceblock_func(df):
-    return ta.CDLADVANCEBLOCK(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_belthold_func(df):
-    return ta.CDLBELTHOLD(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_breakaway_func(df):
-    return ta.CDLBREAKAWAY(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_closingmarubozu_func(df):
-    return ta.CDLCLOSINGMARUBOZU(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_concealbabyswall_func(df):
-    return ta.CDLCONCEALBABYSWALL(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_counterattack_func(df):
-    return ta.CDLCOUNTERATTACK(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_darkcloudcover_func(df):
-    return ta.CDLDARKCLOUDCOVER(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_doji_func(df):
-    return ta.CDLDOJI(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_dojistar_func(df):
-    return ta.CDLDOJISTAR(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_dragonflydoji_func(df):
-    return ta.CDLDRAGONFLYDOJI(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_engulfing_func(df):
-    return ta.CDLENGULFING(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_eveningdojistar_func(df):
-    return ta.CDLEVENINGDOJISTAR(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_eveningstar_func(df):
-    return ta.CDLEVENINGSTAR(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_gapsidesidewhite_func(df):
-    return ta.CDLGAPSIDESIDEWHITE(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_gravestonedoji_func(df):
-    return ta.CDLGRAVESTONEDOJI(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_hammer_func(df):
-    return ta.CDLHAMMER(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_hangingman_func(df):
-    return ta.CDLHANGINGMAN(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_harami_func(df):
-    return ta.CDLHARAMI(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_haramicross_func(df):
-    return ta.CDLHARAMICROSS(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_highwave_func(df):
-    return ta.CDLHIGHWAVE(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_hikkake_func(df):
-    return ta.CDLHIKKAKE(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_hikkakemod_func(df):
-    return ta.CDLHIKKAKEMOD(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_homingpigeon_func(df):
-    return ta.CDLHOMINGPIGEON(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_identical3crows_func(df):
-    return ta.CDLIDENTICAL3CROWS(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_inneck_func(df):
-    return ta.CDLINNECK(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_invertedhammer_func(df):
-    return ta.CDLINVERTEDHAMMER(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_kicking_func(df):
-    return ta.CDLKICKING(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_kickingbylength_func(df):
-    return ta.CDLKICKINGBYLENGTH(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_ladderbottom_func(df):
-    return ta.CDLLADDERBOTTOM(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_longleggeddoji_func(df):
-    return ta.CDLLONGLEGGEDDOJI(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_longline_func(df):
-    return ta.CDLLONGLINE(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_marubozu_func(df):
-    return ta.CDLMARUBOZU(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_matchinglow_func(df):
-    return ta.CDLMATCHINGLOW(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_mathold_func(df):
-    return ta.CDLMATHOLD(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_morningdojistar_func(df):
-    return ta.CDLMORNINGDOJISTAR(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_morningstar_func(df):
-    return ta.CDLMORNINGSTAR(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_onneck_func(df):
-    return ta.CDLONNECK(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_piercing_func(df):
-    return ta.CDLPIERCING(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_rickshawman_func(df):
-    return ta.CDLRICKSHAWMAN(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_risefall3methods_func(df):
-    return ta.CDLRISEFALL3METHODS(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_separatinglines_func(df):
-    return ta.CDLSEPARATINGLINES(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_shootingstar_func(df):
-    return ta.CDLSHOOTINGSTAR(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_shortline_func(df):
-    return ta.CDLSHORTLINE(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_spinningtop_func(df):
-    return ta.CDLSPINNINGTOP(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_stalledpattern_func(df):
-    return ta.CDLSTALLEDPATTERN(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_sticksandwich_func(df):
-    return ta.CDLSTICKSANDWICH(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_takuri_func(df):
-    return ta.CDLTAKURI(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_tasukigap_func(df):
-    return ta.CDLTASUKIGAP(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_thrusting_func(df):
-    return ta.CDLTHRUSTING(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_tristar_func(df):
-    return ta.CDLTRISTAR(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_unique3river_func(df):
-    return ta.CDLUNIQUE3RIVER(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_upsidegap2crows_func(df):
-    return ta.CDLUPSIDEGAP2CROWS(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def candle_xsidegap3methods_func(df):
-    return ta.CDLXSIDEGAP3METHODS(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def ad_func(df, **kwargs):
-    return ta.AD(df["High"], df["Low"], df["Close"], df["Volume"], **kwargs)
-
-
-def adx_func(df, **kwargs):
-    return ta.ADX(df["High"], df["Low"], df["Close"], **kwargs)
-
-
-def adxr_func(df, **kwargs):
-    return ta.ADXR(df["High"], df["Low"], df["Close"], **kwargs)
-
-
-def adosc_func(df, **kwargs):
-    return ta.ADOSC(df["High"], df["Low"], df["Close"], df["Volume"], **kwargs)
-
-
-def obv_func(df, **kwargs):
-    return ta.OBV(df["Close"], df["Volume"], **kwargs)
-
-
-def aroon_func(df, **kwargs):
-    return ta.AROON(df["High"], df["Low"], **kwargs)
-
-
-def aroonosc_func(df, **kwargs):
-    return ta.AROONOSC(df["High"], df["Low"], **kwargs)
-
-
-def apo_func(df, fastperiod=12, slowperiod=26, matype=0):
-    return ta.APO(
-        df["Close"], fastperiod=fastperiod, slowperiod=slowperiod, matype=matype
-    )
-
-
-def cci_func(df, **kwargs):
-    return ta.CCI(df["High"], df["Low"], df["Close"], **kwargs)
-
-
-def macd_func(df, **kwargs):
-    return ta.MACD(df["Close"], **kwargs)
-
-
-def macdext_func(df, **kwargs):
-    return ta.MACDEXT(df["Close"], **kwargs)
-
-
-def macdfix_func(df, **kwargs):
-    return ta.MACDFIX(df["Close"], **kwargs)
-
-
-def mama_func(df, **kwargs):
-    return ta.MAMA(df["Close"], **kwargs)
-
-
-def ppo_func(df, **kwargs):
-    return ta.PPO(df["Close"], **kwargs)
-
-
-def roc_func(df, **kwargs):
-    return ta.ROC(df["Close"], **kwargs)
-
-
-def rocp_func(df, **kwargs):
-    return ta.ROCP(df["Close"], **kwargs)
-
-
-def rocr_func(df, **kwargs):
-    return ta.ROCR(df["Close"], **kwargs)
-
-
-def rocr100_func(df, **kwargs):
-    return ta.ROCR100(df["Close"], **kwargs)
-
-
-def rsi_func(df, **kwargs):
-    return ta.RSI(df["Close"], **kwargs)
-
-
-def stoch_slow_func(df, **kwargs):
-    return ta.STOCH(df["High"], df["Low"], df["Close"], **kwargs)
-
-
-def stochf_fast_func(df, **kwargs):
-    return ta.STOCHF(df["High"], df["Low"], df["Close"], **kwargs)
-
-
-def stochrsi_func(df, **kwargs):
-    return ta.STOCHRSI(df["Close"], **kwargs)
-
-
-def tsf_func(df, **kwargs):
-    return ta.TSF(df["Close"], **kwargs)
-
-
-def ultosc_func(df, **kwargs):
-    return ta.ULTOSC(df["High"], df["Low"], df["Close"], **kwargs)
-
-
-def atr_func(df, **kwargs):
-    return ta.ATR(df["High"], df["Low"], df["Close"], **kwargs)
-
-
-def natr_func(df, **kwargs):
-    return ta.NATR(df["High"], df["Low"], df["Close"], **kwargs)
-
-
-def trange_func(df, **kwargs):
-    return ta.TRANGE(df["High"], df["Low"], df["Close"], **kwargs)
-
-
-def cmo_func(df, **kwargs):
-    return ta.CMO(df["Close"], **kwargs)
-
-
-def bollingerbands_func(df, **kwargs):
-    return ta.BBANDS(df["Close"], **kwargs)
-
-
-def stddev_func(df, **kwargs):
-    return ta.STDDEV(df["Close"], **kwargs)
-
-
-def var_func(df, **kwargs):
-    return ta.VAR(df["Close"], **kwargs)
-
-
-def avgprice_func(df):
-    return ta.AVGPRICE(df["Open"], df["High"], df["Low"], df["Close"])
-
-
-def medprice_func(df):
-    return ta.MEDPRICE(df["High"], df["Low"])
-
-
-def max_func(df, timeperiod=14):
-    return ta.MAX(df["Close"], timeperiod=timeperiod)
-
-
-def maxindex_func(df, timeperiod=14):
-    return ta.MAXINDEX(df["Close"], timeperiod=timeperiod)
-
-
-def midpoint_func(df, timeperiod=14):
-    return ta.MIDPOINT(df["Close"], timeperiod=timeperiod)
-
-
-def midprice_func(df, timeperiod=14):
-    return ta.MIDPRICE(df["High"], df["Low"], timeperiod=timeperiod)
-
-
-def min_func(df, timeperiod=14):
-    return ta.MIN(df["Close"], timeperiod=timeperiod)
-
-
-def minindex_func(df, timeperiod=14):
-    return ta.MININDEX(df["Close"], timeperiod=timeperiod)
-
-
-def minmax_func(df, timeperiod=14):
-    return ta.MINMAX(df["Close"], timeperiod=timeperiod)
-
-
-def sum_func(df, timeperiod=14):
-    return ta.SUM(df["Close"], timeperiod=timeperiod)
-
-
-def typprice_func(df):
-    return ta.TYPPRICE(df["High"], df["Low"], df["Close"])
-
-
-def wclprice_func(df):
-    return ta.WCLPRICE(df["High"], df["Low"], df["Close"])
 
 
 ta_lib_candlestick = [
@@ -917,6 +516,7 @@ ta_lib_candlestick = [
         "signal_function": interpret_candlestick,
     },
 ]
+candlestick_indicators = ta_lib_candlestick
 ta_lib_volume = [
     {
         "name": "AD",
@@ -2687,6 +2287,33 @@ ta_lib_price = [
 price_indicators = ta_lib_price
 baseline_indicators = [
     {
+        "name": "SMA",
+        "function": SMA,
+        "description": "Simple Moving Average (SMA): A single exponential moving average, also known as a simple moving average.",
+        "signal_function": signal_baseline_standard,
+        "raw_function": SMA,
+        "parameters": {"period": 14},
+        "parameter_space": {"period": [6, 10, 14, 16, 20, 24]},
+    },
+    {
+        "name": "EMA",
+        "function": EMA,
+        "description": "Exponential Moving Average (EMA): A single exponential moving average, also known as an exponential moving average.",
+        "signal_function": signal_baseline_standard,
+        "raw_function": EMA,
+        "parameters": {"period": 14},
+        "parameter_space": {"period": [6, 10, 14, 16, 20, 24]},
+    },
+    {
+        "name": "WMA",
+        "function": WMA,
+        "description": "Weighted Moving Average (WMA): A single weighted moving average, also known as a weighted moving average.",
+        "signal_function": signal_baseline_standard,
+        "raw_function": WMA,
+        "parameters": {"period": 14},
+        "parameter_space": {"period": [6, 10, 14, 16, 20, 24]},
+    },
+    {
         "name": "ALMA",
         "function": ALMA,
         "description": "ALMA (Arnaud Legoux Moving Average): A Gaussian-weighted moving average designed to reduce lag while smoothing price.",
@@ -2972,9 +2599,10 @@ baseline_indicators = [
         },
     },
 ]
-all_indicators = (
-    ta_lib_candlestick
-    + volume_indicators
+
+
+_all_indicator_list = (
+    volume_indicators
     + trend_indicators
     + momentum_indicators
     + volatility_indicators
@@ -2982,3 +2610,21 @@ all_indicators = (
     + baseline_indicators
     + atr_indicators
 )
+
+_tag_category(atr_indicators, "atr")
+_tag_category(baseline_indicators, "baseline")
+_tag_category(candlestick_indicators, "candlestick")
+_tag_category(momentum_indicators, "momentum")
+_tag_category(price_indicators, "price")
+_tag_category(trend_indicators, "trend")
+_tag_category(volatility_indicators, "volatility")
+_tag_category(volume_indicators, "volume")
+
+# Canonical, by-name map:
+all_indicators = {cfg["name"]: cfg for cfg in _all_indicator_list}
+
+# NEW: name lists by category
+INDICATORS_BY_CATEGORY: dict[str, list[str]] = {}
+for name, cfg in all_indicators.items():
+    cat = cfg.get("category", "uncategorized")
+    INDICATORS_BY_CATEGORY.setdefault(cat, []).append(name)

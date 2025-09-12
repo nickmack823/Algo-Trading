@@ -14,7 +14,7 @@ from scripts.indicators.indicator_configs import (
 )
 from scripts.strategies import strategy_core
 
-from .base import StrategyTrialAdapter, register_adapter, run_objective_common
+from .base_adapter import StrategyTrialAdapter, register_adapter, run_objective_common
 
 
 # Helper: indicator sampling (same pattern as NNFX)
@@ -49,7 +49,7 @@ ALL_PATTERN_NAMES: List[str] = [c["name"] for c in ta_lib_candlestick]
 
 
 class CandlestickAdapter(StrategyTrialAdapter):
-    key = "CANDLESTICK"
+    key = "Candlestick"
 
     def objective(
         self,

@@ -74,7 +74,7 @@ class NNFXStrategy(BaseStrategy):
         }
         self.indicator_cache_dicts_to_insert = []
 
-        parameters = {
+        param_kwargs = {
             "atr": f"{atr['name']}_{atr['parameters']}",
             "baseline": f"{baseline['name']}_{baseline['parameters']}",
             "c1": f"{c1['name']}_{c1['parameters']}",
@@ -90,9 +90,7 @@ class NNFXStrategy(BaseStrategy):
         # For backtesting
         self.data_with_indicators = None
 
-        super().__init__(
-            forex_pair=forex_pair, parameters=parameters, timeframe=timeframe
-        )
+        super().__init__(forex_pair=forex_pair, timeframe=timeframe, **param_kwargs)
 
     def prepare_data(self, historical_data: pd.DataFrame, use_cache: bool = True):
         if use_cache:

@@ -26,15 +26,28 @@ from scripts.config import (
     TIMEFRAME_DATE_RANGES_PHASE3,
     TIMEFRAME_DATE_RANGES_PHASE_1_AND_2,
 )
+from scripts.data import polygon
 from scripts.data.sql import (
     BacktestSQLHelper,
     HistoricalDataSQLHelper,
     IndicatorCacheSQLHelper,
 )
-from scripts.strategies import candlestick_strategy  # to register them in st
-from scripts.strategies import nnfx_strategy, strategy_core
-from scripts.trial_adapters import candlestick_adapter, nnxf_adapter
-from scripts.trial_adapters.base import ADAPTER_REGISTRY, Acknowledgement, objective
+from scripts.strategies import (
+    candlestick_strategy,
+    mabrouk_2021,
+    nnfx_strategy,
+    strategy_core,
+)
+from scripts.trial_adapters import (
+    candlestick_adapter,
+    mabrouk2021_adapter,
+    nnxf_adapter,
+)
+from scripts.trial_adapters.base_adapter import (
+    ADAPTER_REGISTRY,
+    Acknowledgement,
+    objective,
+)
 
 logging.basicConfig(
     level=20, datefmt="%m/%d/%Y %H:%M:%S", format="[%(asctime)s] %(message)s"
@@ -148,7 +161,6 @@ def db_writer_process(queue: mp.Queue, done_flag, ack_dict: dict):
                 elif purpose == "trial":
                     # Unpack queue item
                     pair_id = queue_dict.get("pair_id")
-                    strategy: strategy_core.NNFXStrategy = queue_dict.get("strategy")
                     timeframe = queue_dict.get("timeframe")
                     metrics_df = queue_dict.get("metrics_df")
                     study_name = queue_dict.get("study_name")
@@ -159,9 +171,9 @@ def db_writer_process(queue: mp.Queue, done_flag, ack_dict: dict):
 
                     # Select strategy configuration
                     strategy_config_id = sql.select_strategy_configuration(
-                        strategy.NAME,
-                        strategy.DESCRIPTION,
-                        strategy.PARAMETER_SETTINGS,
+                        queue_dict.get("strategy_name"),
+                        queue_dict.get("strategy_description"),
+                        queue_dict.get("strategy_parameters"),
                     )
 
                     # Check if run already exists
@@ -603,7 +615,8 @@ if __name__ == "__main__":
     # --- Edit these top-level knobs freely ---
     STRATEGY_KEYS_TO_RUN: list[str] = [
         # "NNFX",
-        "CANDLESTICK",
+        # "Candlestick",
+        "Mabrouk2021"
     ]  # use any registered adapters
     N_PROCESSES: int = 1  # mp.cpu_count() - 3 is a decent default
 

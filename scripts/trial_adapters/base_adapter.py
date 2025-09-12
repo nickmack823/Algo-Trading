@@ -9,16 +9,52 @@ from abc import ABC, abstractmethod
 from typing import Callable, Dict
 
 import optuna
+import pandas as pd
 
 from scripts.backtester import Backtester
 from scripts.config import (
     DATA_FOLDER,
+    END_DATE,
     MIN_TRADES_PER_DAY,
     PRUNE_THRESHOLD_FACTOR,
     TIMEFRAME_DATE_RANGES_PHASE_1_AND_2,
 )
 from scripts.data.sql import BacktestSQLHelper, HistoricalDataSQLHelper
 from scripts.strategies import strategy_core
+
+
+def _resolve_date_window(
+    timeframe: str, context: dict, default_from: str, default_to: str
+) -> tuple[str, str]:
+    """
+    Support two forms in context['date_window']:
+      - {"absolute": {"from": "YYYY-MM-DD", "to": "YYYY-MM-DD"}}
+      - {"relative": {"years": int, "months": int, "days": int}, "anchor_to_config_end": bool}
+    Falls back to (default_from, default_to) if nothing provided.
+    """
+    dw = (context or {}).get("date_window")
+    if not dw:
+        return default_from, default_to
+
+    # absolute override
+    abs_win = dw.get("absolute")
+    if abs_win and abs_win.get("from") and abs_win.get("to"):
+        return abs_win["from"], abs_win["to"]
+
+    # relative override
+    rel = dw.get("relative")
+    if rel:
+        anchor_to_conf = bool(dw.get("anchor_to_config_end"))
+        anchor_to = pd.to_datetime(END_DATE if anchor_to_conf else default_to)
+        years = int(rel.get("years", 0))
+        months = int(rel.get("months", 0))
+        days = int(rel.get("days", 0))
+        delta = pd.DateOffset(years=years, months=months, days=days)
+        frm = (anchor_to - delta).strftime("%Y-%m-%d")
+        to_ = anchor_to.strftime("%Y-%m-%d")
+        return frm, to_
+
+    return default_from, default_to
 
 
 # ---- simple dataclass substitute for cross-process acks
@@ -103,6 +139,7 @@ def run_objective_common(
     timeframe: str,
     db_queue: mp.Queue,
     ack_dict: dict,
+    context: dict | None = None,
 ) -> float:
     def log_error(msg: str):
         logging.error(msg)
@@ -136,6 +173,7 @@ def run_objective_common(
     # date window
     tf_rng = TIMEFRAME_DATE_RANGES_PHASE_1_AND_2[timeframe]
     from_date, to_date = tf_rng["from_date"], tf_rng["to_date"]
+    from_date, to_date = _resolve_date_window(timeframe, context, from_date, to_date)
 
     # load OHLCV
     data_sqlhelper = HistoricalDataSQLHelper(
@@ -242,7 +280,9 @@ def run_objective_common(
             db_queue.put(
                 {
                     "pair_id": pair_id,
-                    "strategy": strategy,
+                    "strategy_name": strategy.NAME,
+                    "strategy_description": strategy.DESCRIPTION,
+                    "strategy_parameters": strategy.PARAMETER_SETTINGS,
                     "timeframe": timeframe,
                     "metrics_df": run_metrics_df,
                     "study_name": study_name,

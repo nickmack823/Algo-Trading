@@ -10,12 +10,22 @@ TRADING_DB_PATH = "trading/OandaTrading.db"
 OPTUNA_STUDIES_FOLDER = "backtesting/optuna_studies"
 OPTUNA_REPORTS_FOLDER = "backtesting/optuna_reports"
 TEMP_CACHE_FOLDER = "temp"
+# # Machine learning
+FEATURES_CACHE_DIR = "machine_learning/features_cache"
+LABELS_CACHE_DIR = "machine_learning/labels_cache"
+SCORES_CACHE_DIR = "machine_learning/scores_cache"
+MODELS_CACHE_DIR = "machine_learning/models_cache"
+
 os.makedirs(DATA_FOLDER, exist_ok=True)
 os.makedirs(BACKTESTING_FOLDER, exist_ok=True)
 os.makedirs(TRADING_DB_PATH, exist_ok=True)
 os.makedirs(OPTUNA_STUDIES_FOLDER, exist_ok=True)
 os.makedirs(OPTUNA_REPORTS_FOLDER, exist_ok=True)
 os.makedirs(TEMP_CACHE_FOLDER, exist_ok=True)
+os.makedirs(FEATURES_CACHE_DIR, exist_ok=True)
+os.makedirs(LABELS_CACHE_DIR, exist_ok=True)
+os.makedirs(SCORES_CACHE_DIR, exist_ok=True)
+os.makedirs(MODELS_CACHE_DIR, exist_ok=True)
 
 MAJOR_FOREX_PAIRS = [
     "EUR/USD",
@@ -148,51 +158,65 @@ ALL_SIGNALS = [
 ]
 
 # === BACKTESTING CONSTANTS ===
-# Data start/end dates
+# --------------------------
+# Core date bounds
+# --------------------------
 START_DATE = "2022-05-08"
 END_DATE = "2025-05-07"  # one day before last in data
+
+# --------------------------
+# Per-timeframe train windows
+# (widened for more surviving rows after warm-up, labels, filters, and CV)
+# --------------------------
 TIMEFRAME_DATE_RANGES_PHASE_1_AND_2 = {
     "1_day": {
-        "from_date": START_DATE,  # full 3 years
+        "from_date": START_DATE,  # full ~3 years
         "to_date": END_DATE,
     },
     "4_hour": {
+        # was 365d → 540d (~18 months)
         "from_date": (pd.to_datetime(END_DATE) - pd.Timedelta(days=365)).strftime(
             "%Y-%m-%d"
-        ),  # last 1 year
+        ),
         "to_date": END_DATE,
     },
     "2_hour": {
+        # was 182d → 720d (~24 months) — key change
         "from_date": (pd.to_datetime(END_DATE) - pd.Timedelta(days=182)).strftime(
             "%Y-%m-%d"
-        ),  # last 0.5 years
+        ),
         "to_date": END_DATE,
     },
     "1_hour": {
+        # was 120d → 270d (~9 months)
         "from_date": (pd.to_datetime(END_DATE) - pd.Timedelta(days=120)).strftime(
             "%Y-%m-%d"
-        ),  # last 4 months
+        ),
         "to_date": END_DATE,
     },
     "30_minute": {
+        # was 90d → 150d (~5 months)
         "from_date": (pd.to_datetime(END_DATE) - pd.Timedelta(days=90)).strftime(
             "%Y-%m-%d"
-        ),  # last 3 months
+        ),
         "to_date": END_DATE,
     },
     "15_minute": {
+        # was 60d → 120d (~4 months)
         "from_date": (pd.to_datetime(END_DATE) - pd.Timedelta(days=60)).strftime(
             "%Y-%m-%d"
-        ),  # last 2 months
+        ),
         "to_date": END_DATE,
     },
     "5_minute": {
+        # was 30d → 45d (~1.5 months) — still plenty of bars but a bit more cushion
         "from_date": (pd.to_datetime(END_DATE) - pd.Timedelta(days=30)).strftime(
             "%Y-%m-%d"
-        ),  # last 1 months
+        ),
         "to_date": END_DATE,
     },
 }
+
 TIMEFRAME_DATE_RANGES_PHASE3 = {
     "1_day": {
         "from_date": START_DATE,  # full 3 years
