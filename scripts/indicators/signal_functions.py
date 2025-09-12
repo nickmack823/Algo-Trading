@@ -185,9 +185,9 @@ def signal_macd(macd_df: pd.DataFrame) -> list:
         list: [BULLISH_CROSSOVER, BULLISH_TREND] etc.
     """
     macd_line, signal_line, hist = (
-        macd_df["0"],
-        macd_df["1"],
-        macd_df["2"],
+        macd_df.iloc[:, 0],
+        macd_df.iloc[:, 1],
+        macd_df.iloc[:, 2],
     )
     signals = []
 

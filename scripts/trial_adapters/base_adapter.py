@@ -222,7 +222,7 @@ def run_objective_common(
                 backtester.run_backtest()
             except Exception as e:
                 log_error(
-                    f"[{forex_pair}-{timeframe}] (Strategy Config ID: {strategy.CONFIG_ID}) Backtest failed: {e}. PRUNING trial."
+                    f"[{forex_pair}-{timeframe}] (Strategy Config ID: {strategy.CONFIG_ID}) Backtest failed with parameters {strategy.PARAMETER_SETTINGS}: {e}. PRUNING trial."
                 )
                 manually_pruned = True
                 raise optuna.exceptions.TrialPruned()
