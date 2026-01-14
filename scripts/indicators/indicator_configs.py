@@ -1641,8 +1641,8 @@ ta_lib_momentum = [
         "raw_function": ta.STOCHF,
         "parameters": {"fastk_period": 5, "fastd_period": 3, "fastd_matype": 0},
         "parameter_space": {
-            "fastk_period": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-            "fastd_period": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            "fastk_period": [3, 4, 5, 6, 7, 8, 9, 10],
+            "fastd_period": [3, 4, 5, 6, 7, 8, 9, 10],
             "fastd_matype": [0, 1, 2, 3, 4, 5, 6, 7, 8],
         },
     },
@@ -1660,8 +1660,8 @@ ta_lib_momentum = [
         },
         "parameter_space": {
             "timeperiod": [10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
-            "fastk_period": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-            "fastd_period": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            "fastk_period": [3, 4, 5, 6, 7, 8, 9, 10],
+            "fastd_period": [3, 4, 5, 6, 7, 8, 9, 10],
             "fastd_matype": [0, 1, 2, 3, 4, 5, 6, 7, 8],
         },
     },
@@ -1697,7 +1697,7 @@ additional_momentum = [
         "raw_function": MACDZeroLag,
         "parameters": {"short_period": 12, "long_period": 26, "signal_period": 9},
         "parameter_space": {
-            "short_period": [1, 4, 7, 10, 13, 16, 19, 22],
+            "short_period": [4, 7, 10, 13, 16, 19, 22],
             "long_period": [24, 27, 29, 32, 35, 38, 41, 44, 47, 50, 53, 56],
             "signal_period": [5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
         },
@@ -1726,7 +1726,7 @@ additional_momentum = [
         "signal_function": signal_bulls_bears_impulse,
         "raw_function": BullsBearsImpulse,
         "parameters": {"ma_period": 13},
-        "parameter_space": {"ma_period": [1, 5, 10, 15, 20, 25, 30, 35, 40, 45]},
+        "parameter_space": {"ma_period": [5, 10, 15, 20, 25, 30, 35, 40, 45]},
     },
     {
         "name": "J_TPO",
@@ -1735,7 +1735,7 @@ additional_momentum = [
         "signal_function": signal_j_tpo,
         "raw_function": J_TPO,
         "parameters": {"period": 14},
-        "parameter_space": {"period": [1, 4, 7, 10, 13, 16, 19, 22, 25, 28]},
+        "parameter_space": {"period": [4, 7, 10, 13, 16, 19, 22, 25, 28]},
     },
     {
         "name": "Laguerre",

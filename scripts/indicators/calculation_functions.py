@@ -1755,7 +1755,7 @@ def J_TPO(price_data: pd.DataFrame, period: int = 14) -> pd.DataFrame:
     ext_map_buffer = [np.nan] * len(close_prices)
 
     if period < 3:
-        # print("J_TPO_B: length must be at least 3")
+        print("J_TPO_B: length must be at least 3")
         return ext_map_buffer
 
     for i in range(len(close_prices) - period):
