@@ -12,7 +12,6 @@ _STRATEGY_KEY = "Mabrouk2021"
     required_kwargs=[
         "forex_pair",
         "timeframe",
-        "indicator_registry",
     ],  # feature_specs optional
     description="Mabrouk et al. 2021 preset: binary next-bar, classic indicators, LR/LinearSVM/RF.",
 )
@@ -25,7 +24,6 @@ class MabroukML2021Strategy(MLClassificationStrategy):
         *,
         forex_pair,
         timeframe,
-        indicator_registry,
         feature_specs=None,
         label_horizon=1,
         label_threshold=0.0,
@@ -41,7 +39,6 @@ class MabroukML2021Strategy(MLClassificationStrategy):
         super().__init__(
             forex_pair=forex_pair,
             timeframe=timeframe,
-            indicator_registry=indicator_registry,
             feature_specs=(list(feature_specs) if feature_specs else []),
             label_horizon=label_horizon,
             label_threshold=label_threshold,

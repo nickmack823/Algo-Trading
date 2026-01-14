@@ -54,6 +54,7 @@ from scripts.config import (
     MODELS_CACHE_DIR,
     SCORES_CACHE_DIR,
 )
+from scripts.indicators import indicator_configs
 
 # REMOVE this line (it’s unused and non-generic):
 # from scripts.indicators.calculation_functions import series_wma
@@ -66,6 +67,41 @@ _OHLCV_ALIASES = {
     "close": "Close",
     "volume": "Volume",
 }
+
+
+# ----------------------------- Generic registry builders -----------------------------
+# Replace the previous example adapters with the generic ones below.
+
+
+def build_registry_from_indicator_configs(
+    indicator_configs: Iterable[Mapping[str, object]],
+) -> Mapping[str, FeatureFunc]:
+    reg: Dict[str, FeatureFunc] = {}
+
+    for cfg in indicator_configs:
+        name = str(cfg["name"])
+        func = cfg["function"]
+        defaults = dict(
+            cfg.get("parameters", {})
+        )  # use config defaults if caller passes nothing
+
+        def make_feature(fn: Callable, base: dict) -> FeatureFunc:
+            def _feature(
+                df: pd.DataFrame, params: Mapping[str, Union[int, float, str]] = None
+            ):
+                merged = {**base, **(params or {})}
+                return fn(df, **merged)
+
+            return _feature
+
+        reg[name] = make_feature(func, defaults)
+
+    return reg
+
+
+indicator_registry: Mapping[str, FeatureFunc] = build_registry_from_indicator_configs(
+    list(indicator_configs.all_indicators.values())
+)
 
 
 def _normalize_ohlcv(df: pd.DataFrame) -> pd.DataFrame:
@@ -175,7 +211,6 @@ def _from_parquet(path: Path) -> pd.DataFrame:
 def build_features(
     df_ohlcv: pd.DataFrame,
     feature_specs: Iterable[FeatureSpec],
-    indicator_registry: Mapping[str, FeatureFunc],
     *,
     shift_by: int = 1,
     dropna: bool = True,
@@ -276,7 +311,6 @@ def load_or_build_features(
     timeframe: str,
     df_ohlcv: pd.DataFrame,
     feature_specs: Iterable[FeatureSpec],
-    registry: Mapping[str, FeatureFunc],
     *,
     cache_dir: Union[str, Path] = FEATURES_CACHE_DIR,
     extra_cache_params: Optional[Mapping[str, Union[str, int, float]]] = None,
@@ -306,7 +340,6 @@ def load_or_build_features(
     feats = build_features(
         df_ohlcv=_normalize_ohlcv(df_ohlcv),
         feature_specs=feature_specs,
-        indicator_registry=registry,
         shift_by=shift_by,
         dropna=dropna,
     )
@@ -455,36 +488,6 @@ def save_scores(scores: pd.Series, path: Path) -> None:
         s = s[~s.index.duplicated(keep="last")]
     s = s.sort_index()
     pd.DataFrame({"score": s}).to_parquet(path, engine="pyarrow", index=True)
-
-
-# ----------------------------- Generic registry builders -----------------------------
-# Replace the previous example adapters with the generic ones below.
-
-
-def build_registry_from_indicator_configs(
-    indicator_configs: Iterable[Mapping[str, object]],
-) -> Mapping[str, FeatureFunc]:
-    reg: Dict[str, FeatureFunc] = {}
-
-    for cfg in indicator_configs:
-        name = str(cfg["name"])
-        func = cfg["function"]
-        defaults = dict(
-            cfg.get("parameters", {})
-        )  # use config defaults if caller passes nothing
-
-        def make_feature(fn: Callable, base: dict) -> FeatureFunc:
-            def _feature(
-                df: pd.DataFrame, params: Mapping[str, Union[int, float, str]] = None
-            ):
-                merged = {**base, **(params or {})}
-                return fn(df, **merged)
-
-            return _feature
-
-        reg[name] = make_feature(func, defaults)
-
-    return reg
 
 
 # -*- coding: utf-8 -*-
@@ -1893,7 +1896,8 @@ class MLSignalPlanner:
             try:
                 print(
                     "[MLSignalPlanner] positions/df index mismatch:",
-                    len(positions.index), len(df.index),
+                    len(positions.index),
+                    len(df.index),
                 )
             except Exception:
                 pass
@@ -1905,8 +1909,10 @@ class MLSignalPlanner:
             try:
                 print(
                     "[MLSignalPlanner] positions index not sorted ascending.\n",
-                    "first=", positions.index[:3].tolist(),
-                    " last=", positions.index[-3:].tolist(),
+                    "first=",
+                    positions.index[:3].tolist(),
+                    " last=",
+                    positions.index[-3:].tolist(),
                 )
             except Exception:
                 pass

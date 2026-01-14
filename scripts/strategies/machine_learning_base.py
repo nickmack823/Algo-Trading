@@ -114,9 +114,6 @@ class MLClassificationStrategy(BaseStrategy):
         forex_pair: str,
         timeframe: str,
         feature_specs: Iterable[FeatureSpec],
-        indicator_registry: Mapping[
-            str, Callable
-        ],  # name -> feature function(df, params) -> Series/DataFrame
         # Labeling
         label_horizon: int = 1,
         label_threshold: float = 0.0,  # 0.0 yields binary up/down like the paper; >0 gives ternary with dead-zone
@@ -179,7 +176,6 @@ class MLClassificationStrategy(BaseStrategy):
 
         # Save user-config knobs
         self.feature_specs = list(feature_specs)
-        self.indicator_registry = dict(indicator_registry)
         self.label_horizon = int(label_horizon)
         self.label_threshold = float(label_threshold)
         self.fee_bps = float(fee_bps)
@@ -267,7 +263,6 @@ class MLClassificationStrategy(BaseStrategy):
                 timeframe=self.TIMEFRAME,
                 df_ohlcv=df,
                 feature_specs=self.feature_specs,
-                registry=self.indicator_registry,
                 shift_by=1,  # leakage safety
                 dropna=False,  # <-- do NOT drop rows yet
             )
@@ -275,7 +270,6 @@ class MLClassificationStrategy(BaseStrategy):
             X = build_features(
                 df_ohlcv=df,
                 feature_specs=self.feature_specs,
-                indicator_registry=self.indicator_registry,
                 shift_by=1,
                 dropna=False,  # <-- do NOT drop rows yet
             )
@@ -531,7 +525,10 @@ class MLClassificationStrategy(BaseStrategy):
             scores, thresholds=self.thresholds, rules=self.rules
         )
         # Defensive: ensure positions index is strictly ascending in time
-        if not positions.index.is_monotonic_increasing or positions.index.has_duplicates:
+        if (
+            not positions.index.is_monotonic_increasing
+            or positions.index.has_duplicates
+        ):
             positions = (
                 positions[~positions.index.duplicated(keep="last")]
                 .sort_index()

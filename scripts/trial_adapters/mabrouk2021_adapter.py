@@ -29,18 +29,13 @@ from typing import Any, Dict, List
 
 import optuna
 
+# --- Optional import: use the same FeatureSpec class your feature_store expects.
+# This aligns with ml_baselines/feature_store.FeatureSpec (name/params/prefix).
+from machine_learning.core import FeatureSpec  # exact type your strategy uses
 from scripts.data.sql import BacktestSQLHelper
 from scripts.strategies import strategy_core
 
 from .base_adapter import StrategyTrialAdapter, register_adapter, run_objective_common
-
-# --- Optional import: use the same FeatureSpec class your feature_store expects.
-# This aligns with ml_baselines/feature_store.FeatureSpec (name/params/prefix).
-try:
-    from machine_learning.core import FeatureSpec  # exact type your strategy uses
-except Exception:
-    FeatureSpec = None  # graceful fallback if import path differs in tests
-
 
 # ----------------------------- Feature pools -----------------------------------
 # Paper list for fixed replication
@@ -103,7 +98,7 @@ def _filter_available(slot_names, pool_dict):
     return [n for n in slot_names if n in pool_dict]
 
 
-def _suggest_feature(trial, pool_dict, name, *, FeatureSpec):
+def _suggest_feature(trial: optuna.Trial, pool_dict: dict, name: str):
     pspace = pool_dict[name]["params"]
     params = {}
     for pkey, pvals in pspace.items():
@@ -302,23 +297,14 @@ class MabroukAdapter(StrategyTrialAdapter):
                 order = wild_picked + vol_picked + mom_picked + trend_picked
                 picked_all = order[:target_k]
 
-            if FeatureSpec is not None:
-                feature_specs = [
-                    _suggest_feature(trial, POOL, name, FeatureSpec=FeatureSpec)
-                    for name in picked_all
-                ]
+            feature_specs = [_suggest_feature(trial, POOL, name) for name in picked_all]
 
         # Strategy factory: mirror NNFX
         def build_strategy():
-            indicator_registry = build_registry_from_indicator_configs(
-                list(indicator_configs.all_indicators.values())
-            )
-
             return strategy_core.create_strategy_from_kwargs(
                 MabroukAdapter.key,
                 forex_pair=forex_pair,
                 timeframe=timeframe,
-                indicator_registry=indicator_registry,
                 feature_specs=feature_specs,  # must be FeatureSpec objects, not dicts
                 model_key=model_key,
                 model_params=model_params,

@@ -492,9 +492,6 @@ def canonicalize_params(d: dict | None) -> dict:
     out = {}
     for k in sorted(d.keys()):
         v = d[k]
-        # strip obviously runtime-only objects
-        if k in {"indicator_registry"}:
-            continue
         # normalize tuples/sets
         if isinstance(v, (set, tuple)):
             v = list(v)
