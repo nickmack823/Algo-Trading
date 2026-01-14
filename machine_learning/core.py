@@ -211,6 +211,12 @@ def build_features(
         func = indicator_registry[spec.name]
         out = func(df_ohlcv, spec.params)
 
+        # Early type check to prevent attribute errors when accessing `.index`
+        if not isinstance(out, (pd.Series, pd.DataFrame)):
+            raise TypeError(
+                f"Feature function '{spec.name}' must return pandas Series or DataFrame, got {type(out).__name__}."
+            )
+
         # Ensure the feature output aligns to the candle index strictly.
         if len(out) != len(df_ohlcv):
             raise ValueError(
@@ -425,14 +431,30 @@ def load_scores_if_exists(path: Path) -> Optional[pd.Series]:
     if path.exists():
         df = pd.read_parquet(path, engine="pyarrow")
         s = df["score"]
+        # Normalize index type and enforce ascending order for deterministic behavior
         s.index = pd.to_datetime(s.index)
+        # Drop exact duplicate timestamps (keep last) to mirror OHLCV cleaning
+        if s.index.has_duplicates:
+            s = s[~s.index.duplicated(keep="last")]
+        # Ensure time-ascending order (required by downstream logic)
+        s = s.sort_index()
         return s
     return None
 
 
 def save_scores(scores: pd.Series, path: Path) -> None:
     _ensure_dir(path.parent)
-    pd.DataFrame({"score": scores}).to_parquet(path, engine="pyarrow", index=True)
+    # Persist in deterministic, ascending time order
+    s = scores.copy()
+    if not isinstance(s.index, pd.DatetimeIndex):
+        try:
+            s.index = pd.to_datetime(s.index)
+        except Exception:
+            pass
+    if s.index.has_duplicates:
+        s = s[~s.index.duplicated(keep="last")]
+    s = s.sort_index()
+    pd.DataFrame({"score": s}).to_parquet(path, engine="pyarrow", index=True)
 
 
 # ----------------------------- Generic registry builders -----------------------------
@@ -1656,9 +1678,17 @@ def scores_to_positions(
     -------
     pd.Series in {-1,0,+1}, same index as `scores`.
     """
+    # Ensure a clean, ordered score series
     if not isinstance(scores, pd.Series):
         scores = pd.Series(scores)
     scores = scores.astype(float).replace([np.inf, -np.inf], np.nan).fillna(0.0)
+
+    # Deduplicate and enforce ascending order to avoid downstream index errors
+    if scores.index.has_duplicates:
+        scores = scores[~scores.index.duplicated(keep="last")]
+    if not scores.index.is_monotonic_increasing:
+        scores = scores.sort_index()
+
     idx = scores.index
     assert idx.is_monotonic_increasing, "scores index must be sorted ascending"
 
@@ -1858,9 +1888,30 @@ class MLSignalPlanner:
         same_bar_flip_entry: bool = False,
     ):
         assert "Close" in df.columns, "df must contain a 'Close' column"
+        if not positions.index.equals(df.index):
+            # Minimal debug to help diagnose misalignment if it ever happens
+            try:
+                print(
+                    "[MLSignalPlanner] positions/df index mismatch:",
+                    len(positions.index), len(df.index),
+                )
+            except Exception:
+                pass
         assert positions.index.equals(df.index), "positions index must equal df index"
+
+        # Check index order (not the series values)
+        if not positions.index.is_monotonic_increasing:
+            # Guarded debug to inspect ordering issues if they arise
+            try:
+                print(
+                    "[MLSignalPlanner] positions index not sorted ascending.\n",
+                    "first=", positions.index[:3].tolist(),
+                    " last=", positions.index[-3:].tolist(),
+                )
+            except Exception:
+                pass
         assert (
-            positions.is_monotonic_increasing
+            positions.index.is_monotonic_increasing
         ), "positions index must be sorted ascending"
         self.forex_pair = forex_pair.replace("/", "")
         self.df = df

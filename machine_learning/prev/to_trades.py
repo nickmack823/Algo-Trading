@@ -293,9 +293,27 @@ class MLSignalPlanner:
         same_bar_flip_entry: bool = False,
     ):
         assert "Close" in df.columns, "df must contain a 'Close' column"
+        if not positions.index.equals(df.index):
+            try:
+                print(
+                    "[MLSignalPlanner(prev)] positions/df index mismatch:",
+                    len(positions.index), len(df.index),
+                )
+            except Exception:
+                pass
         assert positions.index.equals(df.index), "positions index must equal df index"
+
+        if not positions.index.is_monotonic_increasing:
+            try:
+                print(
+                    "[MLSignalPlanner(prev)] positions index not sorted ascending.\n",
+                    "first=", positions.index[:3].tolist(),
+                    " last=", positions.index[-3:].tolist(),
+                )
+            except Exception:
+                pass
         assert (
-            positions.is_monotonic_increasing
+            positions.index.is_monotonic_increasing
         ), "positions index must be sorted ascending"
         self.forex_pair = forex_pair.replace("/", "")
         self.df = df

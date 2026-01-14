@@ -530,6 +530,17 @@ class MLClassificationStrategy(BaseStrategy):
         positions = scores_to_positions(
             scores, thresholds=self.thresholds, rules=self.rules
         )
+        # Defensive: ensure positions index is strictly ascending in time
+        if not positions.index.is_monotonic_increasing or positions.index.has_duplicates:
+            positions = (
+                positions[~positions.index.duplicated(keep="last")]
+                .sort_index()
+                .astype(int)
+            )
+
+        # Final alignment guard: ensure positions index equals the aligned window exactly
+        if not positions.index.equals(aligned_index):
+            positions = positions.reindex(aligned_index).fillna(0).astype(int)
 
         # Optionally mask pre-train positions to avoid trading before model training period
         if self.split.get("mask_pretrain_positions") and train_end_idx is not None:
