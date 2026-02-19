@@ -3026,15 +3026,18 @@ def SecondOrderGaussianHighPassFilterMtfZones(
     - interpolate: when timeframe is not None, linearly interpolate HTF values to LTF bars if True; else step (ffill).
     - maxbars: compute last N bars (like MQL maxbars); earlier values are NaN.
     """
+    final_df = df
     if df.empty:
         return pd.Series(index=df.index, dtype=float, name="HPF")
     if "Timestamp" not in df.columns or "Close" not in df.columns:
-        raise ValueError("df must contain 'Timestamp' and 'Close' columns")
+        # Use index instead
+        final_df = df.assign(Timestamp=df.index)
+        # raise ValueError("df must contain 'Timestamp' and 'Close' columns")
 
     # Work on a time-ascending copy for consistent resampling/processing
-    ts = pd.to_datetime(df["Timestamp"])
+    ts = pd.to_datetime(final_df["Timestamp"])
     asc_idx = np.argsort(ts.values.astype("datetime64[ns]"))
-    df_asc = df.iloc[asc_idx].copy()
+    df_asc = final_df.iloc[asc_idx].copy()
     df_asc["Timestamp"] = pd.to_datetime(df_asc["Timestamp"])
     dt_index = pd.DatetimeIndex(df_asc["Timestamp"])
 
@@ -7488,8 +7491,13 @@ def RWIBTF(df: pd.DataFrame, length: int = 2, tf: Optional[str] = None) -> pd.Da
     if tf is None:
         return _compute_rwi(df[["High", "Low", "Close"]], length).reindex(df.index)
 
-    # Multi-timeframe path
-    ts = pd.to_datetime(df["Timestamp"], errors="coerce")
+    if "Timestamp" not in df.columns:
+        timestamp_df = df.assign(Timestamp=df.index)
+        ts = pd.to_datetime(timestamp_df["Timestamp"], errors="coerce")
+    else:
+        # Multi-timeframe path
+        ts = pd.to_datetime(df["Timestamp"], errors="coerce")
+
     # Resample to higher timeframe using OHLCV convention
     ohlc_htf = (
         df.set_index(ts)

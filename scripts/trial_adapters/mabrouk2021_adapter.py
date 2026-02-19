@@ -1,7 +1,6 @@
 # scripts/trial_adapters/mabrouk_adapter.py
 from __future__ import annotations
 
-from machine_learning.core import build_registry_from_indicator_configs
 from scripts.indicators import indicator_configs
 
 """
@@ -99,10 +98,17 @@ def _filter_available(slot_names, pool_dict):
 
 
 def _suggest_feature(trial: optuna.Trial, pool_dict: dict, name: str):
-    pspace = pool_dict[name]["params"]
+    meta = pool_dict[name]
+    pspace = meta["params"]
+    category = meta["category"]
     params = {}
     for pkey, pvals in pspace.items():
-        params[pkey] = trial.suggest_categorical(f"feat.{name}.{pkey}", pvals)
+        try:
+            params[pkey] = trial.suggest_categorical(
+                f"feat.{category}.{name}.{pkey}", pvals
+            )
+        except ValueError as e:
+            print(f"Failed to sample {category} {name} {pkey} from {pvals}: {e}")
     return FeatureSpec(name=name, params=params, prefix=name)
 
 
@@ -189,11 +195,19 @@ class MabroukAdapter(StrategyTrialAdapter):
         }
 
         # (C) Risk controls (ATR-based stops & sizing fit your MLSignalPlanner)
+        # Decide whether TP is enabled
+        tp_mode = trial.suggest_categorical("risk.tp_mode", ["none", "fixed"])
+
+        if tp_mode == "none":
+            tp_multiple = None
+        else:
+            tp_multiple = trial.suggest_float("risk.tp_multiple", 1.0, 3.0, step=0.5)
+
         risk = {
             "risk_pct": trial.suggest_float("risk.risk_pct", 0.005, 0.02, step=0.0025),
             "atr_col": "ATR_14",
             "atr_multiplier": trial.suggest_float("risk.atr_mult", 1.0, 3.0, step=0.25),
-            "tp_multiple": None,
+            "tp_multiple": tp_multiple,
         }
 
         # (D) Feature set (slot-constrained, pool-selectable):

@@ -46,6 +46,7 @@ from scripts.config import (
     MODELS_CACHE_DIR,
     SCORES_CACHE_DIR,
 )
+from scripts.indicators.calculation_functions import atr_func
 from scripts.strategies.strategy_core import (  # registry + BaseStrategy API  # noqa
     BaseStrategy,
     TradePlan,
@@ -351,9 +352,39 @@ class MLClassificationStrategy(BaseStrategy):
             # )
             X = X.iloc[warmup_cut:]
 
-        # Gentle impute any rare stragglers now that warmup is cut (keeps matrix dense for sklearn)
+        # Some indicator outputs are event markers encoded as:
+        #   - tiny constant when "on" (e.g., 1e-5)
+        #   - NaN when "off"
+        # For ML features, that representation is fragile: filling NaNs can turn the whole
+        # column into one constant value. We convert that pattern to an explicit binary flag.
         if not X.empty:
-            X = X.ffill().bfill()
+            converted_marker_cols = []
+            for c in X.columns:
+                s = pd.to_numeric(X[c], errors="coerce")
+                nn = s.dropna()
+                if nn.empty:
+                    continue
+
+                is_sparse_marker = (
+                    s.isna().any()
+                    and nn.nunique() == 1
+                    and abs(float(nn.iloc[0]) - 1e-5) <= 1e-12
+                )
+                if is_sparse_marker:
+                    # 1.0 = marker/event present, 0.0 = marker/event absent
+                    X[c] = s.notna().astype(float)
+                    converted_marker_cols.append(c)
+
+            # if converted_marker_cols:
+            # print(
+            #     "[prepare_data] Converted sparse marker features to binary flags: "
+            #     f"{converted_marker_cols}"
+            # )
+
+        # Gentle impute any rare stragglers now that warmup is cut (keeps matrix dense for sklearn).
+        # Important: forward-fill only. Back-fill would leak future information into earlier rows.
+        if not X.empty:
+            X = X.ffill()
             X = X.replace([np.inf, -np.inf], np.nan).dropna(axis=0, how="any")
 
         # Final feature diagnostics
@@ -460,9 +491,19 @@ class MLClassificationStrategy(BaseStrategy):
         assert not np.isinf(X.to_numpy()).any(), "Infs still present in X"
         assert not y.isna().any(), "NaNs still present in y"
 
-        # Each feature has variance (not constant)
+        # Constant columns carry no predictive signal.
+        # Drop them instead of failing the whole trial/study.
         var0 = [c for c in X.columns if X[c].var() == 0]
-        assert not var0, f"Constant features detected: {var0}"
+        if var0:
+            print(f"[prepare_data] Dropping constant feature columns: {var0}")
+            X = X.drop(columns=var0)
+            if X.empty:
+                raise ValueError(
+                    "All feature columns became constant after cleaning. "
+                    "No usable features remain for training."
+                )
+            # Keep train matrix aligned to the cleaned feature set.
+            X_train = X.loc[train_mask]
 
         # 2) Label sanity: horizon actually produces variability
         # print("y value counts:", y.value_counts(dropna=False).to_dict())
@@ -543,15 +584,6 @@ class MLClassificationStrategy(BaseStrategy):
         if self.split.get("mask_pretrain_positions") and train_end_idx is not None:
             positions.loc[positions.index < train_end_idx] = 0
 
-        self._planner = MLSignalPlanner(
-            forex_pair=self.FOREX_PAIR,
-            df=df_aligned,
-            positions=positions,
-            risk=self.risk,
-            same_bar_flip_entry=self.same_bar_flip_entry,
-            source="ML",
-        )
-
         # Keep handles we’ll need in generate_trade_plan
         self._aligned_index = positions.index
         self._index_offset = int(df.index.get_indexer([self._aligned_index[0]])[0])
@@ -604,6 +636,40 @@ class MLClassificationStrategy(BaseStrategy):
         # )
 
         self._X, self._y, self._scores, self._positions = X, y, scores, positions
+        # ---------------- Execution-only indicators (risk) ----------------
+        self.data_with_indicators = df_aligned.join(X, how="left")
+
+        if self.risk is not None:
+            atr_col = self.risk.atr_col
+
+            if atr_col:
+                # Expect format: "ATR_14"
+                try:
+                    name, period_str = atr_col.split("_", 1)
+                    period = int(period_str)
+                except Exception:
+                    raise ValueError(f"Invalid atr_col format: {atr_col}")
+
+                if name != "ATR":
+                    raise ValueError(f"Unsupported atr indicator: {name}")
+
+                # Compute ATR directly
+                atr_series = atr_func(df, timeperiod=period)
+
+                # Enforce leakage safety
+                atr_series = atr_series.shift(1)
+
+                atr_series.name = atr_col
+                self.data_with_indicators[atr_col] = atr_series
+
+        self._planner = MLSignalPlanner(
+            forex_pair=self.FOREX_PAIR,
+            df=self.data_with_indicators,
+            positions=positions,
+            risk=self.risk,
+            same_bar_flip_entry=self.same_bar_flip_entry,
+            source="ML",
+        )
 
     def get_cache_jobs(self) -> list[dict]:
         """Feature store handles Parquet caching internally; no indicator SQL cache jobs here."""

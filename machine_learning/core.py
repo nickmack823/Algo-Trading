@@ -244,6 +244,10 @@ def build_features(
         if spec.name not in indicator_registry:
             raise KeyError(f"Feature '{spec.name}' not found in registry.")
         func = indicator_registry[spec.name]
+        try:
+            func(df_ohlcv, spec.params)
+        except Exception as e:
+            raise ValueError(f"Feature function '{spec.name}' failed with error: {e}")
         out = func(df_ohlcv, spec.params)
 
         # Early type check to prevent attribute errors when accessing `.index`
