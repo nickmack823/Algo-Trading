@@ -307,9 +307,9 @@ class MLClassificationStrategy(BaseStrategy):
         # Guard: if no usable columns remain
         if X.empty:
             col_list = list(na_rate.index) if "na_rate" in locals() else []
-            print(
-                "[prepare_data] Feature matrix empty after column pruning (no usable columns remain)."
-            )
+            # print(
+            #     "[prepare_data] Feature matrix empty after column pruning (no usable columns remain)."
+            # )
             print(f"[prepare_data] Columns considered: {col_list}")
             raise ValueError(
                 "All feature columns were unusable (all-NaN or too sparse). "
@@ -329,9 +329,9 @@ class MLClassificationStrategy(BaseStrategy):
             fvi = {c: X[c].first_valid_index() for c in X.columns}
 
         if X.empty:
-            print(
-                "[prepare_data] Feature matrix empty after removing never-valid columns."
-            )
+            # print(
+            #     "[prepare_data] Feature matrix empty after removing never-valid columns."
+            # )
             raise ValueError(
                 "No feature columns have any valid values after warmup check."
             )
@@ -389,7 +389,7 @@ class MLClassificationStrategy(BaseStrategy):
 
         # Final feature diagnostics
         if X.empty:
-            print("[prepare_data] Feature matrix empty after warmup cut + cleaning.")
+            # print("[prepare_data] Feature matrix empty after warmup cut + cleaning.")
             raise ValueError(
                 "All feature rows were dropped even after warmup cut. "
                 "Check individual feature functions for persistent NaNs."
@@ -495,7 +495,7 @@ class MLClassificationStrategy(BaseStrategy):
         # Drop them instead of failing the whole trial/study.
         var0 = [c for c in X.columns if X[c].var() == 0]
         if var0:
-            print(f"[prepare_data] Dropping constant feature columns: {var0}")
+            # print(f"[prepare_data] Dropping constant feature columns: {var0}")
             X = X.drop(columns=var0)
             if X.empty:
                 raise ValueError(
@@ -582,7 +582,7 @@ class MLClassificationStrategy(BaseStrategy):
 
         # Optionally mask pre-train positions to avoid trading before model training period
         if self.split.get("mask_pretrain_positions") and train_end_idx is not None:
-            positions.loc[positions.index < train_end_idx] = 0
+            positions.loc[positions.index <= train_end_idx] = 0
 
         # Keep handles we’ll need in generate_trade_plan
         self._aligned_index = positions.index
@@ -595,12 +595,12 @@ class MLClassificationStrategy(BaseStrategy):
             positions.reindex(self._aligned_index).fillna(0).astype(int)
         )
         if self.split.get("mask_pretrain_positions") and train_end_idx is not None:
-            positions_full.loc[positions_full.index < train_end_idx] = 0
+            positions_full.loc[positions_full.index <= train_end_idx] = 0
         self._positions_full = positions_full
 
         # Respect pre-train masking inside the aligned window
         if self.split.get("mask_pretrain_positions") and train_end_idx is not None:
-            positions_full.loc[positions_full.index < train_end_idx] = 0
+            positions_full.loc[positions_full.index <= train_end_idx] = 0
 
         self._positions_full = positions_full
 

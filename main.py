@@ -3,6 +3,7 @@ import gc
 import json
 import logging
 import multiprocessing as mp
+import os
 import time
 import traceback
 import warnings
@@ -46,6 +47,7 @@ from scripts.trial_adapters import (
 from scripts.trial_adapters.base_adapter import (
     ADAPTER_REGISTRY,
     Acknowledgement,
+    _resolve_evaluation_window,
     objective,
 )
 
@@ -58,15 +60,87 @@ logging.basicConfig(
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
 
-def log_error(message: str, filename: str = "error_log.txt"):
-    """Appends a timestamped error message to a file."""
-    winsound.Beep(300, 500)
-    logging.error(message)
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_line = f"[{timestamp}] {message}\n"
+def log_error(
+    message: str,
+    filename: str = "error_log.txt",
+    *,
+    category: str = "general",
+    context: dict | None = None,
+    exception: Exception | None = None,
+):
+    """
+    Log an error to console and persist both:
+    - Human-readable text file (legacy): error_log.txt
+    - Structured JSONL file: error_log.jsonl
+    """
+    # Keep audible signal, but never let beep failures block error handling.
+    try:
+        winsound.Beep(300, 500)
+    except Exception:
+        pass
 
-    with open(filename, "a", encoding="utf-8") as f:
-        f.write(log_line)
+    timestamp_local = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timestamp_utc = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    trace = traceback.format_exc()
+    has_trace = bool(trace and trace.strip() and trace.strip() != "NoneType: None")
+
+    record = {
+        "timestamp_utc": timestamp_utc,
+        "level": "ERROR",
+        "category": category,
+        "message": message,
+        "context": context or {},
+        "exception_type": type(exception).__name__ if exception else None,
+        "exception_message": str(exception) if exception else None,
+        "traceback": trace if has_trace else None,
+    }
+
+    logging.error(
+        "[%s] %s%s",
+        category,
+        message,
+        f" | context={record['context']}" if record["context"] else "",
+    )
+
+    text_line = f"[{timestamp_local}] [{category}] {message}"
+    if record["context"]:
+        text_line += f" | context={record['context']}"
+    if record["exception_message"]:
+        text_line += f" | exception={record['exception_message']}"
+    text_line += "\n"
+
+    try:
+        with open(filename, "a", encoding="utf-8") as f:
+            f.write(text_line)
+    except Exception:
+        logging.exception("Failed writing text error log.")
+
+    jsonl_filename = (
+        filename[:-4] + ".jsonl" if filename.lower().endswith(".txt") else f"{filename}.jsonl"
+    )
+    try:
+        with open(jsonl_filename, "a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=True) + "\n")
+    except Exception:
+        logging.exception("Failed writing structured JSONL error log.")
+
+
+def clear_error_json_log(filename: str = "error_log.txt") -> None:
+    jsonl_filename = (
+        filename[:-4] + ".jsonl" if filename.lower().endswith(".txt") else f"{filename}.jsonl"
+    )
+    try:
+        if os.path.exists(jsonl_filename):
+            os.remove(jsonl_filename)
+            logging.info(f"Removed stale error log file: {jsonl_filename}")
+    except Exception:
+        logging.exception("Failed clearing structured JSONL error log at startup.")
+
+
+def ensure_backtesting_db_ready() -> None:
+    # Bootstrap DB file + schema so read-only workers survive hard DB resets.
+    sql = BacktestSQLHelper()
+    sql.close_connection()
 
 
 def run_fixed_strategy_evaluation(
@@ -102,18 +176,40 @@ def run_fixed_strategy_evaluation(
     if cache_items:
         db_queue.put({"purpose": "indicator_cache", "cache_items": cache_items})
 
-    backtester = Backtester(strategy, pair, timeframe, data, initial_balance=10_000)
+    backtester = Backtester(
+        strategy,
+        pair,
+        timeframe,
+        data,
+        initial_balance=10_000,
+        metrics_start_date=from_date,
+        metrics_end_date=to_date,
+    )
 
     try:
         backtester.run_backtest()
     except Exception as e:
-        log_error(f"[{pair}-{timeframe}] Error in fixed eval: {e}")
+        log_error(
+            f"[{pair}-{timeframe}] Error in fixed eval.",
+            category="fixed_eval",
+            context={"pair": pair, "timeframe": timeframe, "phase": phase_name},
+            exception=e,
+        )
         return
 
     metrics_df = backtester.get_metrics_df()
     score = backtester.calculate_composite_score()
     if score is None or score != score or score in (float("inf"), float("-inf")):
-        log_error(f"[{pair}-{timeframe}] Invalid score")
+        log_error(
+            f"[{pair}-{timeframe}] Invalid score.",
+            category="score_validation",
+            context={
+                "pair": pair,
+                "timeframe": timeframe,
+                "phase": phase_name,
+                "study_name": study_name,
+            },
+        )
         return
 
     db_queue.put(
@@ -270,7 +366,12 @@ def db_writer_process(queue: mp.Queue, done_flag, ack_dict: dict):
                     ack_dict[queue_dict["ack_id"]] = Acknowledgement(
                         ok=False, error=str(e)
                     )
-                log_error(f"DB write error: {e} {traceback.format_exc()}")
+                log_error(
+                    "DB write error in db_writer_process.",
+                    category="db_writer",
+                    context={"purpose": purpose},
+                    exception=e,
+                )
 
         if done_flag.value is True:
             # Close DB connection
@@ -372,13 +473,14 @@ def run_study_wrapper(args) -> dict:
         )
 
     timeframe_range = TIMEFRAME_DATE_RANGES_PHASE_1_AND_2[timeframe]
-    from_date, to_date = timeframe_range["from_date"], timeframe_range["to_date"]
+    default_from, default_to = timeframe_range["from_date"], timeframe_range["to_date"]
+    eval_from, eval_to = _resolve_evaluation_window(context, default_from, default_to)
 
     # callback_n = IMPROVEMENT_CUTOFF_BY_TIMEFRAME[timeframe]
 
     study_name = (
         f"{phase_name}_{pair.replace('/', '')}_{timeframe}_{strategy_key}_"
-        f"{from_date}to{to_date}_space-{exploration_space}_seed-{seed}"
+        f"{eval_from}to{eval_to}_space-{exploration_space}_seed-{seed}"
     )
 
     # Check if study already has already completed/stopped (if exists)
@@ -442,6 +544,9 @@ def run_all_studies(
         exploration_space (str, optional): The exploration space to use.
             Can be "default" to test default indicator settings, "parameterized" to test parameterized indicator settings.
     """
+    # Ensure backtesting DB exists before any worker opens it in read-only mode.
+    ensure_backtesting_db_ready()
+
     manager = mp.Manager()
     db_queue = manager.Queue()
     ack_dict = manager.dict()
@@ -481,7 +586,12 @@ def run_all_studies(
                 except Exception as e:
                     error_msg = f"[ERROR] Study failed - Error: {e} | Traceback: {traceback.format_exc()}"
                     logging.error(error_msg)
-                    log_error(error_msg)
+                    log_error(
+                        "[ERROR] Study failed.",
+                        category="study_runner",
+                        context={"args": str(args)},
+                        exception=e,
+                    )
     finally:
         done_flag.value = True
         writer_proc.join()
@@ -566,6 +676,9 @@ def build_study_args_phase3(
 
 
 def run_phase3(phase: dict):
+    # Ensure DB exists before phase-3 workers open read-only connections.
+    ensure_backtesting_db_ready()
+
     # Allow phase3 to honor a custom timeframe list; otherwise take all
     timeframes = phase.get("timeframes", ALL_TIMEFRAMES)
 
@@ -612,6 +725,8 @@ def run_phase3(phase: dict):
 
 
 if __name__ == "__main__":
+    clear_error_json_log()
+
     # --- Edit these top-level knobs freely ---
     STRATEGY_KEYS_TO_RUN: list[str] = [
         # "NNFX",

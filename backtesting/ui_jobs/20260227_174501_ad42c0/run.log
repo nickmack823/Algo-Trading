@@ -1,0 +1,97 @@
+[UI WORKER] Starting main.py backtesting cycle
+[UI WORKER] config=C:\Users\sm598\Desktop\Applications\Development\Algo Trading\backtesting\ui_jobs\20260227_174501_ad42c0\config.json
+{
+  "strategies": [
+    "NNFX"
+  ],
+  "pairs": [
+    "EUR/USD",
+    "USD/JPY",
+    "GBP/USD",
+    "USD/CHF",
+    "AUD/USD",
+    "USD/CAD",
+    "NZD/USD",
+    "USD/SGD",
+    "EUR/GBP",
+    "EUR/JPY",
+    "EUR/CHF",
+    "EUR/AUD",
+    "EUR/CAD",
+    "EUR/NZD",
+    "GBP/JPY",
+    "GBP/CHF",
+    "GBP/AUD",
+    "GBP/CAD",
+    "GBP/NZD",
+    "AUD/JPY",
+    "AUD/CHF",
+    "AUD/CAD",
+    "AUD/NZD",
+    "CAD/JPY",
+    "CAD/CHF",
+    "NZD/JPY",
+    "NZD/CHF",
+    "CHF/JPY",
+    "EUR/SGD",
+    "USD/SGD",
+    "GBP/SGD",
+    "AUD/SGD",
+    "SGD/JPY",
+    "NZD/SGD",
+    "CAD/SGD",
+    "CHF/SGD"
+  ],
+  "phase12_timeframes": [
+    "2_hour",
+    "4_hour",
+    "1_day"
+  ],
+  "phase3_timeframes": [],
+  "seeds": [
+    42,
+    1337,
+    314,
+    777,
+    444
+  ],
+  "trials_by_timeframe": {
+    "1_day": 500,
+    "4_hour": 300,
+    "2_hour": 300,
+    "1_hour": 200,
+    "30_minute": 200,
+    "15_minute": 200,
+    "5_minute": 200
+  },
+  "n_processes": 1,
+  "phase2_top_percent": 10.0,
+  "phase3_top_n": 30,
+  "enable_phase1": true,
+  "enable_phase2": true,
+  "enable_phase3": true,
+  "created_at": "2026-02-27T17:45:01"
+}
+[UI WORKER] strategies=['NNFX']
+[UI WORKER] n_processes=1
+[UI WORKER] pairs=36
+[UI WORKER] phases=['phase1', 'phase2', 'phase3']
+[UI WORKER] Running phase1...
+[UI WORKER] phase1 jobs=540
+[02/27/2026 17:45:06] [START STUDY] EUR/USD @ 2_hour
+[I 2026-02-27 17:45:07,102] Using an existing study with name 'phase1_EURUSD_2_hour_NNFX_2024-11-06to2025-05-07_space-default_seed-42' instead of creating a new one.
+[02/27/2026 17:45:07] [phase1_EURUSD_2_hour_NNFX_2024-11-06to2025-05-07_space-default_seed-42]: finished=14 to_run=286
+[I 2026-02-27 17:45:07,232] Trial 16 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.04.
+[I 2026-02-27 17:45:07,317] Trial 17 pruned. Insufficient activity: Trades_Per_Day=0.01 < prune_threshold=0.04.
+[I 2026-02-27 17:45:07,399] Trial 18 pruned. Duplicate configuration already scored in DB (run_id=99, score=4.0057).
+[I 2026-02-27 17:45:07,479] Trial 19 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.04.
+[I 2026-02-27 17:45:07,565] Trial 20 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.04.
+[I 2026-02-27 17:45:07,650] Trial 21 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.04.
+[I 2026-02-27 17:45:07,735] Trial 22 pruned. Insufficient activity: Trades_Per_Day=0.01 < prune_threshold=0.04.
+[I 2026-02-27 17:45:07,825] Trial 23 pruned. Duplicate configuration already scored in DB (run_id=104, score=3.1468).
+[I 2026-02-27 17:45:38,558] Trial 24 finished with value: 4.6269 and parameters: {'ATR': 'FilteredATR', 'Baseline': 'ATRBasedEMAVariant1', 'C1': 'TII', 'C2': 'Doda-Stochastic-Modified', 'Volume': 'ADX', 'Exit': 'HLCTrend'}. Best is trial 24 with value: 4.6269.
+[I 2026-02-27 17:45:46,507] Trial 34 finished with value: 0.9632 and parameters: {'ATR': 'ATR', 'Baseline': 'VIDYA', 'C1': 'Fisher', 'C2': 'GeominMA', 'Volume': 'ADXR', 'Exit': 'Ehlers_DELI_(Detrended_Leading_Indicator)'}. Best is trial 24 with value: 4.6269.
+[I 2026-02-27 17:45:52,009] Trial 35 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.04.
+[I 2026-02-27 17:46:03,443] Trial 36 finished with value: 0.7138 and parameters: {'ATR': 'FilteredATR', 'Baseline': 'TrendLord', 'C1': 'Zerolag_MACD.mq4', 'C2': 'KalmanFilter', 'Volume': 'LWPI', 'Exit': 'KASE'}. Best is trial 24 with value: 4.6269.
+[I 2026-02-27 17:46:08,546] Trial 40 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.04.
+[I 2026-02-27 17:46:30,033] Trial 41 finished with value: 0.29 and parameters: {'ATR': 'ATR', 'Baseline': 'McGinleyDI', 'C1': 'HalfTrend', 'C2': 'hacolt_2.02_lines', 'Volume': 'OBV', 'Exit': 'TTF'}. Best is trial 24 with value: 4.6269.

@@ -11,9 +11,7 @@ from scripts.indicators.calculation_functions import *
 #     ASO,
 #     EMA,
 #     HMA,
-#     J_TPO,
 #     KASE,
-#     KVO,
 #     LSMA,
 #     LWPI,
 #     RWIBTF,
@@ -46,10 +44,8 @@ from scripts.indicators.calculation_functions import *
 #     DetrendedSyntheticPriceGoscillators,
 #     DodaStochasticModified,
 #     DorseyInertia,
-#     DpoHistogramIndicator,
 #     EhlersDELIDetrendedLeadingIndicator,
 #     EhlersEarlyOnsetTrend,
-#     EhlersReverseEMA,
 #     EhlersRoofingFilterA,
 #     EhlersTwoPoleSuperSmootherFilter,
 #     ErgodicTVI,
@@ -68,7 +64,6 @@ from scripts.indicators.calculation_functions import *
 #     HalfTrend,
 #     Hlctrend,
 #     ISCalculation,
-#     JpOscillator,
 #     KalmanFilter,
 #     KijunSen,
 #     Laguerre,
@@ -91,7 +86,6 @@ from scripts.indicators.calculation_functions import *
 #     Silence,
 #     Sinewma,
 #     SmoothedMomentum,
-#     Smoothstep,
 #     StiffnessIndicator,
 #     SuperTrend,
 #     TetherLine,
@@ -582,19 +576,6 @@ additional_volume = [
         },
     },
     {
-        "name": "KVO",
-        "function": KVO,
-        "description": "Klinger Volume Oscillator (KVO): Combines price movements and volume to identify long-term trends of money flow.",
-        "signal_function": signal_kvo,
-        "raw_function": KVO,
-        "parameters": {"fast_ema": 34, "slow_ema": 55, "signal_ema": 13},
-        "parameter_space": {
-            "fast_ema": [5, 10, 15, 20, 25, 30, 35, 40, 45],
-            "slow_ema": [50, 55, 60, 65, 70, 75, 80, 85, 90, 95],
-            "signal_ema": [5, 10, 15, 20, 25, 30, 35, 40, 45, 50],
-        },
-    },
-    {
         "name": "LWPI",
         "function": LWPI,
         "description": "Larry Williams Proxy Index (LWPI): An oscillator evaluating buying/selling strength using price and volatility.",
@@ -1029,15 +1010,6 @@ additional_trend = [
             # "q1": [0.6, 0.8, 0.9],
             # "q2": [0.2, 0.4, 0.6],
         },
-    },
-    {
-        "name": "Ehlers Reverse EMA",
-        "function": EhlersReverseEMA,
-        "signal_function": signal_ehlers_reverse_ema,
-        "raw_function": EhlersReverseEMA,
-        "description": "* A variant of the exponential moving average that applies weighting in reverse order (most recent prices receive the least weight). This aims to anticipate turning points.",
-        "parameters": {"alpha": 0.1},
-        "parameter_space": {"alpha": [0.05, 0.1, 0.15, 0.2, 0.3, 0.5]},
     },
     {
         "name": "EhlersRoofingFilterA",
@@ -1729,15 +1701,6 @@ additional_momentum = [
         "parameter_space": {"ma_period": [5, 10, 15, 20, 25, 30, 35, 40, 45]},
     },
     {
-        "name": "J_TPO",
-        "function": J_TPO,
-        "description": "J_TPO: A custom oscillator derived from time-price opportunity modeling to reflect short-term velocity and acceleration.",
-        "signal_function": signal_j_tpo,
-        "raw_function": J_TPO,
-        "parameters": {"period": 14},
-        "parameter_space": {"period": [4, 7, 10, 13, 16, 19, 22, 25, 28]},
-    },
-    {
         "name": "Laguerre",
         "function": Laguerre,
         "description": "Laguerre Filter: A smooth oscillator designed to track price momentum while minimizing whipsaws.",
@@ -1820,18 +1783,6 @@ additional_momentum = [
         },
     },
     {
-        "name": "dpo-histogram-indicator",
-        "function": DpoHistogramIndicator,
-        "signal_function": signal_dpo_histogram_indicator,
-        "raw_function": DpoHistogramIndicator,
-        "description": "Detrended Price Oscillator with up/down histograms. Computes price minus a forward-shifted moving average; positive values map to DPO_Up and negatives to DPO_Dn.",
-        "parameters": {"period": 14, "ma": "sma"},
-        "parameter_space": {
-            "period": [10, 14, 20, 30, 50],
-            "ma": ["sma", "ema", "smma", "wma"],
-        },
-    },
-    {
         "name": "ErgodicTVI",
         "function": ErgodicTVI,
         "signal_function": signal_ergodic_tvi,
@@ -1897,19 +1848,6 @@ additional_momentum = [
             "period": [5, 10, 14, 20, 30],
             "nbchandelier": [5, 10, 14, 20],
             "lag": [0, 1, 2, 3, 5],
-        },
-    },
-    {
-        "name": "JpOscillator",
-        "function": JpOscillator,
-        "signal_function": signal_jposcillator,
-        "raw_function": JpOscillator,
-        "description": "Forward-looking buffer 2*Close - 0.5*Close.shift(-1) - 0.5*Close.shift(-2) - Close.shift(-4), optionally smoothed with SMA/EMA/SMMA/LWMA; outputs Jp plus slope-segmented JpUp/JpDown.",
-        "parameters": {"period": 5, "mode": 0, "smoothing": True},
-        "parameter_space": {
-            "period": [3, 5, 8, 13, 21],
-            "mode": [0, 1, 2, 3],
-            "smoothing": [True, False],
         },
     },
     {
@@ -2001,7 +1939,8 @@ ta_lib_volatility = [
         "raw_function": ta.BBANDS,
         "parameters": {"timeperiod": 5, "nbdevup": 2, "nbdevdn": 2, "matype": 0},
         "parameter_space": {
-            "timeperiod": [1, 3, 5, 7, 10, 12, 15, 18, 20, 22],
+            # TA-Lib BBANDS rejects timeperiod=1 (TA_BAD_PARAM); keep >= 2.
+            "timeperiod": [3, 5, 7, 10, 12, 15, 18, 20, 22],
             "nbdevup": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
             "nbdevdn": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
             "matype": [0, 1, 2, 3, 4, 5, 6, 7, 8],
@@ -2015,7 +1954,8 @@ ta_lib_volatility = [
         "raw_function": ta.STDDEV,
         "parameters": {"timeperiod": 5, "nbdev": 1},
         "parameter_space": {
-            "timeperiod": [1, 3, 5, 7, 10, 12, 15, 18, 20, 22],
+            # TA-Lib STDDEV rejects timeperiod=1 (TA_BAD_PARAM); keep >= 2.
+            "timeperiod": [3, 5, 7, 10, 12, 15, 18, 20, 22],
             "nbdev": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
         },
     },
@@ -2027,7 +1967,8 @@ ta_lib_volatility = [
         "raw_function": ta.VAR,
         "parameters": {"timeperiod": 5, "nbdev": 1},
         "parameter_space": {
-            "timeperiod": [1, 3, 5, 7, 10, 12, 15, 18, 20, 22],
+            # TA-Lib VAR follows STDDEV constraints; avoid timeperiod=1.
+            "timeperiod": [3, 5, 7, 10, 12, 15, 18, 20, 22],
             "nbdev": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
         },
     },
@@ -2039,7 +1980,8 @@ additional_volatility = [
         "description": "Volatility Ratio: Compares recent price deviation against a longer-period range to measure relative volatility shifts.",
         "signal_function": signal_volatility_ratio,
         "raw_function": VolatilityRatio,
-        "parameters": {"period": 25, "inp_price": "Close"},
+        # Match current VolatilityRatio signature (uses `price`, not `inp_price`).
+        "parameters": {"period": 25, "price": "Close"},
         "parameter_space": {
             "period": [10, 15, 20, 25, 30, 35, 40, 45, 50, 55],
         },
@@ -2534,27 +2476,6 @@ baseline_indicators = [
         "parameter_space": {
             "length": [10, 14, 20, 30, 50],
             "price": [0, 1, 2, 3, 4, 5, 6],
-        },
-    },
-    {
-        "name": "SmoothStep",
-        "function": Smoothstep,
-        "signal_function": signal_smoothstep,
-        "raw_function": Smoothstep,
-        "description": "A smoothing filter that applies the mathematical smoothstep function to price data, creating a very smooth baseline.",
-        "parameters": {"period": 32, "price": "close"},
-        "parameter_space": {
-            "period": [8, 16, 32, 64],
-            "price": [
-                "close",
-                "open",
-                "high",
-                "low",
-                "median",
-                "typical",
-                "weighted",
-                "lowhigh",
-            ],
         },
     },
     {

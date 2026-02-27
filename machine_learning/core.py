@@ -193,6 +193,23 @@ def _ensure_dir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
 
 
+def _make_unique_columns(columns: Sequence[object]) -> list[object]:
+    """
+    Return deterministic suffixes for duplicate column labels.
+    Example: ["A", "A", "B", "A"] -> ["A", "A__dup1", "B", "A__dup2"]
+    """
+    seen: Dict[object, int] = {}
+    out: list[object] = []
+    for col in columns:
+        n = seen.get(col, 0)
+        if n == 0:
+            out.append(col)
+        else:
+            out.append(f"{col}__dup{n}")
+        seen[col] = n + 1
+    return out
+
+
 def _to_parquet(df: pd.DataFrame, path: Path) -> None:
     """
     Save features to Parquet (columnar, typed, compressed).
@@ -288,6 +305,9 @@ def build_features(
         raise ValueError("No features were produced. Check your feature_specs.")
 
     feats = pd.concat(frames, axis=1)
+    if feats.columns.has_duplicates:
+        feats = feats.copy()
+        feats.columns = _make_unique_columns(list(feats.columns))
 
     # Shift to avoid lookahead/leakage: model for row t uses info strictly ≤ t-1.
     if shift_by:
@@ -298,9 +318,10 @@ def build_features(
         feats = feats.dropna()
 
     # Ensure strictly numeric & finite (object columns can break)
-    for col in feats.columns:
-        if pd.api.types.is_object_dtype(feats[col].dtype):
-            feats[col] = pd.to_numeric(feats[col], errors="coerce")
+    for i in range(feats.shape[1]):
+        col_values = feats.iloc[:, i]
+        if pd.api.types.is_object_dtype(col_values.dtype):
+            feats.iloc[:, i] = pd.to_numeric(col_values, errors="coerce")
 
     # Replace infs with NA; only drop rows if the caller asked for it
     feats = feats.replace([float("inf"), float("-inf")], pd.NA)
@@ -339,6 +360,9 @@ def load_or_build_features(
 
     if parquet_path.exists() and not force_recompute:
         feats = _from_parquet(parquet_path)
+        if feats.columns.has_duplicates:
+            feats = feats.copy()
+            feats.columns = _make_unique_columns(list(feats.columns))
         return feats, parquet_path
 
     feats = build_features(

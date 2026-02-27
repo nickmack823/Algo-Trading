@@ -57,6 +57,40 @@ def _resolve_date_window(
     return default_from, default_to
 
 
+def _resolve_evaluation_window(
+    context: dict | None, default_from: str, default_to: str
+) -> tuple[str, str]:
+    """
+    Resolve the score/evaluation window.
+    Priority:
+      1) context['evaluation_window']
+      2) context['date_window'] (same parsing rules as _resolve_date_window)
+      3) timeframe default window
+    """
+    ew = (context or {}).get("evaluation_window") or {}
+    if ew.get("from") and ew.get("to"):
+        return ew["from"], ew["to"]
+
+    dw = (context or {}).get("date_window") or {}
+    abs_win = dw.get("absolute")
+    if abs_win and abs_win.get("from") and abs_win.get("to"):
+        return abs_win["from"], abs_win["to"]
+
+    rel = dw.get("relative")
+    if rel:
+        anchor_to_conf = bool(dw.get("anchor_to_config_end"))
+        anchor_to = pd.to_datetime(END_DATE if anchor_to_conf else default_to)
+        years = int(rel.get("years", 0))
+        months = int(rel.get("months", 0))
+        days = int(rel.get("days", 0))
+        delta = pd.DateOffset(years=years, months=months, days=days)
+        frm = (anchor_to - delta).strftime("%Y-%m-%d")
+        to_ = anchor_to.strftime("%Y-%m-%d")
+        return frm, to_
+
+    return default_from, default_to
+
+
 # ---- simple dataclass substitute for cross-process acks
 class Acknowledgement:
     def __init__(self, ok: bool, payload: dict | None = None, error: str | None = None):
@@ -172,8 +206,11 @@ def run_objective_common(
 
     # date window
     tf_rng = TIMEFRAME_DATE_RANGES_PHASE_1_AND_2[timeframe]
-    from_date, to_date = tf_rng["from_date"], tf_rng["to_date"]
-    from_date, to_date = _resolve_date_window(timeframe, context, from_date, to_date)
+    default_from, default_to = tf_rng["from_date"], tf_rng["to_date"]
+    from_date, to_date = _resolve_date_window(
+        timeframe, context, default_from, default_to
+    )
+    eval_from, eval_to = _resolve_evaluation_window(context, default_from, default_to)
 
     # load OHLCV
     data_sqlhelper = HistoricalDataSQLHelper(
@@ -190,7 +227,13 @@ def run_objective_common(
         db_queue.put({"purpose": "indicator_cache", "cache_items": cache_items})
 
     backtester = Backtester(
-        strategy, forex_pair, timeframe, data, initial_balance=10_000
+        strategy,
+        forex_pair,
+        timeframe,
+        data,
+        initial_balance=10_000,
+        metrics_start_date=eval_from,
+        metrics_end_date=eval_to,
     )
 
     pair_id = None
@@ -200,18 +243,29 @@ def run_objective_common(
     ran_new_backtest = False
     calculated_score = False
 
+    def prune_trial(reason: str):
+        nonlocal manually_pruned
+        manually_pruned = True
+        trial.set_user_attr("prune_reason", reason)
+        # Don't need to log, Optuna will
+        # logging.info(
+        #     f"[PRUNED] Trial {trial.number} | {forex_pair} {timeframe} | {reason}"
+        # )
+        raise optuna.exceptions.TrialPruned(reason)
+
     try:
         # dedupe
         pair_id = backtest_sqlhelper.select_forex_pair_id(forex_pair)
         run_id = backtest_sqlhelper.select_backtest_run_by_config(
-            pair_id, strategy_config_id, timeframe, from_date, to_date
+            pair_id, strategy_config_id, timeframe, eval_from, eval_to
         )
 
         if run_id is not None:
             score = backtest_sqlhelper.select_composite_score(run_id)
             if score is not None:
-                manually_pruned = True
-                raise optuna.exceptions.TrialPruned()
+                prune_trial(
+                    f"Duplicate configuration already scored in DB (run_id={run_id}, score={score})."
+                )
             else:
                 run_metrics_df = backtest_sqlhelper.select_backtest_run_metrics_by_id(
                     run_id
@@ -224,8 +278,25 @@ def run_objective_common(
                 log_error(
                     f"[{forex_pair}-{timeframe}] (Strategy Config ID: {strategy.CONFIG_ID}) Backtest failed with parameters {strategy.PARAMETER_SETTINGS}: {e}. PRUNING trial."
                 )
-                manually_pruned = True
-                raise optuna.exceptions.TrialPruned()
+                prune_trial(
+                    f"Backtest execution failed for strategy config {strategy.CONFIG_ID}: {e}"
+                )
+
+            # Guardrail: if a test-window start is provided, reject any trade before it.
+            eval_from_ts = pd.to_datetime(eval_from)
+            has_pretest_trade = any(
+                pd.to_datetime(t.entry_timestamp) < eval_from_ts
+                for t in backtester.all_trades
+            )
+            if has_pretest_trade:
+                first_trade = min(
+                    pd.to_datetime(t.entry_timestamp) for t in backtester.all_trades
+                )
+                prune_trial(
+                    "Pre-test trade guard triggered: "
+                    f"first trade {first_trade} < evaluation_window.from {eval_from_ts}."
+                )
+
             run_metrics_df = backtester.get_metrics_df()
             ran_new_backtest = True
 
@@ -238,16 +309,16 @@ def run_objective_common(
         )
         trades_per_day = backtester.get_metric("Trades_Per_Day")
         if trades_per_day < prune_threshold:
-            manually_pruned = True
-            raise optuna.exceptions.TrialPruned()
+            prune_trial(
+                f"Insufficient activity: Trades_Per_Day={trades_per_day} < prune_threshold={prune_threshold}."
+            )
 
         # score
         score = backtester.calculate_composite_score()
         calculated_score = True
         if score is None or (score != score) or score in (float("inf"), float("-inf")):
-            manually_pruned = True
             score = None
-            raise optuna.exceptions.TrialPruned()
+            prune_trial("Composite score is invalid (None/NaN/Inf).")
 
         return score
 

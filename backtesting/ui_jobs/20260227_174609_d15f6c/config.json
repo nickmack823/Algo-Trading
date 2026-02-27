@@ -1,0 +1,72 @@
+{
+  "strategies": [
+    "NNFX"
+  ],
+  "pairs": [
+    "EUR/USD",
+    "USD/JPY",
+    "GBP/USD",
+    "USD/CHF",
+    "AUD/USD",
+    "USD/CAD",
+    "NZD/USD",
+    "USD/SGD",
+    "EUR/GBP",
+    "EUR/JPY",
+    "EUR/CHF",
+    "EUR/AUD",
+    "EUR/CAD",
+    "EUR/NZD",
+    "GBP/JPY",
+    "GBP/CHF",
+    "GBP/AUD",
+    "GBP/CAD",
+    "GBP/NZD",
+    "AUD/JPY",
+    "AUD/CHF",
+    "AUD/CAD",
+    "AUD/NZD",
+    "CAD/JPY",
+    "CAD/CHF",
+    "NZD/JPY",
+    "NZD/CHF",
+    "CHF/JPY",
+    "EUR/SGD",
+    "USD/SGD",
+    "GBP/SGD",
+    "AUD/SGD",
+    "SGD/JPY",
+    "NZD/SGD",
+    "CAD/SGD",
+    "CHF/SGD"
+  ],
+  "phase12_timeframes": [
+    "2_hour",
+    "4_hour",
+    "1_day"
+  ],
+  "phase3_timeframes": [],
+  "seeds": [
+    42,
+    1337,
+    314,
+    777,
+    444
+  ],
+  "trials_by_timeframe": {
+    "1_day": 500,
+    "4_hour": 300,
+    "2_hour": 300,
+    "1_hour": 200,
+    "30_minute": 200,
+    "15_minute": 200,
+    "5_minute": 200
+  },
+  "n_processes": 1,
+  "phase2_top_percent": 10.0,
+  "phase3_top_n": 30,
+  "enable_phase1": true,
+  "enable_phase2": true,
+  "enable_phase3": true,
+  "created_at": "2026-02-27T17:46:09"
+}

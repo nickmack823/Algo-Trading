@@ -18,9 +18,10 @@ MODELS_CACHE_DIR = "machine_learning/models_cache"
 
 os.makedirs(DATA_FOLDER, exist_ok=True)
 os.makedirs(BACKTESTING_FOLDER, exist_ok=True)
-os.makedirs(TRADING_DB_PATH, exist_ok=True)
+# TRADING_DB_PATH is a file path; create only its parent directory.
+os.makedirs(os.path.dirname(TRADING_DB_PATH), exist_ok=True)
 os.makedirs(OPTUNA_STUDIES_FOLDER, exist_ok=True)
-os.makedirs(OPTUNA_REPORTS_FOLDER, exist_ok=True)
+# os.makedirs(OPTUNA_REPORTS_FOLDER, exist_ok=True)
 os.makedirs(TEMP_CACHE_FOLDER, exist_ok=True)
 os.makedirs(FEATURES_CACHE_DIR, exist_ok=True)
 os.makedirs(LABELS_CACHE_DIR, exist_ok=True)

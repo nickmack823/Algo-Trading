@@ -27,10 +27,12 @@ import multiprocessing as mp
 from typing import Any, Dict, List
 
 import optuna
+import pandas as pd
 
 # --- Optional import: use the same FeatureSpec class your feature_store expects.
 # This aligns with ml_baselines/feature_store.FeatureSpec (name/params/prefix).
 from machine_learning.core import FeatureSpec  # exact type your strategy uses
+from scripts.config import TIMEFRAME_DATE_RANGES_PHASE_1_AND_2
 from scripts.data.sql import BacktestSQLHelper
 from scripts.strategies import strategy_core
 
@@ -49,6 +51,61 @@ _PAPER_FEATURE_NAMES = [
     "BBANDS",
     "MACD",
 ]
+
+_MABROUK_TRAIN_LOOKBACK_YEARS = 7
+
+
+def _build_train_then_test_context(
+    timeframe: str,
+    *,
+    exploration_space: str = "parameterized",
+    feature_space: dict | None = None,
+    pool: str | None = None,
+) -> dict:
+    """
+    Train on 7 years ending right before the selected test window, then evaluate on that window.
+
+    - test window comes from TIMEFRAME_DATE_RANGES_PHASE_1_AND_2[timeframe]
+    - loaded data spans [train_start, test_end]
+    - split uses explicit train_end so pre-train positions can be masked reliably
+    """
+    tf_rng = TIMEFRAME_DATE_RANGES_PHASE_1_AND_2[timeframe]
+    test_from, test_to = tf_rng["from_date"], tf_rng["to_date"]
+
+    train_start = (
+        pd.to_datetime(test_from)
+        - pd.DateOffset(years=_MABROUK_TRAIN_LOOKBACK_YEARS)
+    ).strftime("%Y-%m-%d")
+    train_end = (pd.to_datetime(test_from) - pd.Timedelta(seconds=1)).strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+
+    context = {
+        "exploration_space": exploration_space,
+        "feature_space": feature_space or {"min_features": 4, "max_features": 6},
+        # Load full train+test range so model fits on history and trades only on test window.
+        "date_window": {
+            "absolute": {
+                "from": train_start,
+                "to": test_to,
+            }
+        },
+        # Keep the explicit test window in context for debugging/reporting.
+        "evaluation_window": {
+            "from": test_from,
+            "to": test_to,
+        },
+        "split": {
+            "method": "temporal",
+            "train_end": train_end,
+            "mask_pretrain_positions": True,
+        },
+    }
+
+    if pool is not None:
+        context["pool"] = pool
+
+    return context
 
 
 def _build_pool_from_configs(configs, allowed_names=None):
@@ -307,10 +364,28 @@ class MabroukAdapter(StrategyTrialAdapter):
 
             picked_all = trend_picked + mom_picked + vol_picked + wild_picked
             if len(picked_all) > target_k:
-                # trim in stable order: wild → vol → mom → trend
+                # trim in stable order: wild -> vol -> mom -> trend
                 order = wild_picked + vol_picked + mom_picked + trend_picked
                 picked_all = order[:target_k]
 
+            # Remove cross-slot duplicates (wildcard can reselect an existing feature).
+            deduped = []
+            seen = set()
+            for fname in picked_all:
+                if fname not in seen:
+                    deduped.append(fname)
+                    seen.add(fname)
+
+            # Keep feature count stable after dedupe by padding in deterministic order.
+            if len(deduped) < target_k:
+                for fname in any_slot_union:
+                    if fname not in seen:
+                        deduped.append(fname)
+                        seen.add(fname)
+                        if len(deduped) == target_k:
+                            break
+
+            picked_all = deduped[:target_k]
             feature_specs = [_suggest_feature(trial, POOL, name) for name in picked_all]
 
         # Strategy factory: mirror NNFX
@@ -353,24 +428,12 @@ class MabroukAdapter(StrategyTrialAdapter):
             for tf in timeframes:
                 n = trials_by_timeframe[tf]
                 for seed in seeds:
-                    context = {
-                        "exploration_space": "parameterized",
-                        "feature_space": {"min_features": 4, "max_features": 6},
-                        "pool": "broad",
-                        # NEW ↓↓↓
-                        "date_window": {  # options: absolute or relative (see resolver below)
-                            "relative": {
-                                "years": 7
-                            },  # e.g., last 7y ending at config.END_DATE
-                            # or: "absolute": {"from": "2014-01-01", "to": "2021-01-30"},
-                            "anchor_to_config_end": True,  # use config.END_DATE as 'to' if relative
-                        },
-                        "split": {
-                            "method": "temporal",
-                            "train_ratio": 0.80,  # paper: 80% train / 20% test
-                            "mask_pretrain_positions": True,  # zero out positions before train_end
-                        },
-                    }
+                    context = _build_train_then_test_context(
+                        timeframe=tf,
+                        exploration_space="parameterized",
+                        feature_space={"min_features": 4, "max_features": 6},
+                        pool="broad",
+                    )
                     args.append(
                         (
                             pair,
@@ -404,24 +467,11 @@ class MabroukAdapter(StrategyTrialAdapter):
             for tf in timeframes:
                 n = trials_by_timeframe[tf]
                 for seed in seeds:
-                    context = {
-                        "exploration_space": "parameterized",
-                        "feature_space": {"min_features": 4, "max_features": 6},
-                        # "pool": "broad",
-                        # NEW ↓↓↓
-                        "date_window": {  # options: absolute or relative (see resolver below)
-                            "relative": {
-                                "years": 7
-                            },  # e.g., last 7y ending at config.END_DATE
-                            # or: "absolute": {"from": "2014-01-01", "to": "2021-01-30"},
-                            "anchor_to_config_end": True,  # use config.END_DATE as 'to' if relative
-                        },
-                        "split": {
-                            "method": "temporal",
-                            "train_ratio": 0.80,  # paper: 80% train / 20% test
-                            "mask_pretrain_positions": True,  # zero out positions before train_end
-                        },
-                    }
+                    context = _build_train_then_test_context(
+                        timeframe=tf,
+                        exploration_space="parameterized",
+                        feature_space={"min_features": 4, "max_features": 6},
+                    )
                     args.append(
                         (
                             pair,
@@ -539,3 +589,4 @@ class MabroukAdapter(StrategyTrialAdapter):
 
 # Register on import so main.py picks it up via ADAPTER_REGISTRY
 register_adapter(MabroukAdapter())
+

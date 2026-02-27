@@ -2749,9 +2749,22 @@ def WAE(
     Returns:
     pd.DataFrame: DataFrame of calculated indicator values.
     """
-    # Resample price data to the desired timeframe
+    # Preserve the incoming index so output always aligns one-to-one with input bars.
+    original_index = price_data.index
+
+    # Resample price data to the desired timeframe.
+    # Guard against upsampling (e.g., 2h bars -> 5m bins), which explodes row count
+    # and creates synthetic empty buckets.
+    if minutes > 0 and isinstance(price_data.index, pd.DatetimeIndex):
+        deltas = (
+            pd.Series(price_data.index).diff().dropna().dt.total_seconds() / 60.0
+        )
+        base_minutes = float(deltas.median()) if not deltas.empty else None
+        if base_minutes is not None and minutes < base_minutes:
+            minutes = 0
+
     if minutes > 0:
-        price_data = price_data.resample(f"{minutes}T").agg(
+        price_data = price_data.resample(f"{minutes}min").agg(
             {
                 "Open": "first",
                 "High": "max",
@@ -2760,6 +2773,8 @@ def WAE(
                 "Volume": "sum",
             }
         )
+        # Remove empty bins introduced by up/downsampling boundaries.
+        price_data = price_data.dropna(subset=["Open", "High", "Low", "Close"])
 
     def ema(series: pd.Series, period: int) -> pd.Series:
         return series.ewm(span=period, adjust=False).mean()
@@ -2773,11 +2788,13 @@ def WAE(
         signal_line = ema(macd_line, signal_period)
         return macd_line, signal_line
 
-    def bollinger_bands(series: pd.Series, period: int, std_dev: float) -> pd.DataFrame:
+    def bollinger_bands(
+        series: pd.Series, period: int, std_mult: float
+    ) -> pd.DataFrame:
         middle = series.rolling(window=period).mean()
-        std_dev = series.rolling(window=period).std()
-        upper = middle + (std_dev * std_dev)
-        lower = middle - (std_dev * std_dev)
+        rolling_std = series.rolling(window=period).std()
+        upper = middle + (rolling_std * std_mult)
+        lower = middle - (rolling_std * std_mult)
         return upper, middle, lower
 
     close = price_data["Close"]
@@ -2788,7 +2805,7 @@ def WAE(
     )
 
     # Calculate Bollinger Bands
-    upper, middle, lower = bollinger_bands(close, period=20, std_dev=2)
+    upper, middle, lower = bollinger_bands(close, period=20, std_mult=2)
 
     # Calculate Trend and Explo
     trend = (macd_line - signal_line) * sensitivity
@@ -2802,6 +2819,10 @@ def WAE(
     output["Trend"] = trend
     output["Explosion"] = explo
     output["Dead"] = dead_zone
+
+    # If resampling changed the index frequency, map back to the original bars.
+    if not output.index.equals(original_index):
+        output = output.reindex(original_index, method="ffill")
 
     return output
 

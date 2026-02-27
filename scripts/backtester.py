@@ -129,6 +129,8 @@ class Backtester:
         commission_per_lot=6,
         slippage=0.0002,
         leverage=50,
+        metrics_start_date: str | None = None,
+        metrics_end_date: str | None = None,
     ):
         """
         Initializes the backtester with historical data and trading parameters.
@@ -147,6 +149,8 @@ class Backtester:
             self.data["Timestamp"].min(),
             self.data["Timestamp"].max(),
         )
+        self.metrics_start_date = metrics_start_date
+        self.metrics_end_date = metrics_end_date
 
         self.initial_balance = initial_balance  # Starting account balance
         self.balance = initial_balance  # Current account balance
@@ -221,21 +225,76 @@ class Backtester:
     # def __repr__(self):
     #     return f"Backtester({self.strategy.NAME}, {self.forex_pair}, {self.timeframe}) | {self.strategy.PARAMETER_SETTINGS}"
 
+    def _resolve_metrics_bounds(self) -> tuple[pd.Timestamp, pd.Timestamp]:
+        """
+        Metrics/score can be computed on an evaluation sub-window while still running
+        the simulation on a larger dataset (e.g., ML train+test load, test-only score).
+        """
+        raw_start = (
+            pd.to_datetime(self.metrics_start_date)
+            if self.metrics_start_date
+            else pd.to_datetime(self.data_start_date)
+        )
+        raw_end = (
+            pd.to_datetime(self.metrics_end_date)
+            if self.metrics_end_date
+            else pd.to_datetime(self.data_end_date)
+        )
+        start = raw_start.normalize()
+        end = raw_end.normalize()
+        if end < start:
+            raise ValueError(
+                f"Invalid metrics window: end {end.date()} < start {start.date()}."
+            )
+        return start, end
+
+    @staticmethod
+    def _slice_trades_by_entry_date(
+        trades: list[Trade], start_date: pd.Timestamp, end_date: pd.Timestamp
+    ) -> list[Trade]:
+        end_exclusive = end_date + pd.Timedelta(days=1)
+        return [
+            trade
+            for trade in trades
+            if start_date <= pd.to_datetime(trade.entry_timestamp) < end_exclusive
+        ]
+
+    def _compute_drawdown_from_trades(self, trades: list[Trade]) -> tuple[float, float]:
+        """
+        Recompute drawdown using only the provided trade subset.
+        """
+        if not trades:
+            return 0.0, 0.0
+
+        peak = self.initial_balance
+        max_drawdown = 0.0
+        max_drawdown_pct = 0.0
+        for trade in trades:
+            balance = trade.balance_after_trade
+            if balance > peak:
+                peak = balance
+            drawdown = peak - balance
+            drawdown_pct = (drawdown / peak) * 100 if peak > 0 else 0.0
+            if drawdown > max_drawdown:
+                max_drawdown = drawdown
+                max_drawdown_pct = drawdown_pct
+
+        return max_drawdown, max_drawdown_pct
+
     def _calculate_metrics(self):
-        total_trades = len(self.all_trades)
+        metrics_start, metrics_end = self._resolve_metrics_bounds()
+        trading_start_raw = pd.to_datetime(self.data["Timestamp"].iloc[self.trading_start_index])
+        trading_start_effective = max(trading_start_raw, metrics_start)
+        metric_trades = self._slice_trades_by_entry_date(
+            self.all_trades, metrics_start, metrics_end
+        )
+        total_trades = len(metric_trades)
 
         # Set up the initial metrics dictionary, including new metrics.
         metrics = {
-            "Data_Start_Date": datetime.strptime(
-                self.data_start_date, "%Y-%m-%d %H:%M:%S"
-            ).strftime("%Y-%m-%d"),
-            "Data_End_Date": datetime.strptime(
-                self.data_end_date, "%Y-%m-%d %H:%M:%S"
-            ).strftime("%Y-%m-%d"),
-            "Trading_Start_Date": datetime.strptime(
-                self.data["Timestamp"].iloc[self.trading_start_index],
-                "%Y-%m-%d %H:%M:%S",
-            ).strftime("%Y-%m-%d"),
+            "Data_Start_Date": metrics_start.strftime("%Y-%m-%d"),
+            "Data_End_Date": metrics_end.strftime("%Y-%m-%d"),
+            "Trading_Start_Date": trading_start_effective.strftime("%Y-%m-%d"),
             "Total_Trades": total_trades,
             "Winning_Trades": 0,
             "Gross_Profit": 0.0,
@@ -244,8 +303,8 @@ class Backtester:
             "Total_Return_Pct": 0.0,
             "Win_Rate": 0.0,
             "Profit_Factor": 0.0,
-            "Max_Drawdown": getattr(self, "max_drawdown", 0.0),
-            "Max_Drawdown_Pct": getattr(self, "max_drawdown_pct", 0.0),
+            "Max_Drawdown": 0.0,
+            "Max_Drawdown_Pct": 0.0,
             "Average_Trade_Duration_Minutes": 0.0,
             "Initial_Balance": self.initial_balance,
             "Final_Balance": self.initial_balance,
@@ -271,20 +330,16 @@ class Backtester:
 
         # Basic aggregated metrics.
         winning_trades = sum(
-            1 for trade in self.all_trades if trade.pnl is not None and trade.pnl > 0
+            1 for trade in metric_trades if trade.pnl is not None and trade.pnl > 0
         )
         gross_profit = sum(
-            trade.pnl
-            for trade in self.all_trades
-            if trade.pnl is not None and trade.pnl > 0
+            trade.pnl for trade in metric_trades if trade.pnl is not None and trade.pnl > 0
         )
         gross_loss = sum(
-            trade.pnl
-            for trade in self.all_trades
-            if trade.pnl is not None and trade.pnl < 0
+            trade.pnl for trade in metric_trades if trade.pnl is not None and trade.pnl < 0
         )
         initial_balance = self.initial_balance
-        final_balance = self.all_trades[-1].balance_after_trade
+        final_balance = metric_trades[-1].balance_after_trade
         net_profit = final_balance - initial_balance
         total_return_pct = (
             (net_profit / initial_balance) * 100 if initial_balance != 0 else 0
@@ -294,19 +349,13 @@ class Backtester:
             (gross_profit / abs(gross_loss)) if gross_loss != 0 else float("inf")
         )
         average_trade_duration = (
-            sum(
-                trade.duration
-                for trade in self.all_trades
-                if trade.duration is not None
-            )
+            sum(trade.duration for trade in metric_trades if trade.duration is not None)
             / total_trades
         )
 
         # Compute trade returns (as percentages) for Sharpe, Sortino, and Trade Expectancy.
         trade_returns = [
-            trade.return_pct
-            for trade in self.all_trades
-            if trade.return_pct is not None
+            trade.return_pct for trade in metric_trades if trade.return_pct is not None
         ]
         mean_return = np.mean(trade_returns) if trade_returns else 0.0
         std_return = np.std(trade_returns) if trade_returns else 0.0
@@ -319,26 +368,26 @@ class Backtester:
             (mean_return / std_downside) if std_downside != 0 else float("inf")
         )
 
-        # Calmar Ratio & Recovery Factor: computed as net profit divided by max drawdown.
+        # Drawdown and drawdown-based metrics in evaluation window only.
+        max_drawdown, max_drawdown_pct = self._compute_drawdown_from_trades(metric_trades)
         calmar_ratio = (
-            (total_return_pct / self.max_drawdown_pct)
-            if self.max_drawdown_pct != 0
+            (total_return_pct / max_drawdown_pct)
+            if max_drawdown_pct != 0
             else float("inf")
         )
-
         recovery_factor = (
-            (net_profit / self.max_drawdown) if self.max_drawdown != 0 else float("inf")
+            (net_profit / max_drawdown) if max_drawdown != 0 else float("inf")
         )
 
         # Win/Loss Ratio (Average): based on percentage returns.
         wins_pct = [
             trade.return_pct
-            for trade in self.all_trades
+            for trade in metric_trades
             if trade.return_pct is not None and trade.return_pct > 0
         ]
         losses_pct = [
             trade.return_pct
-            for trade in self.all_trades
+            for trade in metric_trades
             if trade.return_pct is not None and trade.return_pct < 0
         ]
         avg_win_pct = np.mean(wins_pct) if wins_pct else 0.0
@@ -350,10 +399,8 @@ class Backtester:
         # Standard Deviation of Trade Returns.
         trade_return_std = std_return
 
-        # Trades Per Day: compute using the data start and end dates.
-        start_date = pd.to_datetime(self.data_start_date)
-        end_date = pd.to_datetime(self.data_end_date)
-        num_days = (end_date - start_date).days + 1
+        # Trades Per Day: compute using the metrics/evaluation window.
+        num_days = (metrics_end - metrics_start).days + 1
         trades_per_day = total_trades / num_days if num_days > 0 else total_trades
 
         # Trade Expectancy as a percentage: expected return per trade.
@@ -367,7 +414,7 @@ class Backtester:
         max_consec_losses = 0
         current_wins = 0
         current_losses = 0
-        for trade in self.all_trades:
+        for trade in metric_trades:
             if trade.pnl is not None:
                 if trade.pnl > 0:
                     current_wins += 1
@@ -385,7 +432,7 @@ class Backtester:
         max_pct_margin_required = max(
             (
                 trade.margin_required / trade.balance_before_trade * 100
-                for trade in self.all_trades
+                for trade in metric_trades
                 if trade.balance_before_trade > 0
             ),
             default=0.0,
@@ -401,8 +448,8 @@ class Backtester:
         metrics["Profit_Factor"] = (
             round(profit_factor, 2) if profit_factor != float("inf") else profit_factor
         )
-        metrics["Max_Drawdown"] = round(self.max_drawdown, 2)
-        metrics["Max_Drawdown_Pct"] = round(self.max_drawdown_pct, 2)
+        metrics["Max_Drawdown"] = round(max_drawdown, 2)
+        metrics["Max_Drawdown_Pct"] = round(max_drawdown_pct, 2)
         metrics["Average_Trade_Duration_Minutes"] = round(average_trade_duration, 2)
         metrics["Initial_Balance"] = round(initial_balance, 2)
         metrics["Final_Balance"] = round(final_balance, 2)
@@ -434,9 +481,7 @@ class Backtester:
         metrics["Max_Margin_Required_Pct"] = round(max_pct_margin_required, 2)
 
         metrics_df = pd.DataFrame([metrics])
-
         self.metrics_df = metrics_df
-
         return
 
     def initialize_sqlhelper(self):
@@ -508,72 +553,88 @@ class Backtester:
             self.open_trades = [t for t in self.open_trades if t not in exited_trades]
 
             # --- Step 2: Execute new trade plans (entries + strategy EXITs)
+            # Keep bar-start position semantics so strategy-exit/SLTP handling remains
+            # behaviorally compatible while still allowing multi-leg entries on flat bars.
+            position_at_bar_start = self.position
+            exited_by_strategy_plan = False
+
             for plan in plans:
                 # Exit logic (from EXIT StrategyPlan) — if we're holding a position
-                if plan.tag == "EXIT" and self.open_trades:
-                    exit_price = (
-                        current_price * (1 - self.slippage)
-                        if self.position == 1
-                        else current_price * (1 + self.slippage)
-                    )
-                    for trade in self.open_trades:
-                        trade.close_trade(
-                            timestamp,
-                            exit_price,
-                            self.commission_per_lot,
-                            quote_to_usd_rate,
+                if plan.tag == "EXIT":
+                    if self.open_trades:
+                        exit_price = (
+                            current_price * (1 - self.slippage)
+                            if self.position == 1
+                            else current_price * (1 + self.slippage)
                         )
-                        self.balance = trade.balance_after_trade
-                    self.open_trades = []
+                        for trade in self.open_trades:
+                            trade.close_trade(
+                                timestamp,
+                                exit_price,
+                                self.commission_per_lot,
+                                quote_to_usd_rate,
+                            )
+                            self.balance = trade.balance_after_trade
+                        self.open_trades = []
+                        exited_by_strategy_plan = True
+                    continue
 
-                # Entry logic — only run when flat
-                elif self.position == 0 and not self.open_trades:
-                    # Skip if any critical values are missing or invalid
-                    if any(
-                        math.isnan(x) for x in [plan.entry_price, plan.stop_loss]
-                    ) or plan.direction not in ["BUY", "SELL"]:
-                        continue
+                # Preserve original no-same-bar-reentry behavior:
+                # entries are only allowed if the bar started flat and no strategy EXIT
+                # has already been consumed on this bar.
+                if position_at_bar_start != 0 or exited_by_strategy_plan:
+                    continue
 
-                    entry_price = (
-                        plan.entry_price * (1 + self.slippage)
-                        if plan.direction == "BUY"
-                        else plan.entry_price * (1 - self.slippage)
-                    )
+                # Skip if any critical values are missing or invalid
+                if any(
+                    math.isnan(x) for x in [plan.entry_price, plan.stop_loss]
+                ) or plan.direction not in ["BUY", "SELL"]:
+                    continue
 
-                    # Ensure we have enough margin to open this trade
-                    margin_required = (
-                        strategy_core.PositionCalculator.calculate_required_margin(
-                            self.forex_pair,
-                            plan.units,
-                            self.leverage,
-                            entry_price,
-                            quote_to_usd_rate,
-                        )
-                    )
-                    if margin_required > self.margin_remaining:
-                        continue  # Skip this plan if insufficient margin
+                # Allow stacking same-direction legs (e.g., NNFX TP1 + Runner),
+                # but never open opposing directions in the same bar.
+                existing_direction = (
+                    self.open_trades[0].direction if self.open_trades else None
+                )
+                if existing_direction is not None and plan.direction != existing_direction:
+                    continue
 
-                    # Estimate pip value
-                    pip_value = (
-                        strategy_core.PositionCalculator.calculate_current_pip_value(
-                            self.forex_pair, plan.units, entry_price, quote_to_usd_rate
-                        )
-                    )
+                entry_price = (
+                    plan.entry_price * (1 + self.slippage)
+                    if plan.direction == "BUY"
+                    else plan.entry_price * (1 - self.slippage)
+                )
 
-                    # Create the Trade object and attach the original StrategyPlan for context
-                    trade = Trade(
-                        plan=plan,
-                        forex_pair=self.forex_pair,
-                        entry_timestamp=timestamp,
-                        entry_price=entry_price,
-                        balance=self.balance,
-                        leverage=self.leverage,
-                        margin_required=margin_required,
-                        pip_value=pip_value,
-                    )
+                # Ensure we have enough margin to open this trade
+                margin_required = strategy_core.PositionCalculator.calculate_required_margin(
+                    self.forex_pair,
+                    plan.units,
+                    self.leverage,
+                    entry_price,
+                    quote_to_usd_rate,
+                )
+                if margin_required > self.margin_remaining:
+                    continue  # Skip this plan if insufficient margin
 
-                    self.all_trades.append(trade)
-                    self.open_trades.append(trade)
+                # Estimate pip value
+                pip_value = strategy_core.PositionCalculator.calculate_current_pip_value(
+                    self.forex_pair, plan.units, entry_price, quote_to_usd_rate
+                )
+
+                # Create the Trade object and attach the original StrategyPlan for context
+                trade = Trade(
+                    plan=plan,
+                    forex_pair=self.forex_pair,
+                    entry_timestamp=timestamp,
+                    entry_price=entry_price,
+                    balance=self.balance,
+                    leverage=self.leverage,
+                    margin_required=margin_required,
+                    pip_value=pip_value,
+                )
+
+                self.all_trades.append(trade)
+                self.open_trades.append(trade)
 
             # Track equity high to compute drawdown
             if self.balance > self.peak_balance:
@@ -662,6 +723,49 @@ class Backtester:
 
         return dataframe
 
+    # Previous scoring function retained for reference.
+    # def calculate_composite_score(self):
+    #     expectancy_per_day = self.get_metric("Expectancy_Per_Day_Pct")
+    #     trade_expectancy = self.get_metric("Trade_Expectancy_Pct")
+    #     profit_factor = min(self.get_metric("Profit_Factor"), 5.0)
+    #     win_loss_ratio = min(self.get_metric("Win_Loss_Ratio"), 3.0)
+    #     trades_per_day = self.get_metric("Trades_Per_Day")
+    #
+    #     if trades_per_day < 0.02:
+    #         trade_expectancy *= 0.5
+    #
+    #     score = (
+    #         expectancy_per_day * 2.5
+    #         + trade_expectancy * 0.75
+    #         + profit_factor * 0.5
+    #         + win_loss_ratio * 0.5
+    #         + trades_per_day * 0.25
+    #     )
+    #
+    #     net_profit = self.get_metric("Net_Profit")
+    #     score += math.log1p(max(net_profit, 0)) * 0.3
+    #     score += max(net_profit, 0) / 250
+    #
+    #     max_drawdown_pct = self.get_metric("Max_Drawdown_Pct")
+    #     trade_std = self.get_metric("Trade_Return_Std")
+    #     timeframe = self.timeframe
+    #     trades_per_day_threshold = config.MIN_TRADES_PER_DAY[timeframe]
+    #     ratio = trades_per_day / trades_per_day_threshold
+    #
+    #     if trades_per_day >= trades_per_day_threshold:
+    #         activity_penalty = 1.0
+    #     elif ratio <= 0:
+    #         activity_penalty = 0.0
+    #     elif timeframe in ["1_day", "4_hour", "2_hour"]:
+    #         activity_penalty = ratio**0.25
+    #     else:
+    #         activity_penalty = 1 / (1 + (1 / max(ratio, 1e-6)) ** 2)
+    #
+    #     score *= activity_penalty
+    #     score *= 1 / (1 + (max_drawdown_pct / 40) ** 1.5)
+    #     score *= 1 / (1 + trade_std / 20)
+    #     return round(score, 4)
+
     def calculate_composite_score(self):
         """
         Calculates a composite score for evaluating strategy performance,
@@ -695,9 +799,15 @@ class Backtester:
         # --- Profitability metrics ---
         net_profit = self.get_metric("Net_Profit")
 
+        # Previous profit terms (kept for reference):
+        # score += math.log1p(max(net_profit, 0)) * 0.3
+        # score += max(net_profit, 0) / 250
+
+        # Light rebalance:
+        # - keep profit important,
+        # - avoid runaway dominance from one large net-profit outlier.
         score += math.log1p(max(net_profit, 0)) * 0.3
-        score += max(net_profit, 0) / 250
-        # score += net_profit / 250
+        score += min(max(net_profit, 0) / 500, 60.0)
 
         # --- Risk and volatility metrics ---
         max_drawdown_pct = self.get_metric("Max_Drawdown_Pct")
@@ -709,8 +819,8 @@ class Backtester:
 
         # --- Trade count context ---
         total_trades = self.get_metric("Total_Trades")
-        start = pd.to_datetime(self.data_start_date)
-        end = pd.to_datetime(self.data_end_date)
+        start = pd.to_datetime(self.get_metric("Data_Start_Date"))
+        end = pd.to_datetime(self.get_metric("Data_End_Date"))
         backtest_days = (end - start).days
 
         # Require at least ~5 trades per year to allow bonus metrics
