@@ -1,0 +1,196 @@
+[UI WORKER] Starting main.py backtesting cycle
+[UI WORKER] config=C:\Users\sm598\Desktop\Applications\Development\Algo Trading\backtesting\ui_jobs\20260227_205140_e077de\config.json
+{
+  "strategies": [
+    "NNFX"
+  ],
+  "pairs": [
+    "EUR/USD",
+    "USD/JPY",
+    "GBP/USD",
+    "USD/CHF",
+    "AUD/USD",
+    "USD/CAD",
+    "NZD/USD",
+    "USD/SGD",
+    "EUR/GBP",
+    "EUR/JPY",
+    "EUR/CHF",
+    "EUR/AUD",
+    "EUR/CAD",
+    "EUR/NZD",
+    "GBP/JPY",
+    "GBP/CHF",
+    "GBP/AUD",
+    "GBP/CAD",
+    "GBP/NZD",
+    "AUD/JPY",
+    "AUD/CHF",
+    "AUD/CAD",
+    "AUD/NZD",
+    "CAD/JPY",
+    "CAD/CHF",
+    "NZD/JPY",
+    "NZD/CHF",
+    "CHF/JPY",
+    "EUR/SGD",
+    "USD/SGD",
+    "GBP/SGD",
+    "AUD/SGD",
+    "SGD/JPY",
+    "NZD/SGD",
+    "CAD/SGD",
+    "CHF/SGD"
+  ],
+  "phase12_timeframes": [
+    "2_hour",
+    "4_hour",
+    "1_day"
+  ],
+  "phase3_timeframes": [],
+  "seeds": [
+    42,
+    1337,
+    314,
+    777,
+    444
+  ],
+  "trials_by_timeframe": {
+    "1_day": 500,
+    "4_hour": 300,
+    "2_hour": 300,
+    "1_hour": 200,
+    "30_minute": 200,
+    "15_minute": 200,
+    "5_minute": 200
+  },
+  "n_processes": 10,
+  "phase2_top_percent": 10.0,
+  "phase3_top_n": 30,
+  "enable_phase1": true,
+  "enable_phase2": true,
+  "enable_phase3": true,
+  "created_at": "2026-02-27T20:51:40"
+}
+[UI WORKER] Optuna logging set to WARNING for UI mode
+[UI WORKER] strategies=['NNFX']
+[UI WORKER] n_processes=10
+[UI WORKER] pairs=36
+[UI WORKER] phases=['phase1', 'phase2', 'phase3']
+[UI WORKER] Running phase1...
+[UI WORKER] phase1 jobs=540
+[02/27/2026 20:51:48] [START STUDY] EUR/USD @ 2_hour
+[02/27/2026 20:51:49] [START STUDY] EUR/USD @ 2_hour
+[02/27/2026 20:51:49] [START STUDY] EUR/USD @ 2_hour
+[I 2026-02-27 20:51:49,589] Using an existing study with name 'phase1_EURUSD_2_hour_NNFX_2024-11-06to2025-05-07_space-default_seed-42' instead of creating a new one.
+[02/27/2026 20:51:49] [START STUDY] EUR/USD @ 2_hour
+[02/27/2026 20:51:49] [START STUDY] EUR/USD @ 2_hour
+[02/27/2026 20:51:49] [START STUDY] EUR/USD @ 4_hour
+[02/27/2026 20:51:49] [START STUDY] EUR/USD @ 4_hour
+[02/27/2026 20:51:49] [START STUDY] EUR/USD @ 4_hour
+[02/27/2026 20:51:49] [START STUDY] EUR/USD @ 4_hour
+[02/27/2026 20:51:49] [START STUDY] EUR/USD @ 4_hour
+[02/27/2026 20:51:49] [phase1_EURUSD_2_hour_NNFX_2024-11-06to2025-05-07_space-default_seed-42]: finished=105 to_run=195
+[I 2026-02-27 20:51:49,975] Using an existing study with name 'phase1_EURUSD_2_hour_NNFX_2024-11-06to2025-05-07_space-default_seed-1337' instead of creating a new one.
+[02/27/2026 20:51:50] [phase1_EURUSD_2_hour_NNFX_2024-11-06to2025-05-07_space-default_seed-1337]: finished=14 to_run=286
+[I 2026-02-27 20:51:50,156] Using an existing study with name 'phase1_EURUSD_2_hour_NNFX_2024-11-06to2025-05-07_space-default_seed-314' instead of creating a new one.
+[02/27/2026 20:51:50] [phase1_EURUSD_2_hour_NNFX_2024-11-06to2025-05-07_space-default_seed-314]: finished=10 to_run=290
+[I 2026-02-27 20:51:50,310] Using an existing study with name 'phase1_EURUSD_2_hour_NNFX_2024-11-06to2025-05-07_space-default_seed-777' instead of creating a new one.
+[I 2026-02-27 20:51:50,310] Using an existing study with name 'phase1_EURUSD_2_hour_NNFX_2024-11-06to2025-05-07_space-default_seed-444' instead of creating a new one.
+[I 2026-02-27 20:51:50,314] Trial 16 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.04.
+[02/27/2026 20:51:50] [phase1_EURUSD_2_hour_NNFX_2024-11-06to2025-05-07_space-default_seed-444]: finished=3 to_run=297
+[02/27/2026 20:51:50] [phase1_EURUSD_2_hour_NNFX_2024-11-06to2025-05-07_space-default_seed-777]: finished=10 to_run=290
+[I 2026-02-27 20:51:50,468] Trial 11 pruned. Duplicate configuration already scored in DB (run_id=152, score=1.3064).
+[I 2026-02-27 20:51:50,509] Trial 17 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.04.
+[I 2026-02-27 20:51:50,543] Trial 3 pruned. Duplicate configuration already scored in DB (run_id=151, score=0.6511).
+[I 2026-02-27 20:51:50,567] Trial 11 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.04.
+[I 2026-02-27 20:51:50,646] A new study created in RDB with name: phase1_EURUSD_4_hour_NNFX_2024-05-07to2025-05-07_space-default_seed-42
+[02/27/2026 20:51:50] [phase1_EURUSD_4_hour_NNFX_2024-05-07to2025-05-07_space-default_seed-42]: finished=0 to_run=300
+[I 2026-02-27 20:51:50,659] Trial 12 pruned. Duplicate configuration already scored in DB (run_id=160, score=0.3931).
+[I 2026-02-27 20:51:50,678] A new study created in RDB with name: phase1_EURUSD_4_hour_NNFX_2024-05-07to2025-05-07_space-default_seed-1337
+[02/27/2026 20:51:50] [phase1_EURUSD_4_hour_NNFX_2024-05-07to2025-05-07_space-default_seed-1337]: finished=0 to_run=300
+[I 2026-02-27 20:51:50,710] Trial 18 pruned. Duplicate configuration already scored in DB (run_id=144, score=0.6723).
+[I 2026-02-27 20:51:50,728] A new study created in RDB with name: phase1_EURUSD_4_hour_NNFX_2024-05-07to2025-05-07_space-default_seed-314
+[I 2026-02-27 20:51:50,741] A new study created in RDB with name: phase1_EURUSD_4_hour_NNFX_2024-05-07to2025-05-07_space-default_seed-777
+[I 2026-02-27 20:51:50,757] A new study created in RDB with name: phase1_EURUSD_4_hour_NNFX_2024-05-07to2025-05-07_space-default_seed-444
+[02/27/2026 20:51:50] [phase1_EURUSD_4_hour_NNFX_2024-05-07to2025-05-07_space-default_seed-314]: finished=0 to_run=300
+[02/27/2026 20:51:50] [phase1_EURUSD_4_hour_NNFX_2024-05-07to2025-05-07_space-default_seed-444]: finished=0 to_run=300
+[02/27/2026 20:51:50] [phase1_EURUSD_4_hour_NNFX_2024-05-07to2025-05-07_space-default_seed-777]: finished=0 to_run=300
+[I 2026-02-27 20:51:50,777] Trial 4 pruned. Duplicate configuration already scored in DB (run_id=167, score=2.6941).
+[I 2026-02-27 20:51:50,837] Trial 12 pruned. Duplicate configuration already scored in DB (run_id=157, score=0.7544).
+[I 2026-02-27 20:51:50,962] Trial 13 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.04.
+[I 2026-02-27 20:51:51,000] Trial 19 pruned. Duplicate configuration already scored in DB (run_id=159, score=1.5276).
+[I 2026-02-27 20:51:51,078] Trial 13 pruned. Duplicate configuration already scored in DB (run_id=166, score=1.4797).
+[I 2026-02-27 20:51:51,121] Trial 14 pruned. Duplicate configuration already scored in DB (run_id=173, score=1.0886).
+[I 2026-02-27 20:51:51,150] Trial 20 pruned. Duplicate configuration already scored in DB (run_id=175, score=3.2199).
+[I 2026-02-27 20:51:51,226] Trial 14 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.04.
+[I 2026-02-27 20:51:51,261] Trial 15 pruned. Duplicate configuration already scored in DB (run_id=174, score=0.8449).
+[I 2026-02-27 20:51:51,312] Trial 21 pruned. Duplicate configuration already scored in DB (run_id=188, score=0.2861).
+[I 2026-02-27 20:51:51,378] Trial 15 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.04.
+[I 2026-02-27 20:51:51,419] Trial 16 pruned. Duplicate configuration already scored in DB (run_id=176, score=4.0352).
+[I 2026-02-27 20:51:51,462] Trial 22 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.04.
+[I 2026-02-27 20:51:51,528] Trial 16 pruned. Duplicate configuration already scored in DB (run_id=172, score=1.6089).
+[I 2026-02-27 20:51:51,568] Trial 17 pruned. Duplicate configuration already scored in DB (run_id=178, score=2.7258).
+[I 2026-02-27 20:51:51,665] Trial 17 pruned. Insufficient activity: Trades_Per_Day=0.02 < prune_threshold=0.04.
+[I 2026-02-27 20:51:51,687] Trial 18 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.04.
+[I 2026-02-27 20:51:51,944] Trial 18 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.04.
+[I 2026-02-27 20:51:51,944] Trial 19 pruned. Insufficient activity: Trades_Per_Day=0.03 < prune_threshold=0.04.
+[I 2026-02-27 20:51:52,069] Trial 20 pruned. Duplicate configuration already scored in DB (run_id=191, score=3.0919).
+[I 2026-02-27 20:51:52,078] Trial 19 pruned. Duplicate configuration already scored in DB (run_id=185, score=3.2516).
+[I 2026-02-27 20:51:52,213] Trial 20 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.04.
+[I 2026-02-27 20:51:56,094] Trial 0 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.02.
+[I 2026-02-27 20:51:56,233] Trial 0 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.02.
+[I 2026-02-27 20:51:56,815] Trial 0 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.02.
+[I 2026-02-27 20:51:58,370] Trial 5 finished with value: 1.8089 and parameters: {'ATR': 'NATR', 'Baseline': 'ALMA', 'C1': 'TDFI', 'C2': 'TII', 'Volume': 'FantailVMA', 'Exit': 'KASE'}. Best is trial 1 with value: 2.6941.
+[I 2026-02-27 20:51:58,747] Trial 1 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.02.
+[I 2026-02-27 20:51:59,475] Trial 0 finished with value: 0.6136 and parameters: {'ATR': 'ATR', 'Baseline': 'Trimagen', 'C1': 'TDFI', 'C2': 'QQEWithAlerts', 'Volume': 'LWPI', 'Exit': 'STOCHRSI'}. Best is trial 0 with value: 0.6136.
+[I 2026-02-27 20:51:59,685] Trial 21 finished with value: 2.0946 and parameters: {'ATR': 'NATR', 'Baseline': 'McGinleyDI', 'C1': 'CMO', 'C2': 'Ehlers Early Onset Trend', 'Volume': 'FantailVMA', 'Exit': 'CenterOfGravity'}. Best is trial 5 with value: 4.0352.
+[I 2026-02-27 20:52:01,036] Trial 0 finished with value: 3.2264 and parameters: {'ATR': 'ATR', 'Baseline': 'EMA', 'C1': 'trend-lord-nrp-indicator', 'C2': 'GruchaIndex', 'Volume': 'OBV', 'Exit': 'Price Momentum Oscillator'}. Best is trial 0 with value: 3.2264.
+[I 2026-02-27 20:52:01,408] Trial 23 finished with value: 0.8941 and parameters: {'ATR': 'NATR', 'Baseline': 'BraidFilter', 'C1': 'Band Pass Filter', 'C2': 'METROFixed', 'Volume': 'FantailVMA', 'Exit': 'Ehlers DELI (Detrended Leading Indicator)'}. Best is trial 8 with value: 3.2199.
+[I 2026-02-27 20:52:02,882] Trial 1 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.02.
+[I 2026-02-27 20:52:03,074] Trial 6 finished with value: -0.4614 and parameters: {'ATR': 'FilteredATR', 'Baseline': 'EhlersTwoPoleSuperSmootherFilter', 'C1': '2nd Order Gaussian High Pass Filter MTF Zones', 'C2': 'Laguerre', 'Volume': 'ADX', 'Exit': 'ChandelierExit'}. Best is trial 1 with value: 2.6941.
+[I 2026-02-27 20:52:04,461] Trial 111 finished with value: 2.8119 and parameters: {'ATR': 'FilteredATR', 'Baseline': 'GChannel', 'C1': 'DetrendedSyntheticPriceGoscillators', 'C2': 'trend-lord-nrp-indicator', 'Volume': 'NormalizedVolume', 'Exit': 'TTF'}. Best is trial 92 with value: 9.0846.
+[I 2026-02-27 20:52:05,727] Trial 2 finished with value: 4.7893 and parameters: {'ATR': 'ATR', 'Baseline': 'EhlersTwoPoleSuperSmootherFilter', 'C1': 'GlitchIndexFixed', 'C2': 'SSL', 'Volume': 'LWPI', 'Exit': 'QQEWithAlerts'}. Best is trial 2 with value: 4.7893.
+[I 2026-02-27 20:52:06,828] Trial 1 finished with value: 0.8043 and parameters: {'ATR': 'NATR', 'Baseline': 'ALMA', 'C1': 'TTF', 'C2': 'METROFixed', 'Volume': 'ADX', 'Exit': 'SherifHilo'}. Best is trial 1 with value: 0.8043.
+[I 2026-02-27 20:52:07,648] Trial 7 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.04.
+[I 2026-02-27 20:52:08,270] Trial 22 finished with value: 0.212 and parameters: {'ATR': 'ATR', 'Baseline': 'ALMA', 'C1': 'EhlersRoofingFilterA', 'C2': 'ChandelierExit', 'Volume': 'ADX', 'Exit': 'Coral'}. Best is trial 5 with value: 4.0352.
+[I 2026-02-27 20:52:09,784] Trial 2 finished with value: 0.2994 and parameters: {'ATR': 'ATR', 'Baseline': 'VIDYA', 'C1': 'KijunSen', 'C2': 'MACDFIX', 'Volume': 'ADOSC', 'Exit': 'TopTrend'}. Best is trial 2 with value: 0.2994.
+[I 2026-02-27 20:52:12,043] Trial 3 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.02.
+[I 2026-02-27 20:52:12,097] Trial 112 finished with value: 0.529 and parameters: {'ATR': 'FilteredATR', 'Baseline': 'WMA', 'C1': 'METROFixed', 'C2': 'wpr + ma (alerts)', 'Volume': 'NormalizedVolume', 'Exit': 'Top Bottom NR'}. Best is trial 92 with value: 9.0846.
+[I 2026-02-27 20:52:13,778] Trial 21 pruned. Insufficient activity: Trades_Per_Day=0.02 < prune_threshold=0.04.
+[I 2026-02-27 20:52:14,301] Trial 1 finished with value: 0.8045 and parameters: {'ATR': 'FilteredATR', 'Baseline': 'SMA', 'C1': 'Price Momentum Oscillator', 'C2': 'SSL', 'Volume': 'ADX', 'Exit': 'Coral'}. Best is trial 0 with value: 3.2264.
+[I 2026-02-27 20:52:14,702] Trial 23 finished with value: 1.1066 and parameters: {'ATR': 'NATR', 'Baseline': 'Trimagen', 'C1': 'ROCR100', 'C2': 'TP', 'Volume': 'ADX', 'Exit': 'SSL'}. Best is trial 5 with value: 4.0352.
+[I 2026-02-27 20:52:16,163] Trial 4 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.02.
+[I 2026-02-27 20:52:18,309] Trial 8 finished with value: 0.7683 and parameters: {'ATR': 'ATR', 'Baseline': 'HMA', 'C1': 'Price Momentum Oscillator', 'C2': 'Fisher', 'Volume': 'LWPI', 'Exit': 'ROCP'}. Best is trial 1 with value: 2.6941.
+[I 2026-02-27 20:52:18,383] Trial 2 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.02.
+[I 2026-02-27 20:52:19,469] Trial 5 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.02.
+[I 2026-02-27 20:52:20,710] Trial 24 finished with value: 0.6371 and parameters: {'ATR': 'ATR', 'Baseline': 'VIDYA', 'C1': 'cyber-cycle', 'C2': 'Vortex_Indicator', 'Volume': 'OBV', 'Exit': 'Vortex_Indicator'}. Best is trial 5 with value: 4.0352.
+[I 2026-02-27 20:52:21,291] Trial 2 finished with value: 0.5969 and parameters: {'ATR': 'NATR', 'Baseline': 'TrendLord', 'C1': 'TTF', 'C2': 'GeominMA', 'Volume': 'AD', 'Exit': 'Laguerre'}. Best is trial 1 with value: 0.8043.
+[I 2026-02-27 20:52:21,351] Trial 24 pruned. Insufficient activity: Trades_Per_Day=0.02 < prune_threshold=0.04.
+[I 2026-02-27 20:52:22,536] Trial 22 finished with value: 0.8779 and parameters: {'ATR': 'ATR', 'Baseline': 'HMA', 'C1': 'IS Calculation', 'C2': 'true-strength-index', 'Volume': 'ADX', 'Exit': 'cyber-cycle'}. Best is trial 8 with value: 3.2516.
+[I 2026-02-27 20:52:25,713] Trial 3 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.02.
+[I 2026-02-27 20:52:29,479] Trial 9 finished with value: 0.2037 and parameters: {'ATR': 'FilteredATR', 'Baseline': 'ALMA', 'C1': 'MAMA', 'C2': 'Ehlers Early Onset Trend', 'Volume': 'ADXR', 'Exit': 'ROC'}. Best is trial 1 with value: 2.6941.
+[I 2026-02-27 20:52:29,508] Trial 113 finished with value: 0.2136 and parameters: {'ATR': 'FilteredATR', 'Baseline': 'GChannel', 'C1': 'TrendDirectionForceIndexSmoothed4', 'C2': 'TTF', 'Volume': 'NormalizedVolume', 'Exit': 'STOCH_Slow'}. Best is trial 92 with value: 9.0846.
+[I 2026-02-27 20:52:30,718] Trial 4 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.02.
+[I 2026-02-27 20:52:31,177] Trial 25 finished with value: 2.9778 and parameters: {'ATR': 'ATR', 'Baseline': 'McGinley Dynamic 2.3', 'C1': 'true-strength-index', 'C2': 'Coral', 'Volume': 'ADOSC', 'Exit': 'Ehlers DELI (Detrended Leading Indicator)'}. Best is trial 5 with value: 4.0352.
+[I 2026-02-27 20:52:31,791] Trial 3 finished with value: 1.6251 and parameters: {'ATR': 'ATR', 'Baseline': 'Gen3MA', 'C1': 'HLCTrend', 'C2': 'RWI BTF', 'Volume': 'OBV', 'Exit': 'CMO'}. Best is trial 0 with value: 3.2264.
+[I 2026-02-27 20:52:32,350] Trial 1 finished with value: 0.2942 and parameters: {'ATR': 'ATR', 'Baseline': 'TrendLord', 'C1': 'Metro-Advanced', 'C2': 'cyber-cycle', 'Volume': 'OBV', 'Exit': 'TSF'}. Best is trial 0 with value: 0.6136.
+[I 2026-02-27 20:52:34,519] Trial 6 pruned. Insufficient activity: Trades_Per_Day=0.01 < prune_threshold=0.02.
+[I 2026-02-27 20:52:37,338] Trial 114 finished with value: 1.8259 and parameters: {'ATR': 'FilteredATR', 'Baseline': 'VIDYA', 'C1': 'STOCHF_Fast', 'C2': 'PPO', 'Volume': 'LWPI', 'Exit': 'UF2018'}. Best is trial 92 with value: 9.0846.
+[I 2026-02-27 20:52:37,867] Trial 4 finished with value: 0.5524 and parameters: {'ATR': 'FilteredATR', 'Baseline': 'RecursiveMA', 'C1': 'ROCP', 'C2': 'MACDFIX', 'Volume': 'TwiggsMF', 'Exit': 'TSF'}. Best is trial 0 with value: 3.2264.
+[I 2026-02-27 20:52:38,175] Trial 5 finished with value: 1.0067 and parameters: {'ATR': 'NATR', 'Baseline': 'RecursiveMA', 'C1': 'SuperTrend', 'C2': 'EhlersRoofingFilterA', 'Volume': 'ADOSC', 'Exit': 'KalmanFilter'}. Best is trial 5 with value: 1.0067.
+[I 2026-02-27 20:52:39,471] Trial 23 finished with value: 0.8137 and parameters: {'ATR': 'ATR', 'Baseline': 'SMA', 'C1': 'MACDZeroLag', 'C2': 'TTF', 'Volume': 'AD', 'Exit': 'IS Calculation'}. Best is trial 8 with value: 3.2516.
+[I 2026-02-27 20:52:39,749] Trial 10 finished with value: 0.9218 and parameters: {'ATR': 'ATR', 'Baseline': 'EMA', 'C1': 'CenterOfGravity', 'C2': 'Metro-Advanced', 'Volume': 'ADXR', 'Exit': 'CCI'}. Best is trial 1 with value: 2.6941.
+[I 2026-02-27 20:52:40,456] Trial 115 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.04.
+[I 2026-02-27 20:52:40,498] Trial 2 finished with value: 2.0203 and parameters: {'ATR': 'NATR', 'Baseline': 'ALMA', 'C1': 'TDFI', 'C2': 'TII', 'Volume': 'FantailVMA', 'Exit': 'KASE'}. Best is trial 2 with value: 2.0203.
+[I 2026-02-27 20:52:41,817] Trial 3 finished with value: 0.9247 and parameters: {'ATR': 'NATR', 'Baseline': 'TetherLine', 'C1': 'SuperTrend', 'C2': 'TrendLord', 'Volume': 'OBV', 'Exit': 'TrendLord'}. Best is trial 3 with value: 0.9247.
+[I 2026-02-27 20:52:44,514] Trial 6 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.02.
+[I 2026-02-27 20:52:45,168] Trial 3 finished with value: 0.0642 and parameters: {'ATR': 'FilteredATR', 'Baseline': 'EhlersTwoPoleSuperSmootherFilter', 'C1': '2nd Order Gaussian High Pass Filter MTF Zones', 'C2': 'Laguerre', 'Volume': 'ADX', 'Exit': 'ChandelierExit'}. Best is trial 2 with value: 2.0203.
+[I 2026-02-27 20:52:46,874] Trial 24 finished with value: 0.3088 and parameters: {'ATR': 'ATR', 'Baseline': 'McGinley Dynamic 2.3', 'C1': 'KijunSen', 'C2': 'Ehlers DELI (Detrended Leading Indicator)', 'Volume': 'ADX', 'Exit': 'STOCH_Slow'}. Best is trial 8 with value: 3.2516.
+[I 2026-02-27 20:52:47,744] Trial 7 finished with value: 6.0388 and parameters: {'ATR': 'FilteredATR', 'Baseline': 'ATRBasedEMAVariant1', 'C1': 'SSL', 'C2': 'Momentum Candles w ATR', 'Volume': 'FantailVMA', 'Exit': 'GruchaIndex'}. Best is trial 7 with value: 6.0388.
+[I 2026-02-27 20:52:48,288] Trial 116 finished with value: 0.8338 and parameters: {'ATR': 'FilteredATR', 'Baseline': 'GChannel', 'C1': 'APO', 'C2': 'TII', 'Volume': 'ADX', 'Exit': 'wpr + ma (alerts)'}. Best is trial 92 with value: 9.0846.
+[I 2026-02-27 20:52:48,493] Trial 7 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.02.
+[I 2026-02-27 20:52:48,960] Trial 4 pruned. Insufficient activity: Trades_Per_Day=0.0 < prune_threshold=0.02.
+[I 2026-02-27 20:52:51,690] Trial 25 finished with value: 1.1141 and parameters: {'ATR': 'NATR', 'Baseline': 'HMA', 'C1': 'DetrendedSyntheticPriceGoscillators', 'C2': 'HLCTrend', 'Volume': 'OBV', 'Exit': 'RSI'}. Best is trial 8 with value: 3.2516.
+[I 2026-02-27 20:52:51,978] Trial 5 finished with value: 0.9304 and parameters: {'ATR': 'ATR', 'Baseline': 'WMA', 'C1': 'ROC', 'C2': 'TrendDirectionForceIndexSmoothed4', 'Volume': 'LWPI', 'Exit': '2nd Order Gaussian High Pass Filter MTF Zones'}. Best is trial 0 with value: 3.2264.
+[I 2026-02-27 20:52:52,533] Trial 11 finished with value: 1.2673 and parameters: {'ATR': 'ATR', 'Baseline': 'SMA', 'C1': 'TrendContinuation2', 'C2': 'ErgodicTVI', 'Volume': 'OBV', 'Exit': 'APO'}. Best is trial 1 with value: 2.6941.
