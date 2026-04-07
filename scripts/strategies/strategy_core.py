@@ -200,6 +200,37 @@ class PositionManager:
 
         return None
 
+    def check_exit_intrabar(
+        self, bar_high: float, bar_low: float
+    ) -> tuple[str, float] | None:
+        """
+        Intrabar SL/TP check using OHLC range instead of close-only checks.
+
+        Conservative tie-break when both SL and TP are touched in the same bar:
+        assume STOP_LOSS is hit first.
+        """
+        if self.direction == "BUY":
+            stop_hit = self.stop_loss is not None and bar_low <= self.stop_loss
+            tp_hit = self.take_profit is not None and bar_high >= self.take_profit
+            if stop_hit:
+                self.hit_stop_loss = True
+                return ("STOP_LOSS", self.stop_loss)
+            if tp_hit:
+                self.hit_take_profit = True
+                return ("TAKE_PROFIT", self.take_profit)
+
+        elif self.direction == "SELL":
+            stop_hit = self.stop_loss is not None and bar_high >= self.stop_loss
+            tp_hit = self.take_profit is not None and bar_low <= self.take_profit
+            if stop_hit:
+                self.hit_stop_loss = True
+                return ("STOP_LOSS", self.stop_loss)
+            if tp_hit:
+                self.hit_take_profit = True
+                return ("TAKE_PROFIT", self.take_profit)
+
+        return None
+
     def update(self, current_price: float) -> tuple[str, float, str | None]:
         """
         Updates stop loss and checks for exit conditions.

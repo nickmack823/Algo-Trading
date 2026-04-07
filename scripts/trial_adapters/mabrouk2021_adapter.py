@@ -23,6 +23,8 @@ Phase overview:
 """
 
 import ast
+import hashlib
+import json
 import multiprocessing as mp
 from typing import Any, Dict, List
 
@@ -53,6 +55,10 @@ _PAPER_FEATURE_NAMES = [
 ]
 
 _MABROUK_TRAIN_LOOKBACK_YEARS = 7
+
+# Features known to be non-causal/repainting in their current implementation.
+# Keep these out of ML optimization until they are rewritten as forward-only.
+LOOKAHEAD_EXCLUDED_FEATURES = set()
 
 
 def _build_train_then_test_context(
@@ -111,6 +117,8 @@ def _build_train_then_test_context(
 def _build_pool_from_configs(configs, allowed_names=None):
     pool = {}
     for name, cfg in configs.items():  # note: configs is a dict now (name->cfg)
+        if name in LOOKAHEAD_EXCLUDED_FEATURES:
+            continue
         if allowed_names is not None and name not in allowed_names:
             continue
         parameter_space = dict(cfg.get("parameter_space", {}))
@@ -154,15 +162,36 @@ def _filter_available(slot_names, pool_dict):
     return [n for n in slot_names if n in pool_dict]
 
 
-def _suggest_feature(trial: optuna.Trial, pool_dict: dict, name: str):
+def _space_signature(values: list) -> str:
+    """
+    Stable short signature for a categorical choice set.
+    Prevents Optuna dynamic-space collisions when choice lists evolve.
+    """
+    normalized = []
+    for v in values:
+        if hasattr(v, "item"):
+            v = v.item()
+        normalized.append(v)
+    blob = json.dumps(
+        normalized, ensure_ascii=True, sort_keys=False, separators=(",", ":")
+    )
+    return hashlib.sha1(blob.encode("utf-8")).hexdigest()[:8]
+
+
+def _suggest_feature(
+    trial: optuna.Trial, pool_dict: dict, name: str, pool_tag: str
+):
     meta = pool_dict[name]
     pspace = meta["params"]
     category = meta["category"]
     params = {}
     for pkey, pvals in pspace.items():
+        pvals = list(pvals)
+        sig = _space_signature(pvals)
         try:
             params[pkey] = trial.suggest_categorical(
-                f"feat.{category}.{name}.{pkey}", pvals
+                f"{pool_tag}.feat.{category}.{name}.{pkey}.{sig}",
+                pvals,
             )
         except ValueError as e:
             print(f"Failed to sample {category} {name} {pkey} from {pvals}: {e}")
@@ -320,10 +349,12 @@ class MabroukAdapter(StrategyTrialAdapter):
                 - We DO NOT filter choices before suggestion (avoids dynamic value space).
                 - After sampling, we enforce uniqueness and pad deterministically from slot_full.
                 """
+                slot_full = list(slot_full)
+                slot_sig = _space_signature(slot_full)
                 # 1) raw picks with stable choices
                 raw = []
                 for i in range(count):
-                    param_name = f"{pool_tag}.slot.{tag}.{i}.name"
+                    param_name = f"{pool_tag}.slot.{tag}.{i}.name.{slot_sig}"
                     choice = trial.suggest_categorical(param_name, slot_full)
                     raw.append(choice)
 
@@ -386,7 +417,9 @@ class MabroukAdapter(StrategyTrialAdapter):
                             break
 
             picked_all = deduped[:target_k]
-            feature_specs = [_suggest_feature(trial, POOL, name) for name in picked_all]
+            feature_specs = [
+                _suggest_feature(trial, POOL, name, pool_tag) for name in picked_all
+            ]
 
         # Strategy factory: mirror NNFX
         def build_strategy():
@@ -544,6 +577,8 @@ class MabroukAdapter(StrategyTrialAdapter):
                 if not isinstance(item, dict):
                     continue
                 name = item.get("name")
+                if name in LOOKAHEAD_EXCLUDED_FEATURES:
+                    continue
                 params = _as_dict(item.get("params", {}))
                 prefix = item.get("prefix", name)
                 if name:
@@ -560,9 +595,21 @@ class MabroukAdapter(StrategyTrialAdapter):
             model_params = _as_dict(params.get("model_params"))
             thresholds = _as_dict(params.get("thresholds"))
             risk = _as_dict(params.get("risk"))
-            feature_specs = _rebuild_feature_specs(params.get("feature_specs"))
+            raw_feature_specs = params.get("feature_specs")
+            feature_specs = _rebuild_feature_specs(raw_feature_specs)
+
+            raw_feature_list = _as_list(raw_feature_specs)
+            has_excluded_feature = any(
+                isinstance(item, dict)
+                and item.get("name") in LOOKAHEAD_EXCLUDED_FEATURES
+                for item in raw_feature_list
+            )
 
             if not isinstance(model_key, str) or not thresholds or not risk:
+                continue
+            if has_excluded_feature:
+                continue
+            if raw_feature_specs and not feature_specs:
                 continue
 
             for pair in pairs:

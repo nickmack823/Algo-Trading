@@ -1,4 +1,5 @@
 import math
+import logging
 from datetime import datetime
 
 import numpy as np
@@ -131,6 +132,9 @@ class Backtester:
         leverage=50,
         metrics_start_date: str | None = None,
         metrics_end_date: str | None = None,
+        intrabar_mode: str = "hybrid_ohlc",
+        intrabar_timeframe: str | None = None,
+        intrabar_data: pd.DataFrame | None = None,
     ):
         """
         Initializes the backtester with historical data and trading parameters.
@@ -151,6 +155,8 @@ class Backtester:
         )
         self.metrics_start_date = metrics_start_date
         self.metrics_end_date = metrics_end_date
+        self.intrabar_mode = intrabar_mode
+        self.intrabar_timeframe = intrabar_timeframe
 
         self.initial_balance = initial_balance  # Starting account balance
         self.balance = initial_balance  # Current account balance
@@ -179,37 +185,15 @@ class Backtester:
         # Set a start index for when we start trading on the data (to create a semblance of historical data)
         self.trading_start_index = 100
 
-        # Load conversion data if non-USD quote currency
+        # Quote->USD conversion series (used for non-USD quote pairs).
         self.quote_to_usd_data = None
+        self._quote_to_usd_parent_timestamps: np.ndarray | None = None
+        self._quote_to_usd_parent_values: np.ndarray | None = None
+        self._quote_to_usd_intrabar_timestamps: np.ndarray | None = None
+        self._quote_to_usd_intrabar_values: np.ndarray | None = None
+
         if self.quote_currency != "USD":
-            secondary_data_sqlhelper = HistoricalDataSQLHelper(
-                f"{config.DATA_FOLDER}/{self.quote_currency}USD.db"
-            )
-            self.quote_to_usd_data: pd.DataFrame = (
-                secondary_data_sqlhelper.get_historical_data(table=timeframe)
-            )
-
-            # Set Timestamp as index for easier alignment
-            quote_df = self.quote_to_usd_data.set_index("Timestamp").sort_index()
-            data_timestamps = pd.Series(self.data["Timestamp"].unique())
-
-            # Find missing timestamps
-            missing_timestamps = data_timestamps[~data_timestamps.isin(quote_df.index)]
-
-            # For each missing timestamp, forward-fill from the last known quote row
-            if not missing_timestamps.empty:
-                # Reindex the quote data to include missing timestamps
-                all_timestamps = quote_df.index.union(missing_timestamps).sort_values()
-                quote_df = quote_df.reindex(all_timestamps)
-
-                # Forward-fill missing values
-                quote_df = quote_df.ffill()
-
-            # Reset index to have Timestamp as a column again
-            self.quote_to_usd_data = quote_df.reset_index()
-
-            secondary_data_sqlhelper.close_connection()
-            secondary_data_sqlhelper = None
+            self._prepare_parent_quote_to_usd_data()
 
         self.all_trades: list[Trade] = []  # List of all executed trades
         self.open_trades: list[Trade] = []  # Stores open trades
@@ -217,10 +201,429 @@ class Backtester:
         self.max_drawdown = 0  # Maximum observed drawdown
         self.max_drawdown_pct = 0  # Maximum observed drawdown as a percentage
         self.peak_balance = initial_balance  # Highest account balance observed
+        self.equity_samples: list[tuple[pd.Timestamp, float]] = []
+        self._parent_bar_delta = self._timeframe_to_timedelta(self.timeframe)
+
+        # Lower-timeframe arrays used only when intrabar_mode == "lower_timeframe".
+        self._intrabar_timestamps: np.ndarray | None = None
+        self._intrabar_highs: np.ndarray | None = None
+        self._intrabar_lows: np.ndarray | None = None
+        self._intrabar_closes: np.ndarray | None = None
+        self._prepare_intrabar_data(intrabar_data)
+
+        if self.quote_currency != "USD":
+            self._prepare_intrabar_quote_to_usd_data()
 
         # Close SQL connections
         self.backtest_sqlhelper.close_connection()
         self.backtest_sqlhelper = None
+
+    @staticmethod
+    def _timeframe_to_timedelta(timeframe: str) -> pd.Timedelta:
+        try:
+            amount_str, unit = timeframe.split("_", 1)
+            amount = int(amount_str)
+        except Exception:
+            return pd.Timedelta(minutes=1)
+
+        if unit == "minute":
+            return pd.Timedelta(minutes=amount)
+        if unit == "hour":
+            return pd.Timedelta(hours=amount)
+        if unit == "day":
+            return pd.Timedelta(days=amount)
+        return pd.Timedelta(minutes=1)
+
+    @staticmethod
+    def _sanitize_quote_df(quote_df: pd.DataFrame | None) -> pd.DataFrame:
+        if quote_df is None or quote_df.empty:
+            return pd.DataFrame(columns=["Timestamp", "Close"])
+
+        if "Timestamp" not in quote_df.columns or "Close" not in quote_df.columns:
+            return pd.DataFrame(columns=["Timestamp", "Close"])
+
+        out = quote_df.loc[:, ["Timestamp", "Close"]].copy()
+        out["Timestamp"] = pd.to_datetime(out["Timestamp"], errors="coerce")
+        out["Close"] = pd.to_numeric(out["Close"], errors="coerce")
+        out = out.dropna(subset=["Timestamp", "Close"])
+        out = out.sort_values("Timestamp")
+        out = out.drop_duplicates(subset=["Timestamp"], keep="last")
+        out = out.reset_index(drop=True)
+        return out
+
+    def _prepare_parent_quote_to_usd_data(self) -> None:
+        secondary_data_sqlhelper = None
+        try:
+            secondary_data_sqlhelper = HistoricalDataSQLHelper(
+                f"{config.DATA_FOLDER}/{self.quote_currency}USD.db"
+            )
+            raw_quote_df = secondary_data_sqlhelper.get_historical_data(table=self.timeframe)
+            quote_df = self._sanitize_quote_df(raw_quote_df)
+
+            if quote_df.empty:
+                self.quote_to_usd_data = None
+                return
+
+            aligned = quote_df.set_index("Timestamp")
+            data_timestamps = pd.to_datetime(self.data["Timestamp"], errors="coerce")
+            data_timestamps = data_timestamps.dropna().drop_duplicates().sort_values()
+
+            all_timestamps = aligned.index.union(data_timestamps)
+            aligned = aligned.reindex(all_timestamps).ffill()
+            aligned = aligned.reindex(data_timestamps)
+            aligned = aligned.dropna(subset=["Close"]).reset_index()
+
+            if aligned.empty:
+                self.quote_to_usd_data = None
+                return
+
+            self.quote_to_usd_data = aligned
+            self._quote_to_usd_parent_timestamps = aligned["Timestamp"].to_numpy(
+                dtype="datetime64[ns]"
+            )
+            self._quote_to_usd_parent_values = aligned["Close"].to_numpy(dtype=float)
+        except Exception as e:
+            logging.warning(
+                "Failed loading parent quote->USD data for %s (%s): %s",
+                self.forex_pair,
+                self.timeframe,
+                e,
+            )
+            self.quote_to_usd_data = None
+        finally:
+            if secondary_data_sqlhelper is not None:
+                secondary_data_sqlhelper.close_connection()
+
+    def _prepare_intrabar_quote_to_usd_data(self) -> None:
+        if self.intrabar_mode != "lower_timeframe":
+            return
+        if not self.intrabar_timeframe or self.intrabar_timeframe == self.timeframe:
+            return
+
+        secondary_data_sqlhelper = None
+        try:
+            from_date = pd.to_datetime(self.data_start_date).strftime("%Y-%m-%d")
+            to_date = pd.to_datetime(self.data_end_date).strftime("%Y-%m-%d")
+
+            secondary_data_sqlhelper = HistoricalDataSQLHelper(
+                f"{config.DATA_FOLDER}/{self.quote_currency}USD.db"
+            )
+            raw_quote_df = secondary_data_sqlhelper.get_historical_data(
+                table=self.intrabar_timeframe, from_date=from_date, to_date=to_date
+            )
+            quote_df = self._sanitize_quote_df(raw_quote_df)
+            if quote_df.empty:
+                return
+
+            self._quote_to_usd_intrabar_timestamps = quote_df["Timestamp"].to_numpy(
+                dtype="datetime64[ns]"
+            )
+            self._quote_to_usd_intrabar_values = quote_df["Close"].to_numpy(dtype=float)
+        except Exception as e:
+            logging.warning(
+                "Failed loading intrabar quote->USD data for %s (%s -> %s): %s",
+                self.forex_pair,
+                self.timeframe,
+                self.intrabar_timeframe,
+                e,
+            )
+        finally:
+            if secondary_data_sqlhelper is not None:
+                secondary_data_sqlhelper.close_connection()
+
+    @staticmethod
+    def _lookup_rate_asof(
+        timestamps: np.ndarray | None,
+        values: np.ndarray | None,
+        ts,
+        fallback: float | None,
+    ) -> float | None:
+        if timestamps is None or values is None or len(timestamps) == 0:
+            return fallback
+
+        try:
+            ts_np = np.datetime64(pd.to_datetime(ts))
+        except Exception:
+            return fallback
+
+        idx = int(np.searchsorted(timestamps, ts_np, side="right") - 1)
+        if idx < 0 or idx >= len(values):
+            return fallback
+
+        rate = values[idx]
+        if not np.isfinite(rate):
+            return fallback
+        return float(rate)
+
+    def _resolve_quote_to_usd_rate_for_exit(
+        self, exit_timestamp, parent_fallback_rate: float | None
+    ) -> float | None:
+        if self.quote_currency == "USD":
+            return None
+
+        rate = parent_fallback_rate
+        if self.intrabar_mode == "lower_timeframe":
+            rate = self._lookup_rate_asof(
+                self._quote_to_usd_intrabar_timestamps,
+                self._quote_to_usd_intrabar_values,
+                exit_timestamp,
+                fallback=rate,
+            )
+
+        rate = self._lookup_rate_asof(
+            self._quote_to_usd_parent_timestamps,
+            self._quote_to_usd_parent_values,
+            exit_timestamp,
+            fallback=rate,
+        )
+        return rate
+
+    def _prepare_intrabar_data(self, intrabar_data: pd.DataFrame | None) -> None:
+        allowed_modes = {"hybrid_ohlc", "lower_timeframe"}
+        if self.intrabar_mode not in allowed_modes:
+            logging.warning(
+                "Unknown intrabar_mode '%s' for %s %s. Falling back to hybrid_ohlc.",
+                self.intrabar_mode,
+                self.forex_pair,
+                self.timeframe,
+            )
+            self.intrabar_mode = "hybrid_ohlc"
+
+        if self.intrabar_mode != "lower_timeframe":
+            return
+
+        if intrabar_data is None or intrabar_data.empty:
+            logging.warning(
+                "Lower-timeframe mode requested but no intrabar_data provided for %s %s. Falling back to hybrid_ohlc.",
+                self.forex_pair,
+                self.timeframe,
+            )
+            self.intrabar_mode = "hybrid_ohlc"
+            return
+
+        required_cols = {"Timestamp", "High", "Low", "Close"}
+        missing = required_cols.difference(intrabar_data.columns)
+        if missing:
+            logging.warning(
+                "Intrabar data missing required columns %s for %s %s. Falling back to hybrid_ohlc.",
+                sorted(missing),
+                self.forex_pair,
+                self.timeframe,
+            )
+            self.intrabar_mode = "hybrid_ohlc"
+            return
+
+        intrabar_df = intrabar_data.loc[:, ["Timestamp", "High", "Low", "Close"]].copy()
+        intrabar_df["Timestamp"] = pd.to_datetime(
+            intrabar_df["Timestamp"], errors="coerce"
+        )
+        intrabar_df["High"] = pd.to_numeric(intrabar_df["High"], errors="coerce")
+        intrabar_df["Low"] = pd.to_numeric(intrabar_df["Low"], errors="coerce")
+        intrabar_df["Close"] = pd.to_numeric(intrabar_df["Close"], errors="coerce")
+        intrabar_df = intrabar_df.dropna(subset=["Timestamp", "High", "Low", "Close"])
+        intrabar_df = intrabar_df.sort_values("Timestamp").reset_index(drop=True)
+
+        if intrabar_df.empty:
+            logging.warning(
+                "Intrabar data became empty after cleaning for %s %s. Falling back to hybrid_ohlc.",
+                self.forex_pair,
+                self.timeframe,
+            )
+            self.intrabar_mode = "hybrid_ohlc"
+            return
+
+        self._intrabar_timestamps = intrabar_df["Timestamp"].to_numpy(
+            dtype="datetime64[ns]"
+        )
+        self._intrabar_highs = intrabar_df["High"].to_numpy(dtype=float)
+        self._intrabar_lows = intrabar_df["Low"].to_numpy(dtype=float)
+        self._intrabar_closes = intrabar_df["Close"].to_numpy(dtype=float)
+
+    def _bar_bounds(
+        self, index: int, timestamps_dt: np.ndarray
+    ) -> tuple[pd.Timestamp, pd.Timestamp]:
+        start_ts = pd.Timestamp(timestamps_dt[index])
+        if index + 1 < len(timestamps_dt):
+            end_ts = pd.Timestamp(timestamps_dt[index + 1])
+        else:
+            end_ts = start_ts + self._parent_bar_delta
+
+        if end_ts <= start_ts:
+            end_ts = start_ts + pd.Timedelta(minutes=1)
+        return start_ts, end_ts
+
+    def _close_trade_if_exit(
+        self,
+        trade: Trade,
+        exit_condition: str | None,
+        exit_price: float | None,
+        exit_timestamp,
+        quote_to_usd_rate: float | None,
+    ) -> bool:
+        if not exit_condition:
+            return False
+
+        exit_quote_to_usd_rate = self._resolve_quote_to_usd_rate_for_exit(
+            exit_timestamp, parent_fallback_rate=quote_to_usd_rate
+        )
+        trade.position_events.append((exit_timestamp, exit_condition))
+        trade.close_trade(
+            exit_timestamp,
+            exit_price,
+            self.commission_per_lot,
+            exit_quote_to_usd_rate,
+        )
+        self._apply_closed_trade_balance(trade)
+        return True
+
+    def _evaluate_open_trade_exit_hybrid(
+        self,
+        trade: Trade,
+        current_high: float,
+        current_low: float,
+        current_price: float,
+        timestamp,
+    ) -> tuple[str | None, float | None, pd.Timestamp]:
+        position_manager = trade.plan.position_manager
+        exit_result = position_manager.check_exit_intrabar(current_high, current_low)
+        if exit_result:
+            exit_condition, exit_price = exit_result
+            return exit_condition, exit_price, pd.to_datetime(timestamp)
+
+        exit_condition, exit_price, event = position_manager.update(current_price)
+        if event:
+            trade.position_events.append((timestamp, event))
+        return exit_condition, exit_price, pd.to_datetime(timestamp)
+
+    def _evaluate_open_trade_exit_lower_timeframe(
+        self,
+        trade: Trade,
+        parent_start_ts: pd.Timestamp,
+        parent_end_ts: pd.Timestamp,
+        current_high: float,
+        current_low: float,
+        current_price: float,
+        timestamp,
+    ) -> tuple[str | None, float | None, pd.Timestamp]:
+        if self._intrabar_timestamps is None:
+            return self._evaluate_open_trade_exit_hybrid(
+                trade,
+                current_high=current_high,
+                current_low=current_low,
+                current_price=current_price,
+                timestamp=timestamp,
+            )
+
+        start_np = np.datetime64(parent_start_ts)
+        end_np = np.datetime64(parent_end_ts)
+        left = int(np.searchsorted(self._intrabar_timestamps, start_np, side="left"))
+        right = int(np.searchsorted(self._intrabar_timestamps, end_np, side="left"))
+
+        if right <= left:
+            return self._evaluate_open_trade_exit_hybrid(
+                trade,
+                current_high=current_high,
+                current_low=current_low,
+                current_price=current_price,
+                timestamp=timestamp,
+            )
+
+        position_manager = trade.plan.position_manager
+        for i in range(left, right):
+            sub_high = self._intrabar_highs[i]
+            sub_low = self._intrabar_lows[i]
+            sub_close = self._intrabar_closes[i]
+            sub_ts = pd.Timestamp(self._intrabar_timestamps[i])
+
+            if not (
+                np.isfinite(sub_high) and np.isfinite(sub_low) and np.isfinite(sub_close)
+            ):
+                continue
+
+            exit_result = position_manager.check_exit_intrabar(sub_high, sub_low)
+            if exit_result:
+                exit_condition, exit_price = exit_result
+                return exit_condition, exit_price, sub_ts
+
+            # Keep trailing/breakeven updates aligned with actual sub-bar progression.
+            exit_condition, exit_price, event = position_manager.update(sub_close)
+            if event:
+                trade.position_events.append((sub_ts, event))
+            if exit_condition:
+                return exit_condition, exit_price, sub_ts
+
+        return None, None, pd.to_datetime(timestamp)
+
+    def _apply_closed_trade_balance(self, trade: Trade) -> None:
+        """
+        Apply a closed trade's net result to account balance cumulatively.
+
+        Important for multi-leg positions:
+        - Each Trade object stores its own balance snapshot at entry.
+        - On close, we must update the account balance by net delta, not overwrite
+          with the trade object's local balance projection.
+        """
+        pnl = float(trade.pnl or 0.0)
+        commission = float(trade.commission or 0.0)
+        net_delta = pnl - commission
+        self.balance = round(self.balance + net_delta, 2)
+        trade.balance_after_trade = self.balance
+
+    def _compute_unrealized_pnl(
+        self, trade: Trade, mark_price: float, quote_to_usd_rate: float | None
+    ) -> float:
+        if trade.exit_price is not None:
+            return 0.0
+        if mark_price is None or not np.isfinite(mark_price):
+            return 0.0
+        if self.quote_currency != "USD" and (
+            quote_to_usd_rate is None or not np.isfinite(quote_to_usd_rate)
+        ):
+            return 0.0
+
+        net_pips = strategy_core.PositionCalculator.calculate_pip_change(
+            self.forex_pair,
+            trade.entry_price,
+            float(mark_price),
+            trade.direction,
+        )
+        pnl = strategy_core.PositionCalculator.calculate_profit_from_pips(
+            self.forex_pair,
+            net_pips,
+            trade.units,
+            float(mark_price),
+            quote_to_usd_rate,
+        )
+        return float(pnl)
+
+    def _compute_mark_to_market_equity(
+        self, mark_price: float, quote_to_usd_rate: float | None
+    ) -> float:
+        unrealized = 0.0
+        commission_if_closed_now = 0.0
+        for trade in self.open_trades:
+            unrealized += self._compute_unrealized_pnl(
+                trade, mark_price, quote_to_usd_rate
+            )
+            commission_if_closed_now += trade.lot_size * self.commission_per_lot
+        equity = self.balance + unrealized - commission_if_closed_now
+        return round(float(equity), 2)
+
+    def _record_equity_sample(
+        self, timestamp, mark_price: float, quote_to_usd_rate: float | None
+    ) -> None:
+        equity = self._compute_mark_to_market_equity(mark_price, quote_to_usd_rate)
+        ts = pd.to_datetime(timestamp)
+        self.equity_samples.append((ts, equity))
+
+        if equity > self.peak_balance:
+            self.peak_balance = equity
+
+        drawdown = self.peak_balance - equity
+        drawdown_pct = (drawdown / self.peak_balance) * 100 if self.peak_balance > 0 else 0
+        if drawdown > self.max_drawdown:
+            self.max_drawdown = drawdown
+            self.max_drawdown_pct = drawdown_pct
 
     # def __repr__(self):
     #     return f"Backtester({self.strategy.NAME}, {self.forex_pair}, {self.timeframe}) | {self.strategy.PARAMETER_SETTINGS}"
@@ -279,6 +682,34 @@ class Backtester:
                 max_drawdown = drawdown
                 max_drawdown_pct = drawdown_pct
 
+        return max_drawdown, max_drawdown_pct
+
+    def _compute_drawdown_from_equity_samples(
+        self, start_date: pd.Timestamp, end_date: pd.Timestamp
+    ) -> tuple[float, float]:
+        if not self.equity_samples:
+            return 0.0, 0.0
+
+        end_exclusive = end_date + pd.Timedelta(days=1)
+        samples = [
+            equity
+            for ts, equity in self.equity_samples
+            if start_date <= pd.to_datetime(ts) < end_exclusive
+        ]
+        if not samples:
+            return 0.0, 0.0
+
+        peak = self.initial_balance
+        max_drawdown = 0.0
+        max_drawdown_pct = 0.0
+        for equity in samples:
+            if equity > peak:
+                peak = equity
+            drawdown = peak - equity
+            drawdown_pct = (drawdown / peak) * 100 if peak > 0 else 0.0
+            if drawdown > max_drawdown:
+                max_drawdown = drawdown
+                max_drawdown_pct = drawdown_pct
         return max_drawdown, max_drawdown_pct
 
     def _calculate_metrics(self):
@@ -369,7 +800,14 @@ class Backtester:
         )
 
         # Drawdown and drawdown-based metrics in evaluation window only.
-        max_drawdown, max_drawdown_pct = self._compute_drawdown_from_trades(metric_trades)
+        # Prefer mark-to-market equity samples; fallback to closed-trade path if unavailable.
+        max_drawdown, max_drawdown_pct = self._compute_drawdown_from_equity_samples(
+            metrics_start, metrics_end
+        )
+        if max_drawdown == 0.0 and max_drawdown_pct == 0.0 and metric_trades:
+            max_drawdown, max_drawdown_pct = self._compute_drawdown_from_trades(
+                metric_trades
+            )
         calmar_ratio = (
             (total_return_pct / max_drawdown_pct)
             if max_drawdown_pct != 0
@@ -496,25 +934,40 @@ class Backtester:
         Now uses generate_trade_plan() from Strategy to determine all trade logic.
         """
         closes = self.data["Close"].values
+        highs = self.data["High"].values
+        lows = self.data["Low"].values
         timestamps = self.data["Timestamp"].values
+        timestamps_dt = pd.to_datetime(self.data["Timestamp"]).to_numpy(
+            dtype="datetime64[ns]"
+        )
         quote_to_usd_rates = (
             self.quote_to_usd_data["Close"].values
             if self.quote_to_usd_data is not None
             else None
         )
 
-        for index, row in enumerate(self.data.itertuples(index=False)):
+        for index in range(len(self.data)):
 
             # Skip the first 100 rows so we have a semblance of historical data
             if index < self.trading_start_index:
                 continue
 
             current_price = closes[index]
+            current_high = highs[index]
+            current_low = lows[index]
             timestamp = timestamps[index]
 
             quote_to_usd_rate = None
             if quote_to_usd_rates is not None:
-                quote_to_usd_rate = quote_to_usd_rates[index]
+                if index < len(quote_to_usd_rates):
+                    quote_to_usd_rate = quote_to_usd_rates[index]
+                if quote_to_usd_rate is None or not np.isfinite(quote_to_usd_rate):
+                    quote_to_usd_rate = self._lookup_rate_asof(
+                        self._quote_to_usd_parent_timestamps,
+                        self._quote_to_usd_parent_values,
+                        timestamp,
+                        fallback=None,
+                    )
 
             # Generate zero or more trade plans (entries and/or exits) using strategy logic
             plans: list[strategy_core.TradePlan] = self.strategy.generate_trade_plan(
@@ -527,26 +980,38 @@ class Backtester:
 
             # --- Step 1: Check SL/TP exit for open trades BEFORE executing any strategy ENTRY/EXIT ---
             exited_trades = []
+            bar_start_ts, bar_end_ts = self._bar_bounds(index, timestamps_dt)
             for trade in self.open_trades:
-                # Update PositionManager with current price
-                # This updates its internal stop loss based on strategy logic,
-                # then returns a tuple of (exit_condition, exit_price) or (None, None) if no exit
-                exit_condition, exit_price, event = trade.plan.position_manager.update(
-                    current_price
-                )
-                if event:
-                    trade.position_events.append((timestamp, event))
-
-                # Close trade if exit condition is met (STOP_LOSS or TAKE_PROFIT)
-                if exit_condition:
-                    trade.position_events.append((timestamp, exit_condition))
-                    trade.close_trade(
-                        timestamp,
-                        exit_price,
-                        self.commission_per_lot,
-                        quote_to_usd_rate,
+                if self.intrabar_mode == "lower_timeframe":
+                    exit_condition, exit_price, exit_timestamp = (
+                        self._evaluate_open_trade_exit_lower_timeframe(
+                            trade,
+                            parent_start_ts=bar_start_ts,
+                            parent_end_ts=bar_end_ts,
+                            current_high=current_high,
+                            current_low=current_low,
+                            current_price=current_price,
+                            timestamp=timestamp,
+                        )
                     )
-                    self.balance = trade.balance_after_trade
+                else:
+                    exit_condition, exit_price, exit_timestamp = (
+                        self._evaluate_open_trade_exit_hybrid(
+                            trade,
+                            current_high=current_high,
+                            current_low=current_low,
+                            current_price=current_price,
+                            timestamp=timestamp,
+                        )
+                    )
+
+                if self._close_trade_if_exit(
+                    trade,
+                    exit_condition=exit_condition,
+                    exit_price=exit_price,
+                    exit_timestamp=exit_timestamp,
+                    quote_to_usd_rate=quote_to_usd_rate,
+                ):
                     exited_trades.append(trade)
 
             # Remove only trades that exited
@@ -567,14 +1032,17 @@ class Backtester:
                             if self.position == 1
                             else current_price * (1 + self.slippage)
                         )
+                        exit_quote_to_usd_rate = self._resolve_quote_to_usd_rate_for_exit(
+                            timestamp, parent_fallback_rate=quote_to_usd_rate
+                        )
                         for trade in self.open_trades:
                             trade.close_trade(
                                 timestamp,
                                 exit_price,
                                 self.commission_per_lot,
-                                quote_to_usd_rate,
+                                exit_quote_to_usd_rate,
                             )
-                            self.balance = trade.balance_after_trade
+                            self._apply_closed_trade_balance(trade)
                         self.open_trades = []
                         exited_by_strategy_plan = True
                     continue
@@ -636,18 +1104,8 @@ class Backtester:
                 self.all_trades.append(trade)
                 self.open_trades.append(trade)
 
-            # Track equity high to compute drawdown
-            if self.balance > self.peak_balance:
-                self.peak_balance = self.balance
-
-            # Compute drawdown
-            drawdown = self.peak_balance - self.balance
-            drawdown_pct = (
-                (drawdown / self.peak_balance) * 100 if self.peak_balance > 0 else 0
-            )
-            if drawdown > self.max_drawdown:
-                self.max_drawdown = drawdown
-                self.max_drawdown_pct = drawdown_pct
+            # Mark-to-market equity and realistic drawdown with open-trade PnL included.
+            self._record_equity_sample(timestamp, current_price, quote_to_usd_rate)
 
             # Automatically set position based on current open trades
             if not self.open_trades:

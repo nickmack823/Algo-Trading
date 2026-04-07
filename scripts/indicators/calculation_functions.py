@@ -931,73 +931,111 @@ def FantailVMA(
     DataFrame
         A DataFrame containing the Fantail VMA values.
     """
-    high = price_data["High"]
-    low = price_data["Low"]
-    close = price_data["Close"]
+    adx_length = max(int(adx_length), 1)
+    ma_length = max(int(ma_length), 1)
+    weighting = float(weighting)
+    if not np.isfinite(weighting) or weighting < 0:
+        weighting = 2.0
+    alpha = 1.0 / (weighting + 1.0)
+
+    high = pd.to_numeric(price_data["High"], errors="coerce").to_numpy(dtype=float)
+    low = pd.to_numeric(price_data["Low"], errors="coerce").to_numpy(dtype=float)
+    close = pd.to_numeric(price_data["Close"], errors="coerce").to_numpy(dtype=float)
 
     n = len(close)
+    spdi = np.full(n, np.nan, dtype=float)
+    smdi = np.full(n, np.nan, dtype=float)
+    str_ = np.full(n, np.nan, dtype=float)
+    adx = np.full(n, np.nan, dtype=float)
+    varma = np.full(n, np.nan, dtype=float)
 
-    # Initialize arrays
-    spdi = np.zeros(n)
-    smdi = np.zeros(n)
-    str_ = np.zeros(n)
-    adx = np.zeros(n)
-    varma = np.zeros(n)
-    ma = np.zeros(n)
+    if n == 0:
+        return pd.DataFrame({"Fantail_VMA": [], "Fantail_MA": []}, index=price_data.index)
 
-    # Calculate the Fantail VMA
-    for i in range(n - 2, -1, -1):
+    # Causal forward recursion: each bar only depends on current/previous bars.
+    for i in range(n):
         hi = high[i]
-        hi1 = high[i + 1]
         lo = low[i]
-        lo1 = low[i + 1]
-        close1 = close[i + 1]
+        c = close[i]
+        if not (np.isfinite(hi) and np.isfinite(lo) and np.isfinite(c)):
+            if i > 0:
+                spdi[i] = spdi[i - 1]
+                smdi[i] = smdi[i - 1]
+                str_[i] = str_[i - 1]
+                adx[i] = adx[i - 1]
+                varma[i] = varma[i - 1]
+            continue
 
-        bulls = 0.5 * (abs(hi - hi1) + (hi - hi1))
-        bears = 0.5 * (abs(lo1 - lo) + (lo1 - lo))
+        if i == 0:
+            spdi[i] = 0.0
+            smdi[i] = 0.0
+            tr = hi - lo
+            str_[i] = tr if np.isfinite(tr) else 0.0
+            adx[i] = 0.0
+            varma[i] = c
+            continue
+
+        hi_prev = high[i - 1]
+        lo_prev = low[i - 1]
+        close_prev = close[i - 1]
+        prev_spdi = spdi[i - 1] if np.isfinite(spdi[i - 1]) else 0.0
+        prev_smdi = smdi[i - 1] if np.isfinite(smdi[i - 1]) else 0.0
+        prev_str = str_[i - 1] if np.isfinite(str_[i - 1]) else 0.0
+        prev_adx = adx[i - 1] if np.isfinite(adx[i - 1]) else 0.0
+        prev_varma = varma[i - 1] if np.isfinite(varma[i - 1]) else c
+
+        if np.isfinite(hi_prev) and np.isfinite(lo_prev):
+            bulls = max(hi - hi_prev, 0.0)
+            bears = max(lo_prev - lo, 0.0)
+        else:
+            bulls = 0.0
+            bears = 0.0
 
         if bulls > bears:
-            bears = 0
-        elif bulls < bears:
-            bulls = 0
+            bears = 0.0
+        elif bears > bulls:
+            bulls = 0.0
         else:
-            bulls = 0
-            bears = 0
+            bulls = 0.0
+            bears = 0.0
 
-        spdi[i] = (weighting * spdi[i + 1] + bulls) / (weighting + 1)
-        smdi[i] = (weighting * smdi[i + 1] + bears) / (weighting + 1)
+        spdi[i] = (1.0 - alpha) * prev_spdi + alpha * bulls
+        smdi[i] = (1.0 - alpha) * prev_smdi + alpha * bears
 
-        tr = max(hi - lo, hi - close1)
-        str_[i] = (weighting * str_[i + 1] + tr) / (weighting + 1)
+        if np.isfinite(close_prev):
+            tr = max(hi - lo, abs(hi - close_prev), abs(lo - close_prev))
+        else:
+            tr = hi - lo
+        str_[i] = (1.0 - alpha) * prev_str + alpha * tr
 
         if str_[i] > 0:
             pdi = spdi[i] / str_[i]
             mdi = smdi[i] / str_[i]
         else:
-            pdi = mdi = 0
+            pdi = 0.0
+            mdi = 0.0
 
-        if (pdi + mdi) > 0:
-            dx = abs(pdi - mdi) / (pdi + mdi)
+        denom = pdi + mdi
+        dx = abs(pdi - mdi) / denom if denom > 0 else 0.0
+        adx[i] = (1.0 - alpha) * prev_adx + alpha * dx
+
+        start = max(0, i - adx_length + 1)
+        adx_window = adx[start : i + 1]
+        adx_window = adx_window[np.isfinite(adx_window)]
+        if adx_window.size:
+            adxmin = float(np.min(adx_window))
+            adxmax = float(np.max(adx_window))
+            diff = adxmax - adxmin
+            const = (adx[i] - adxmin) / diff if diff > 0 else 0.0
         else:
-            dx = 0
+            const = 0.0
 
-        adx[i] = (weighting * adx[i + 1] + dx) / (weighting + 1)
-        vadx = adx[i]
+        const = float(np.clip(const, 0.0, 1.0))
+        varma[i] = ((2.0 - const) * prev_varma + const * c) / 2.0
 
-        adxmin = min(adx[i : i + adx_length])
-        adxmax = max(adx[i : i + adx_length])
-
-        diff = adxmax - adxmin
-        const = (vadx - adxmin) / diff if diff > 0 else 0
-
-        varma[i] = ((2 - const) * varma[i + 1] + const * close[i]) / 2
-
-    # Calculate the MA
-    ma = pd.Series(varma).rolling(window=ma_length).mean()
-
-    # Convert arrays to pandas Series
-    varma_series = pd.Series(varma)
-    ma_series = pd.Series(ma)
+    varma_series = pd.Series(varma, index=price_data.index, name="Fantail_VMA")
+    ma_series = varma_series.rolling(window=ma_length, min_periods=ma_length).mean()
+    ma_series.name = "Fantail_MA"
 
     return pd.DataFrame({"Fantail_VMA": varma_series, "Fantail_MA": ma_series})
 
@@ -1153,23 +1191,20 @@ def KijunSen(df: pd.DataFrame, period: int = 26, shift: int = 9) -> pd.Series:
     Returns:
     pd.Series: Series with Kijun-Sen line values
     """
-    high = df["High"]
-    low = df["Low"]
-    kijun_buffer = [np.nan] * len(df)
+    period = max(int(period), 1)
+    shift = max(int(shift), 0)
 
-    # Calculate Kijun-Sen for main part
-    for i in range(period, len(df)):
-        kijun_buffer[i - shift] = (
-            high.iloc[i - period : i].max() + low.iloc[i - period : i].min()
-        ) / 2
+    high = pd.to_numeric(df["High"], errors="coerce")
+    low = pd.to_numeric(df["Low"], errors="coerce")
 
-    # Calculate Kijun-Sen for initial part
-    for i in range(shift - 1, -1, -1):
-        kijun_buffer[i] = (
-            high.iloc[: period - shift + i].max() + low.iloc[: period - shift + i].min()
-        ) / 2
+    # Causal Kijun: trailing high/low midpoint over the last `period` bars.
+    kijun = (high.rolling(period, min_periods=period).max() + low.rolling(period, min_periods=period).min()) / 2.0
 
-    return pd.Series(kijun_buffer, index=df.index)
+    # Preserve the `shift` parameter as an optional additional lag (never lead).
+    if shift > 0:
+        kijun = kijun.shift(shift)
+
+    return pd.Series(kijun, index=df.index)
 
 
 # Confirmation Functions
@@ -1297,35 +1332,84 @@ def KalmanFilter(
     pd.DataFrame: A Pandas DataFrame containing the calculated Kalman Filter values.
     """
 
-    ext_map_buffer_up = np.empty(len(price_data))
+    n = len(price_data)
+    ext_map_buffer_up = np.empty(n)
     ext_map_buffer_up[:] = np.nan
-    ext_map_buffer_down = np.empty(len(price_data))
+    ext_map_buffer_down = np.empty(n)
     ext_map_buffer_down[:] = np.nan
 
-    velocity = 0
-    distance = 0
-    error = 0
-    value = price_data["Close"].iloc[1]
+    if n == 0:
+        return pd.DataFrame({"Up": ext_map_buffer_up, "Down": ext_map_buffer_down})
 
-    for i in range(len(price_data) - 1, -1, -1):
-        price = price_data["Close"].iloc[i]
-        distance = price - value
-        error = value + distance * np.sqrt(sharpness * k / 100)
-        velocity = velocity + distance * k / 100
-        value = error + velocity
+    close = pd.to_numeric(price_data["Close"], errors="coerce").to_numpy(dtype=float)
+    finite_idx = np.where(np.isfinite(close))[0]
+    if len(finite_idx) == 0:
+        return pd.DataFrame({"Up": ext_map_buffer_up, "Down": ext_map_buffer_down})
+
+    # Conservative parameter guards for numerical stability.
+    try:
+        k = float(k)
+    except Exception:
+        k = 1.0
+    try:
+        sharpness = float(sharpness)
+    except Exception:
+        sharpness = 1.0
+    if not np.isfinite(k) or k <= 0:
+        k = 1.0
+    if not np.isfinite(sharpness) or sharpness <= 0:
+        sharpness = 1.0
+
+    k = min(k, 20.0)
+    sharpness = min(sharpness, 20.0)
+
+    gain = k / 100.0
+    smooth = np.sqrt((sharpness * k) / 100.0)
+
+    # Initialize from earliest finite close.
+    init_i = int(finite_idx[0])
+    value = float(close[init_i])
+    velocity = 0.0
+
+    max_abs_distance = 1e6
+    max_abs_state = 1e9
+
+    # Causal forward recursion.
+    for i in range(init_i, n):
+        price = close[i]
+        if not np.isfinite(price):
+            if i > 0:
+                ext_map_buffer_up[i] = ext_map_buffer_up[i - 1]
+                ext_map_buffer_down[i] = ext_map_buffer_down[i - 1]
+            continue
+
+        distance = float(np.clip(price - value, -max_abs_distance, max_abs_distance))
+
+        with np.errstate(over="ignore", invalid="ignore"):
+            error = value + distance * smooth
+            velocity = velocity + distance * gain
+            value = error + velocity
+
+        # Reset unstable state instead of propagating NaN/Inf.
+        if not np.isfinite(value) or not np.isfinite(velocity):
+            value = float(price)
+            velocity = 0.0
+
+        value = float(np.clip(value, -max_abs_state, max_abs_state))
+        velocity = float(np.clip(velocity, -max_abs_state, max_abs_state))
 
         if velocity > 0:
             ext_map_buffer_up[i] = value
             ext_map_buffer_down[i] = np.nan
 
-            if i < len(price_data) - 1 and np.isnan(ext_map_buffer_up[i + 1]):
-                ext_map_buffer_up[i + 1] = ext_map_buffer_down[i + 1]
+            if i > init_i and np.isnan(ext_map_buffer_up[i - 1]):
+                ext_map_buffer_up[i - 1] = ext_map_buffer_down[i - 1]
         else:
             ext_map_buffer_up[i] = np.nan
             ext_map_buffer_down[i] = value
 
-            if i < len(price_data) - 1 and np.isnan(ext_map_buffer_down[i + 1]):
-                ext_map_buffer_down[i + 1] = ext_map_buffer_up[i + 1]
+            if i > init_i and np.isnan(ext_map_buffer_down[i - 1]):
+                ext_map_buffer_down[i - 1] = ext_map_buffer_up[i - 1]
 
     result = pd.DataFrame({"Up": ext_map_buffer_up, "Down": ext_map_buffer_down})
     return result
@@ -1644,78 +1728,91 @@ def GruchaIndex(
 
 
 def HalfTrend(price_data: pd.DataFrame, amplitude: int = 2) -> pd.DataFrame:
-    def single_atr(index: int) -> float:
-        return (price_data["High"][index] - price_data["Low"][index]) / 2
+    """
+    Causal HalfTrend-style trend line approximation.
 
-    nexttrend = False
-    maxlowprice = 0
-    minhighprice = float("inf")
-    up = [0] * len(price_data)
-    down = [0] * len(price_data)
-    atrlo = [0] * len(price_data)
-    atrhi = [0] * len(price_data)
-    trend = [0] * len(price_data)
+    Returns:
+        DataFrame with columns:
+        - Up: active bullish line (0 when inactive)
+        - Down: active bearish line (0 when inactive)
+    """
+    amplitude = max(int(amplitude), 2)
 
-    for i in range(len(price_data) - 1, -1, -1):
-        lowprice_i = price_data["Low"][i - amplitude : i].min()
-        highprice_i = price_data["High"][i - amplitude : i].max()
-        lowma = price_data["Low"][i - amplitude : i].mean()
-        highma = price_data["High"][i - amplitude : i].mean()
-        trend[i] = trend[i + 1] if i + 1 < len(price_data) else trend[i]
-        atr_val = single_atr(i)
+    high = pd.to_numeric(price_data["High"], errors="coerce")
+    low = pd.to_numeric(price_data["Low"], errors="coerce")
+    close = pd.to_numeric(price_data["Close"], errors="coerce")
+    n = len(price_data)
 
-        if i + 1 < len(price_data):
-            if nexttrend:
-                maxlowprice = max(lowprice_i, maxlowprice)
+    up = np.zeros(n, dtype=float)
+    down = np.zeros(n, dtype=float)
 
-                if (
-                    highma < maxlowprice
-                    and price_data["Close"][i] < price_data["Low"][i + 1]
-                ):
-                    trend[i] = 1.0
-                    nexttrend = False
-                    minhighprice = highprice_i
-            else:
-                minhighprice = min(highprice_i, minhighprice)
+    low_roll = low.rolling(window=amplitude, min_periods=amplitude)
+    high_roll = high.rolling(window=amplitude, min_periods=amplitude)
+    lowprice = low_roll.min().to_numpy(dtype=float)
+    highprice = high_roll.max().to_numpy(dtype=float)
+    lowma = low_roll.mean().to_numpy(dtype=float)
+    highma = high_roll.mean().to_numpy(dtype=float)
+    close_vals = close.to_numpy(dtype=float)
+    low_vals = low.to_numpy(dtype=float)
+    high_vals = high.to_numpy(dtype=float)
 
-                if (
-                    lowma > minhighprice
-                    and price_data["Close"][i] > price_data["High"][i + 1]
-                ):
-                    trend[i] = 0.0
-                    nexttrend = True
-                    maxlowprice = lowprice_i
+    # 0 = bullish line active (Up), 1 = bearish line active (Down)
+    trend = 0
+    maxlowprice = np.nan
+    minhighprice = np.nan
 
-        if trend[i] == 0.0:
-            if i + 1 < len(price_data) and trend[i + 1] != 0.0:
-                up[i] = down[i + 1]
-                up[i + 1] = up[i]
-            else:
-                up[i] = (
-                    max(maxlowprice, up[i + 1]) if i + 1 < len(price_data) else up[i]
-                )
+    for i in range(n):
+        if not (
+            np.isfinite(lowprice[i])
+            and np.isfinite(highprice[i])
+            and np.isfinite(lowma[i])
+            and np.isfinite(highma[i])
+            and np.isfinite(close_vals[i])
+        ):
+            if i > 0:
+                up[i] = up[i - 1]
+                down[i] = down[i - 1]
+            continue
 
-            atrhi[i] = up[i] - atr_val
-            atrlo[i] = up[i]
+        if not np.isfinite(maxlowprice):
+            maxlowprice = lowprice[i]
+        if not np.isfinite(minhighprice):
+            minhighprice = highprice[i]
+
+        prev_low = low_vals[i - 1] if i > 0 else np.nan
+        prev_high = high_vals[i - 1] if i > 0 else np.nan
+
+        if trend == 0:
+            maxlowprice = max(maxlowprice, lowprice[i])
+            if (
+                i > 0
+                and np.isfinite(prev_low)
+                and highma[i] < maxlowprice
+                and close_vals[i] < prev_low
+            ):
+                trend = 1
+                minhighprice = highprice[i]
+        else:
+            minhighprice = min(minhighprice, highprice[i])
+            if (
+                i > 0
+                and np.isfinite(prev_high)
+                and lowma[i] > minhighprice
+                and close_vals[i] > prev_high
+            ):
+                trend = 0
+                maxlowprice = lowprice[i]
+
+        if trend == 0:
+            prior_up = up[i - 1] if i > 0 and up[i - 1] > 0 else maxlowprice
+            up[i] = max(maxlowprice, prior_up)
             down[i] = 0.0
         else:
-            if i + 1 < len(price_data) and trend[i + 1] != 1.0:
-                down[i] = up[i + 1]
-                down[i + 1] = down[i]
-            else:
-                down[i] = (
-                    min(minhighprice, down[i + 1])
-                    if i + 1 < len(price_data)
-                    else down[i]
-                )
-
-            atrhi[i] = down[i] + atr_val
-            atrlo[i] = down[i]
+            prior_down = down[i - 1] if i > 0 and down[i - 1] > 0 else minhighprice
+            down[i] = min(minhighprice, prior_down)
             up[i] = 0.0
 
-    return pd.DataFrame(
-        {"Up": up, "Down": down}
-    )  # , 'AtrLo': atrlo, 'AtrHi': atrhi, 'Trend': trend})
+    return pd.DataFrame({"Up": up, "Down": down}, index=price_data.index)
 
 
 def J_TPO(price_data: pd.DataFrame, period: int = 14) -> pd.DataFrame:
@@ -1837,61 +1934,74 @@ def SuperTrend(
     Returns:
     pd.DataFrame: DataFrame containing the Supertrend indicator values.
     """
-    high = price_data["High"]
-    low = price_data["Low"]
-    close = price_data["Close"]
+    n = len(price_data)
+    if n == 0:
+        return pd.DataFrame({"Supertrend": [], "Trend": []}, index=price_data.index)
 
-    median_price = (high + low) / 2
-    atr_values = ATR(price_data, period)
-    up = median_price + multiplier * atr_values
-    down = median_price - multiplier * atr_values
-    trend = pd.Series(1, index=price_data.index)
+    high = pd.to_numeric(price_data["High"], errors="coerce").to_numpy(dtype=float)
+    low = pd.to_numeric(price_data["Low"], errors="coerce").to_numpy(dtype=float)
+    close = pd.to_numeric(price_data["Close"], errors="coerce").to_numpy(dtype=float)
 
-    change_of_trend = 0
-    for i in range(1, len(price_data)):
-        if close[i] > up[i - 1]:
-            trend[i] = 1
-            if trend[i - 1] == -1:
-                change_of_trend = 1
-        elif close[i] < down[i - 1]:
-            trend[i] = -1
-            if trend[i - 1] == 1:
-                change_of_trend = 1
+    atr = ATR(price_data, period)
+    atr_vals = pd.to_numeric(atr, errors="coerce").to_numpy(dtype=float)
+    hl2 = (high + low) / 2.0
+
+    basic_upper = hl2 + multiplier * atr_vals
+    basic_lower = hl2 - multiplier * atr_vals
+
+    final_upper = np.full(n, np.nan, dtype=float)
+    final_lower = np.full(n, np.nan, dtype=float)
+    trend = np.full(n, np.nan, dtype=float)
+    supertrend = np.full(n, np.nan, dtype=float)
+
+    for i in range(n):
+        if not (
+            np.isfinite(basic_upper[i])
+            and np.isfinite(basic_lower[i])
+            and np.isfinite(close[i])
+        ):
+            if i > 0:
+                final_upper[i] = final_upper[i - 1]
+                final_lower[i] = final_lower[i - 1]
+                trend[i] = trend[i - 1]
+                supertrend[i] = supertrend[i - 1]
+            continue
+
+        if i == 0:
+            final_upper[i] = basic_upper[i]
+            final_lower[i] = basic_lower[i]
+            trend[i] = 1.0
+            supertrend[i] = final_lower[i]
+            continue
+
+        prev_close = close[i - 1]
+        prev_upper = final_upper[i - 1]
+        prev_lower = final_lower[i - 1]
+
+        if np.isfinite(prev_upper) and (
+            basic_upper[i] >= prev_upper and prev_close <= prev_upper
+        ):
+            final_upper[i] = prev_upper
+        else:
+            final_upper[i] = basic_upper[i]
+
+        if np.isfinite(prev_lower) and (
+            basic_lower[i] <= prev_lower and prev_close >= prev_lower
+        ):
+            final_lower[i] = prev_lower
+        else:
+            final_lower[i] = basic_lower[i]
+
+        if np.isfinite(prev_upper) and close[i] > prev_upper:
+            trend[i] = 1.0
+        elif np.isfinite(prev_lower) and close[i] < prev_lower:
+            trend[i] = -1.0
         else:
             trend[i] = trend[i - 1]
-            change_of_trend = 0
 
-        flag = 1 if trend[i] < 0 and trend[i - 1] > 0 else 0
-        flagh = 1 if trend[i] > 0 and trend[i - 1] < 0 else 0
+        supertrend[i] = final_lower[i] if trend[i] > 0 else final_upper[i]
 
-        if trend[i] > 0 and down[i] < down[i - 1]:
-            down[i] = down[i - 1]
-        if trend[i] < 0 and up[i] > up[i - 1]:
-            up[i] = up[i - 1]
-
-        if flag == 1:
-            up[i] = median_price[i] + multiplier * atr_values[i]
-        if flagh == 1:
-            down[i] = median_price[i] - multiplier * atr_values[i]
-
-        if trend[i] == 1:
-            current_supertrend = down[i]
-        elif change_of_trend == 1:
-            if i + 1 < len(price_data):
-                current_supertrend = up[i + 1]
-                change_of_trend = 0
-            else:
-                current_supertrend = up[i]  # fallback
-                change_of_trend = 0
-        elif trend[i] == -1:
-            current_supertrend = up[i]
-        elif change_of_trend == 1:
-            current_supertrend = down[i + 1]
-            change_of_trend = 0
-
-    supertrend = pd.DataFrame({"Supertrend": current_supertrend, "Trend": trend})
-
-    return supertrend
+    return pd.DataFrame({"Supertrend": supertrend, "Trend": trend}, index=price_data.index)
 
 
 def TTF(
@@ -2083,22 +2193,30 @@ def Laguerre(price_data: pd.DataFrame, gamma: float = 0.7) -> pd.Series:
     Returns:
         pd.Series: A Pandas Series containing the calculated indicator's values.
     """
-    close = price_data["Close"].values
+    close = pd.to_numeric(price_data["Close"], errors="coerce").to_numpy(dtype=float)
+    n = len(close)
+    out = np.full(n, np.nan, dtype=float)
+    if n == 0:
+        return pd.Series(out, index=price_data.index)
 
-    laguerre = np.zeros(len(price_data))
+    gamma = float(np.clip(gamma, 0.0, 1.0))
+    l0, l1, l2, l3, lrsi = 0.0, 0.0, 0.0, 0.0, 0.0
 
-    i = len(price_data) - 1
-    l0, l1, l2, l3, lrsi = 0, 0, 0, 0, 0
+    # Causal forward recursion (no future-bar dependency).
+    for i in range(n):
+        c = close[i]
+        if not np.isfinite(c):
+            out[i] = out[i - 1] if i > 0 else np.nan
+            continue
 
-    while i >= 0:
         l0a, l1a, l2a, l3a = l0, l1, l2, l3
-
-        l0 = (1 - gamma) * close[i] + gamma * l0a
+        l0 = (1.0 - gamma) * c + gamma * l0a
         l1 = -gamma * l0 + l0a + gamma * l1a
         l2 = -gamma * l1 + l1a + gamma * l2a
         l3 = -gamma * l2 + l2a + gamma * l3a
 
-        cu, cd = 0, 0
+        cu = 0.0
+        cd = 0.0
 
         if l0 >= l1:
             cu = l0 - l1
@@ -2115,16 +2233,12 @@ def Laguerre(price_data: pd.DataFrame, gamma: float = 0.7) -> pd.Series:
         else:
             cd += l3 - l2
 
-        if cu + cd != 0:
+        if cu + cd != 0.0:
             lrsi = cu / (cu + cd)
 
-        laguerre[i] = lrsi
+        out[i] = lrsi
 
-        i -= 1
-
-    df = pd.Series(laguerre, index=price_data.index)
-
-    return df
+    return pd.Series(out, index=price_data.index)
 
 
 def RecursiveMA(price_data: pd.DataFrame, period=2, recursions=20):
@@ -2469,67 +2583,36 @@ def UF2018(price_data: pd.DataFrame, period: int = 54) -> pd.DataFrame:
     pd.DataFrame
         Pandas DataFrame containing the calculated indicator values.
     """
-    SELL = pd.Series(index=price_data.index, dtype=float)
-    BUY = pd.Series(index=price_data.index, dtype=float)
+    period = max(int(period), 2)
+    high = pd.to_numeric(price_data["High"], errors="coerce")
+    low = pd.to_numeric(price_data["Low"], errors="coerce")
+    close = pd.to_numeric(price_data["Close"], errors="coerce")
 
-    li_20 = 0
-    li_16 = 0
-    index_24 = 0
-    bar_n = len(price_data) - 1
-    high_60 = price_data["High"][bar_n]
-    low_68 = price_data["Low"][bar_n]
-    down = False
-    up = False
+    # Use only prior bars for breakout thresholds to keep decision at bar `i` causal.
+    prior_high = high.shift(1).rolling(window=period, min_periods=period).max()
+    prior_low = low.shift(1).rolling(window=period, min_periods=period).min()
 
-    for i in range(bar_n, -1, -1):
-        low = 10000000
-        high = -100000000
+    trend = np.zeros(len(price_data), dtype=float)
+    for i in range(len(price_data)):
+        c = close.iloc[i]
+        ph = prior_high.iloc[i]
+        pl = prior_low.iloc[i]
+        prev = trend[i - 1] if i > 0 else 0.0
 
-        for j in range(i + period, i, -1):
-            if j > bar_n:
-                continue
-            if price_data["Low"][j] < low:
-                low = price_data["Low"][j]
-            if price_data["High"][j] > high:
-                high = price_data["High"][j]
+        if not np.isfinite(c):
+            trend[i] = prev
+            continue
 
-        if price_data["Low"][i] < low and price_data["High"][i] > high:
-            li_16 = 2
+        if np.isfinite(ph) and c > ph:
+            trend[i] = 1.0
+        elif np.isfinite(pl) and c < pl:
+            trend[i] = -1.0
         else:
-            if price_data["Low"][i] < low:
-                li_16 = -1
-            if price_data["High"][i] > high:
-                li_16 = 1
+            trend[i] = prev
 
-        if li_16 != li_20 and li_20 != 0:
-            if li_16 == 2:
-                li_16 = -li_20
-                high_60 = price_data["High"][i]
-                low_68 = price_data["Low"][i]
-                down = False
-                up = False
-
-            index_24 += 1
-
-            up = True if li_16 == 1 else False
-            down = True if li_16 == -1 else False
-
-            high_60 = price_data["High"][i]
-            low_68 = price_data["Low"][i]
-
-        if li_16 == 1 and price_data["High"][i] >= high_60:
-            high_60 = price_data["High"][i]
-
-        if li_16 == -1 and price_data["Low"][i] <= low_68:
-            low_68 = price_data["Low"][i]
-
-        li_20 = li_16
-
-        BUY[i] = 1 if up else 0
-        SELL[i] = 1 if down else 0
-
-    # Return the results as a DataFrame
-    return pd.DataFrame({"BUY": BUY, "SELL": SELL})
+    # Keep BUY/SELL columns for compatibility with existing signal function.
+    trend_s = pd.Series(trend, index=price_data.index, dtype=float)
+    return pd.DataFrame({"BUY": trend_s, "SELL": trend_s})
 
 
 def LSMA(df: pd.DataFrame, period: int = 14, shift: int = 0) -> pd.Series:
@@ -2837,16 +2920,19 @@ def NormalizedVolume(price_data, period: int = 14) -> pd.DataFrame:
     Returns:
         pd.DataFrame: A Pandas DataFrame containing the normalized volume values.
     """
-    volume = price_data["Volume"].values
+    period = max(int(period), 1)
+    volume = pd.to_numeric(price_data["Volume"], errors="coerce").to_numpy(dtype=float)
 
-    volume_buffer = volume[::-1].copy()
+    # Causal rolling mean on the original time order.
+    volume_ma = (
+        pd.Series(volume, index=price_data.index)
+        .rolling(window=period, min_periods=period)
+        .mean()
+        .to_numpy(dtype=float)
+    )
 
-    # Calculate MA of volume buffer
-    volume_ma = pd.Series(volume_buffer).rolling(period).mean().values
-
-    vol = volume / volume_ma * 100
-    up = np.where(vol > 100, vol, np.nan)
-    dn = np.where(vol <= 100, vol, np.nan)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        vol = np.where(volume_ma != 0.0, (volume / volume_ma) * 100.0, np.nan)
 
     return pd.DataFrame({"Vol": vol}, index=price_data.index)
 
@@ -4214,11 +4300,13 @@ def CVIMulti(
         # Linear Weighted MA with weights increasing to the most recent
         arr = s.to_numpy(dtype=float)
         w = np.arange(1, n + 1, dtype=float)
+        w_rev = w[::-1]
         m = (~np.isnan(arr)).astype(float)
         x = np.where(np.isnan(arr), 0.0, arr)
 
-        num = np.convolve(x, w, mode="full")[n - 1 : n - 1 + arr.size]
-        den = np.convolve(m, w, mode="full")[n - 1 : n - 1 + arr.size]
+        # Causal alignment: output at t only uses bars <= t.
+        num = np.convolve(x, w_rev, mode="full")[: arr.size]
+        den = np.convolve(m, w_rev, mode="full")[: arr.size]
 
         full_weight = w.sum()
         out = np.where(den == full_weight, num / den, np.nan)
@@ -6986,26 +7074,35 @@ def METROFixed(
     step_fast = np.full(n, np.nan, dtype=float)
     step_slow = np.full(n, np.nan, dtype=float)
 
-    # Initialize with last available RSI if finite
-    if np.isfinite(rsi_vals[-1]):
-        step_fast[-1] = rsi_vals[-1]
-        step_slow[-1] = rsi_vals[-1]
+    finite_rsi = np.where(np.isfinite(rsi_vals))[0]
+    if finite_rsi.size:
+        first = int(finite_rsi[0])
+        step_fast[first] = rsi_vals[first]
+        step_slow[first] = rsi_vals[first]
 
-        # Backward recursion (from end to start), clamped by step sizes
-        for i in range(n - 2, -1, -1):
+        # Causal forward recursion, clamped by step sizes.
+        for i in range(first + 1, n):
             r = rsi_vals[i]
-            nf = step_fast[i + 1]
-            ns = step_slow[i + 1]
+            prev_f = step_fast[i - 1]
+            prev_s = step_slow[i - 1]
 
-            # Fast
+            if not np.isfinite(r):
+                step_fast[i] = prev_f
+                step_slow[i] = prev_s
+                continue
+
+            if not np.isfinite(prev_f):
+                prev_f = r
+            if not np.isfinite(prev_s):
+                prev_s = r
+
             lo_f = r - step_size_fast
             hi_f = r + step_size_fast
-            step_fast[i] = np.minimum(np.maximum(nf, lo_f), hi_f)
+            step_fast[i] = np.minimum(np.maximum(prev_f, lo_f), hi_f)
 
-            # Slow
             lo_s = r - step_size_slow
             hi_s = r + step_size_slow
-            step_slow[i] = np.minimum(np.maximum(ns, lo_s), hi_s)
+            step_slow[i] = np.minimum(np.maximum(prev_s, lo_s), hi_s)
 
     out = pd.DataFrame(
         {
@@ -8584,48 +8681,43 @@ def TRENDAKKAM(
             float(delta_price) * float(point), index=df.index, dtype=float
         )
 
-    # Recursive computation in reverse to match MQL4 indexing (i from Bars-1 downto 0)
+    # Causal recursive computation in forward time.
     O = open_.to_numpy(dtype=float)
     D = delta.to_numpy(dtype=float)
+    trstop_vals = np.full(n, np.nan, dtype=float)
 
-    O_rev = O[::-1]
-    D_rev = D[::-1]
+    finite_seed = np.where(np.isfinite(O) & np.isfinite(D))[0]
+    if finite_seed.size:
+        seed_i = int(finite_seed[0])
+        trstop_vals[seed_i] = O[seed_i]
 
-    tr_rev = np.full(n, np.nan, dtype=float)
+        for i in range(seed_i + 1, n):
+            prev_T = trstop_vals[i - 1]
+            prev_O = O[i - 1]
+            curr_O = O[i]
+            curr_D = D[i]
 
-    # Seed initial value (no prior state in pure batch context)
-    # Use first available Open as neutral seed when both O and D are finite; else NaN.
-    if np.isfinite(O_rev[0]) and np.isfinite(D_rev[0]):
-        tr_rev[0] = O_rev[0]
+            if not (
+                np.isfinite(prev_T)
+                and np.isfinite(prev_O)
+                and np.isfinite(curr_O)
+                and np.isfinite(curr_D)
+            ):
+                trstop_vals[i] = prev_T if np.isfinite(prev_T) else np.nan
+                continue
 
-    for j in range(1, n):
-        prev_T = tr_rev[j - 1]
-        prev_O = O_rev[j - 1]
-        curr_O = O_rev[j]
-        curr_D = D_rev[j]
-
-        if not (
-            np.isfinite(prev_T)
-            and np.isfinite(prev_O)
-            and np.isfinite(curr_O)
-            and np.isfinite(curr_D)
-        ):
-            tr_rev[j] = np.nan
-            continue
-
-        if curr_O == prev_T:
-            tr_rev[j] = prev_T
-        else:
-            if (prev_O < prev_T) and (curr_O < prev_T):
-                tr_rev[j] = min(prev_T, curr_O + curr_D)
+            if curr_O == prev_T:
+                trstop_vals[i] = prev_T
+            elif (prev_O < prev_T) and (curr_O < prev_T):
+                trstop_vals[i] = min(prev_T, curr_O + curr_D)
             elif (prev_O > prev_T) and (curr_O > prev_T):
-                tr_rev[j] = max(prev_T, curr_O - curr_D)
+                trstop_vals[i] = max(prev_T, curr_O - curr_D)
             else:
-                tr_rev[j] = (
+                trstop_vals[i] = (
                     (curr_O - curr_D) if (curr_O > prev_T) else (curr_O + curr_D)
                 )
 
-    trstop = pd.Series(tr_rev[::-1], index=df.index, name="TrStop")
+    trstop = pd.Series(trstop_vals, index=df.index, name="TrStop")
 
     out = pd.DataFrame({"TrStop": trstop, "ATR": atr.rename("ATR")}, index=df.index)
 

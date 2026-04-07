@@ -645,7 +645,7 @@ additional_trend = [
         "description": "Kijun-sen (Base Line): Part of Ichimoku, provides key support/resistance levels and trend direction.",
         "signal_function": signal_kijunsen,
         "raw_function": KijunSen,
-        "parameters": {"period": 26, "shift": 9},
+        "parameters": {"period": 26, "shift": 0},
         "parameter_space": {
             "period": [5, 10, 15, 20, 25, 30, 35, 40, 45, 50],
         },
@@ -658,8 +658,8 @@ additional_trend = [
         "raw_function": KalmanFilter,
         "parameters": {"k": 1, "sharpness": 1},
         "parameter_space": {
-            "k": [1, 2, 5, 10, 20, 50, 100],
-            "sharpness": [1, 2, 5, 10, 20, 50, 100],
+            "k": [1, 2, 5, 10],
+            "sharpness": [1, 2, 5, 10],
         },
     },
     {

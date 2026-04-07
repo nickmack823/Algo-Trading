@@ -8,6 +8,7 @@ import time
 import traceback
 import warnings
 import winsound
+from collections import defaultdict, deque
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from statistics import mean, stdev
 
@@ -18,10 +19,12 @@ from optuna.samplers import TPESampler
 from scripts.backtester import Backtester
 from scripts.config import (
     ALL_TIMEFRAMES,
+    CUSTOM_TIMEFRAMES,
     DATA_FOLDER,
+    INTRABAR_LOWER_TIMEFRAME_BY_TIMEFRAME,
+    INTRABAR_MODE_PHASE3,
     MAJOR_FOREX_PAIRS,
     N_STARTUP_TRIALS_PERCENTAGE,
-    NNFX_TIMEFRAMES,
     OPTUNA_STUDIES_FOLDER,
     PHASE2_TOP_PERCENT,
     TIMEFRAME_DATE_RANGES_PHASE3,
@@ -58,6 +61,25 @@ logging.basicConfig(
 
 # Suppress all FutureWarnings (warnings of deprecation in future package versions)
 warnings.simplefilter(action="ignore", category=FutureWarning)
+
+
+def interleave_jobs(jobs: list[tuple], key_fn) -> list[tuple]:
+    """
+    Round-robin jobs across groups defined by key_fn (lambda job: job[2].NAME).
+    """
+    buckets: dict[str, deque] = defaultdict(deque)
+    for job in jobs:
+        buckets[str(key_fn(job))].append(job)
+
+    out: list[tuple] = []
+    while buckets:
+        for key in list(buckets.keys()):
+            queue = buckets[key]
+            if queue:
+                out.append(queue.popleft())
+            if not queue:
+                del buckets[key]
+    return out
 
 
 def log_error(
@@ -116,7 +138,9 @@ def log_error(
         logging.exception("Failed writing text error log.")
 
     jsonl_filename = (
-        filename[:-4] + ".jsonl" if filename.lower().endswith(".txt") else f"{filename}.jsonl"
+        filename[:-4] + ".jsonl"
+        if filename.lower().endswith(".txt")
+        else f"{filename}.jsonl"
     )
     try:
         with open(jsonl_filename, "a", encoding="utf-8") as f:
@@ -127,7 +151,9 @@ def log_error(
 
 def clear_error_json_log(filename: str = "error_log.txt") -> None:
     jsonl_filename = (
-        filename[:-4] + ".jsonl" if filename.lower().endswith(".txt") else f"{filename}.jsonl"
+        filename[:-4] + ".jsonl"
+        if filename.lower().endswith(".txt")
+        else f"{filename}.jsonl"
     )
     try:
         if os.path.exists(jsonl_filename):
@@ -144,9 +170,9 @@ def ensure_backtesting_db_ready() -> None:
 
 
 def run_fixed_strategy_evaluation(
-    strategy: strategy_core.BaseStrategy,
     pair: str,
     timeframe: str,
+    strategy: strategy_core.BaseStrategy,
     phase_name: str,
     exploration_space: str,
     db_queue: mp.Queue,
@@ -171,6 +197,18 @@ def run_fixed_strategy_evaluation(
         table=timeframe, from_date=from_date, to_date=to_date
     )
 
+    intrabar_mode = INTRABAR_MODE_PHASE3
+    intrabar_timeframe = INTRABAR_LOWER_TIMEFRAME_BY_TIMEFRAME.get(timeframe)
+    intrabar_data = None
+    if intrabar_mode == "lower_timeframe" and intrabar_timeframe:
+        intrabar_data = data_sqlhelper.get_historical_data(
+            table=intrabar_timeframe, from_date=from_date, to_date=to_date
+        )
+        if intrabar_data is None or intrabar_data.empty:
+            intrabar_mode = "hybrid_ohlc"
+    elif intrabar_mode == "lower_timeframe":
+        intrabar_mode = "hybrid_ohlc"
+
     strategy.prepare_data(data)
     cache_items = strategy.get_cache_jobs()
     if cache_items:
@@ -184,6 +222,9 @@ def run_fixed_strategy_evaluation(
         initial_balance=10_000,
         metrics_start_date=from_date,
         metrics_end_date=to_date,
+        intrabar_mode=intrabar_mode,
+        intrabar_timeframe=intrabar_timeframe,
+        intrabar_data=intrabar_data,
     )
 
     try:
@@ -687,6 +728,9 @@ def run_phase3(phase: dict):
         timeframes=timeframes,
         top_n=phase["top_n"],
     )
+    run_args = interleave_jobs(run_args, key_fn=lambda a: a[2].NAME)
+    phase_name = phase.get("name", "phase3")
+    exploration_space = phase.get("exploration_space", "phase3_fixed")
 
     logging.info(
         f"Running {len(run_args)} fixed strategy evaluations across all pair/timeframe combos..."
@@ -706,7 +750,13 @@ def run_phase3(phase: dict):
         try:
             with ProcessPoolExecutor(max_workers=N_PROCESSES) as executor:
                 futures = [
-                    executor.submit(run_fixed_strategy_evaluation, *args, db_queue)
+                    executor.submit(
+                        run_fixed_strategy_evaluation,
+                        *args,
+                        phase_name,
+                        exploration_space,
+                        db_queue,
+                    )
                     for args in run_args
                 ]
                 for future in as_completed(futures):
@@ -729,11 +779,11 @@ if __name__ == "__main__":
 
     # --- Edit these top-level knobs freely ---
     STRATEGY_KEYS_TO_RUN: list[str] = [
-        # "NNFX",
-        # "Candlestick",
-        "Mabrouk2021"
+        "NNFX",
+        "Candlestick",
+        "Mabrouk2021",
     ]  # use any registered adapters
-    N_PROCESSES: int = 1  # mp.cpu_count() - 3 is a decent default
+    N_PROCESSES: int = 5  # mp.cpu_count() - 3 is a decent default
 
     # Seeds you want to sweep (phase1/2); pick a set below:
     SEED_SETS: list[list[int]] = [
@@ -746,7 +796,7 @@ if __name__ == "__main__":
 
     # Timeframes you want the exploration phases to use (kept visible here)
     # You can swap this for ALL_TIMEFRAMES or any custom list.
-    TIMEFRAMES_PHASES_1_2: list[str] = NNFX_TIMEFRAMES
+    TIMEFRAMES_PHASES_1_2: list[str] = CUSTOM_TIMEFRAMES
 
     # Single source of truth for trials per timeframe (used by phase1 AND phase2)
     TRIALS_BY_TIMEFRAME: dict[str, int] = {
@@ -813,6 +863,8 @@ if __name__ == "__main__":
                 # If your adapter’s phase2 builder expects top_percent, pass it:
                 kwargs["top_percent"] = phase.get("top_percent", PHASE2_TOP_PERCENT)
                 study_args = build_study_args_phase2(**kwargs)
+
+            study_args = interleave_jobs(study_args, key_fn=lambda a: a[6])
 
             logging.info(
                 f"Running {len(study_args)} total jobs across all pair/timeframe/seed combos..."

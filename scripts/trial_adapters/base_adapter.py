@@ -15,6 +15,7 @@ from scripts.backtester import Backtester
 from scripts.config import (
     DATA_FOLDER,
     END_DATE,
+    INTRABAR_MODE_PHASE_1_AND_2,
     MIN_TRADES_PER_DAY,
     PRUNE_THRESHOLD_FACTOR,
     TIMEFRAME_DATE_RANGES_PHASE_1_AND_2,
@@ -234,6 +235,7 @@ def run_objective_common(
         initial_balance=10_000,
         metrics_start_date=eval_from,
         metrics_end_date=eval_to,
+        intrabar_mode=INTRABAR_MODE_PHASE_1_AND_2,
     )
 
     pair_id = None

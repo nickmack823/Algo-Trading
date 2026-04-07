@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import ast
+import hashlib
+import json
 import multiprocessing as mp
 import re
 
@@ -34,7 +36,9 @@ def build_indicator_config_for_trial(
     else:
         params = {}
         for pname, space in cfg.get("parameter_space", {}).items():
-            key = f"{role}.{selected_name}.{pname}"
+            space_blob = json.dumps(list(space), ensure_ascii=True, separators=(",", ":"))
+            space_sig = hashlib.sha1(space_blob.encode("utf-8")).hexdigest()[:8]
+            key = f"{role}.{selected_name}.{pname}.{space_sig}"
             params[pname] = trial.suggest_categorical(key, space)
     return {
         "name": selected_name,

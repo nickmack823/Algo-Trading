@@ -8,7 +8,7 @@ BACKTESTING_FOLDER = "backtesting"
 BACKTESTING_DB_NAME = "Backtesting.db"
 TRADING_DB_PATH = "trading/OandaTrading.db"
 OPTUNA_STUDIES_FOLDER = "backtesting/optuna_studies"
-OPTUNA_REPORTS_FOLDER = "backtesting/optuna_reports"
+# OPTUNA_REPORTS_FOLDER = "backtesting/optuna_reports"
 TEMP_CACHE_FOLDER = "temp"
 # # Machine learning
 FEATURES_CACHE_DIR = "machine_learning/features_cache"
@@ -77,7 +77,7 @@ ALL_TIMEFRAMES = [
     "1_day",
 ]
 
-NNFX_TIMEFRAMES = [
+CUSTOM_TIMEFRAMES = [
     "2_hour",
     "4_hour",
     "1_day",
@@ -175,42 +175,36 @@ TIMEFRAME_DATE_RANGES_PHASE_1_AND_2 = {
         "to_date": END_DATE,
     },
     "4_hour": {
-        # was 365d → 540d (~18 months)
         "from_date": (pd.to_datetime(END_DATE) - pd.Timedelta(days=365)).strftime(
             "%Y-%m-%d"
         ),
         "to_date": END_DATE,
     },
     "2_hour": {
-        # was 182d → 720d (~24 months) — key change
         "from_date": (pd.to_datetime(END_DATE) - pd.Timedelta(days=182)).strftime(
             "%Y-%m-%d"
         ),
         "to_date": END_DATE,
     },
     "1_hour": {
-        # was 120d → 270d (~9 months)
         "from_date": (pd.to_datetime(END_DATE) - pd.Timedelta(days=120)).strftime(
             "%Y-%m-%d"
         ),
         "to_date": END_DATE,
     },
     "30_minute": {
-        # was 90d → 150d (~5 months)
         "from_date": (pd.to_datetime(END_DATE) - pd.Timedelta(days=90)).strftime(
             "%Y-%m-%d"
         ),
         "to_date": END_DATE,
     },
     "15_minute": {
-        # was 60d → 120d (~4 months)
         "from_date": (pd.to_datetime(END_DATE) - pd.Timedelta(days=60)).strftime(
             "%Y-%m-%d"
         ),
         "to_date": END_DATE,
     },
     "5_minute": {
-        # was 30d → 45d (~1.5 months) — still plenty of bars but a bit more cushion
         "from_date": (pd.to_datetime(END_DATE) - pd.Timedelta(days=30)).strftime(
             "%Y-%m-%d"
         ),
@@ -299,6 +293,24 @@ TRIALS_UPPER_BOUND = 500
 # === Phases for final tuning ===
 N_STARTUP_TRIALS_PERCENTAGE = 0.15
 PHASE2_TOP_PERCENT = 10
+
+# === Intrabar Execution Modes ===
+# "hybrid_ohlc": fast path using parent bar High/Low with conservative SL-first tie-break.
+# "lower_timeframe": process open trades on sequential lower-timeframe candles inside each parent bar.
+INTRABAR_MODE_PHASE_1_AND_2 = "hybrid_ohlc"
+INTRABAR_MODE_PHASE3 = "lower_timeframe"
+
+# For phase-3 lower-timeframe execution, choose a child table per parent timeframe.
+# Set value to None to disable child-timeline execution for that parent timeframe.
+INTRABAR_LOWER_TIMEFRAME_BY_TIMEFRAME = {
+    "1_day": "4_hour",
+    "4_hour": "1_hour",
+    "2_hour": "30_minute",
+    "1_hour": "15_minute",
+    "30_minute": "5_minute",
+    "15_minute": "5_minute",
+    "5_minute": None,
+}
 
 
 # === OANDA Config ===

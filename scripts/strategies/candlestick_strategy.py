@@ -58,8 +58,8 @@ def _compute_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
 )
 class CandlestickFilteredStrategy(BaseStrategy):
     """
-    Entries: TA-Lib candlestick whitelist fires, filtered by baseline alignment, min body/ATR, and optional trend bias.
-    Exits: (1) opposite-pattern exit (if enabled) or (2) baseline cross exit.
+    Entries: Pattern-vote + dominance model filtered by baseline, body/ATR, and optional trend bias.
+    Exits: (1) opposite-pattern dominance exit (if enabled) or (2) baseline cross exit.
     Plans: Two-leg entries (TP1 + Runner with BE@+1ATR, trail start +2ATR, distance 1.5ATR).
     """
 
@@ -80,6 +80,9 @@ class CandlestickFilteredStrategy(BaseStrategy):
         trend_filter: IndicatorConfig | None = None,
         cooldown_bars: int = 2,  # prevents rapid re-entries (does NOT block exits)
         opposite_exit: bool = True,  # exit when opposite pattern appears
+        min_votes: int = 2,  # minimum same-direction pattern hits for entry
+        dominance_ratio: float = 1.25,  # same-side strength must beat opposite side by this multiple
+        exit_min_votes: int = 2,  # minimum opposite-direction hits to allow opposite-pattern exit
     ):
         # Indicator configs
         self.atr_cfg = atr
@@ -93,6 +96,9 @@ class CandlestickFilteredStrategy(BaseStrategy):
         self.align_with_baseline = bool(align_with_baseline)
         self.cooldown_bars = int(cooldown_bars)
         self.opposite_exit = bool(opposite_exit)
+        self.min_votes = max(1, int(min_votes))
+        self.dominance_ratio = max(1.0, float(dominance_ratio))
+        self.exit_min_votes = max(1, int(exit_min_votes))
 
         # State
         self._last_entry_bar: int | None = None
@@ -113,10 +119,23 @@ class CandlestickFilteredStrategy(BaseStrategy):
             "align_with_baseline": self.align_with_baseline,
             "cooldown_bars": self.cooldown_bars,
             "opposite_exit": self.opposite_exit,
+            "min_votes": self.min_votes,
+            "dominance_ratio": self.dominance_ratio,
+            "exit_min_votes": self.exit_min_votes,
         }
-        super().__init__(
-            forex_pair=forex_pair, parameters=parameters, timeframe=timeframe
-        )
+        super().__init__(forex_pair=forex_pair, timeframe=timeframe, **parameters)
+
+    @staticmethod
+    def _dominance_ok(
+        own_strength: float,
+        other_strength: float,
+        ratio: float,
+    ) -> bool:
+        if own_strength <= 0:
+            return False
+        if other_strength <= 0:
+            return True
+        return own_strength >= other_strength * ratio
 
     # ───────────────────────────── Data Prep & Cache Parity ─────────────────────────────
 
@@ -364,16 +383,22 @@ class CandlestickFilteredStrategy(BaseStrategy):
             except KeyError:
                 trend_bias = None  # no Trend_ columns present
 
-        # Evaluate candlestick whitelist on last bar
-        long_hits: list[str] = []
-        short_hits: list[str] = []
+        # Evaluate selected candlestick patterns on the latest bar.
+        # We keep both vote counts and cumulative strengths.
+        long_hits: list[tuple[str, float]] = []
+        short_hits: list[tuple[str, float]] = []
         for name in self.pattern_names:
             v = float(row.get(f"PAT_{name}", 0.0))
             if abs(v) >= self.min_abs_score:
                 if v > 0:
-                    long_hits.append(name)
+                    long_hits.append((name, v))
                 elif v < 0:
-                    short_hits.append(name)
+                    short_hits.append((name, abs(v)))
+
+        bull_count = len(long_hits)
+        bear_count = len(short_hits)
+        bull_strength = float(sum(v for _, v in long_hits))
+        bear_strength = float(sum(v for _, v in short_hits))
 
         # Directional permissions
         def baseline_ok(direction: str) -> bool:
@@ -390,8 +415,21 @@ class CandlestickFilteredStrategy(BaseStrategy):
                 return True
             return (trend_bias > 0) if direction == "LONG" else (trend_bias < 0)
 
-        want_long = bool(long_hits) and baseline_ok("LONG") and trend_ok("LONG")
-        want_short = bool(short_hits) and baseline_ok("SHORT") and trend_ok("SHORT")
+        long_patterns_ok = (
+            bull_count >= self.min_votes
+            and self._dominance_ok(
+                bull_strength, bear_strength, self.dominance_ratio
+            )
+        )
+        short_patterns_ok = (
+            bear_count >= self.min_votes
+            and self._dominance_ok(
+                bear_strength, bull_strength, self.dominance_ratio
+            )
+        )
+
+        want_long = long_patterns_ok and baseline_ok("LONG") and trend_ok("LONG")
+        want_short = short_patterns_ok and baseline_ok("SHORT") and trend_ok("SHORT")
 
         # Cooldown: applies to entries only (never block exits)
         can_enter = True
@@ -402,16 +440,24 @@ class CandlestickFilteredStrategy(BaseStrategy):
 
         # Entries require flat position to avoid flip-on-bar (parity with NNFX)  :contentReference[oaicite:7]{index=7}
         if current_position == 0 and can_enter:
-            if want_long:
+            # Ambiguous bars are ignored instead of taking a directional bias.
+            if want_long and not want_short:
                 signals.append(ENTER_LONG)
                 self._last_entry_bar = len(data) - 1
-            elif want_short:
+            elif want_short and not want_long:
                 signals.append(ENTER_SHORT)
                 self._last_entry_bar = len(data) - 1
 
         # Exits never blocked by cooldown
         if current_position > 0:
-            if self.opposite_exit and bool(short_hits):
+            opposite_exit_ok = (
+                self.opposite_exit
+                and bear_count >= self.exit_min_votes
+                and self._dominance_ok(
+                    bear_strength, bull_strength, self.dominance_ratio
+                )
+            )
+            if opposite_exit_ok:
                 signals.append(EXIT_LONG)
                 source = "Opposite Pattern Exit"
             elif row["Close"] < baseline_val:
@@ -419,7 +465,14 @@ class CandlestickFilteredStrategy(BaseStrategy):
                 source = "Baseline Cross Exit"
 
         elif current_position < 0:
-            if self.opposite_exit and bool(long_hits):
+            opposite_exit_ok = (
+                self.opposite_exit
+                and bull_count >= self.exit_min_votes
+                and self._dominance_ok(
+                    bull_strength, bear_strength, self.dominance_ratio
+                )
+            )
+            if opposite_exit_ok:
                 signals.append(EXIT_SHORT)
                 source = "Opposite Pattern Exit"
             elif row["Close"] > baseline_val:

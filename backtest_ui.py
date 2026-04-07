@@ -21,7 +21,6 @@ from typing import Any, Optional
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
-
 ROOT = Path(__file__).resolve().parent
 JOBS_ROOT = ROOT / "backtesting" / "ui_jobs"
 JOBS_INDEX_PATH = JOBS_ROOT / "jobs_index.json"
@@ -177,25 +176,27 @@ def load_defaults() -> dict[str, Any]:
         },
     }
     try:
+        import main  # noqa: F401
         from scripts.config import (
             ALL_TIMEFRAMES,
+            CUSTOM_TIMEFRAMES,
             MAJOR_FOREX_PAIRS,
-            NNFX_TIMEFRAMES,
             PHASE2_TOP_PERCENT,
         )
-        import main  # noqa: F401
         from scripts.trial_adapters.base_adapter import ADAPTER_REGISTRY
 
         defaults["available_timeframes"] = list(ALL_TIMEFRAMES)
         defaults["default"]["pairs"] = list(MAJOR_FOREX_PAIRS)
-        defaults["default"]["phase12_timeframes"] = list(NNFX_TIMEFRAMES)
+        defaults["default"]["phase12_timeframes"] = list(CUSTOM_TIMEFRAMES)
         defaults["default"]["phase2_top_percent"] = float(PHASE2_TOP_PERCENT)
         if ADAPTER_REGISTRY:
             defaults["available_strategies"] = list(ADAPTER_REGISTRY.keys())
             defaults["default"]["strategies"] = [
-                "Mabrouk2021"
-                if "Mabrouk2021" in ADAPTER_REGISTRY
-                else defaults["available_strategies"][0]
+                (
+                    "Mabrouk2021"
+                    if "Mabrouk2021" in ADAPTER_REGISTRY
+                    else defaults["available_strategies"][0]
+                )
             ]
     except Exception as exc:
         defaults["warning"] = f"Using fallback defaults ({type(exc).__name__}: {exc})"
@@ -251,7 +252,11 @@ def normalize_start_payload(raw: dict[str, Any]) -> dict[str, Any]:
     if (enable_phase1 or enable_phase2) and not phase12_tfs:
         raise ValueError("Provide phases 1/2 timeframes.")
 
-    bad_tfs = [tf for tf in phase12_tfs + phase3_tfs if available_tfs and tf not in available_tfs]
+    bad_tfs = [
+        tf
+        for tf in phase12_tfs + phase3_tfs
+        if available_tfs and tf not in available_tfs
+    ]
     if bad_tfs:
         raise ValueError("Invalid timeframe(s): " + ", ".join(sorted(set(bad_tfs))))
 
@@ -412,7 +417,9 @@ class Job:
     suppressed_trial_logs: int = 0
     study_names: list[str] = field(default_factory=list)
     process: Optional[subprocess.Popen] = field(default=None, repr=False)
-    logs: deque[str] = field(default_factory=lambda: deque(maxlen=LOG_MEMORY_LINES), repr=False)
+    logs: deque[str] = field(
+        default_factory=lambda: deque(maxlen=LOG_MEMORY_LINES), repr=False
+    )
 
     def remaining_trials_est(self) -> int:
         return max(int(self.trial_budget_est) - int(self.trials_finished), 0)
@@ -559,7 +566,9 @@ class JobManager:
             completed_phases=list(data.get("completed_phases", [])),
             phase_jobs=dict(data.get("phase_jobs", {})),
             trial_budget_est=int(data.get("trial_budget_est", 0)),
-            phase12_trials_per_phase_est=int(data.get("phase12_trials_per_phase_est", 0)),
+            phase12_trials_per_phase_est=int(
+                data.get("phase12_trials_per_phase_est", 0)
+            ),
             trials_finished=int(data.get("trials_finished", 0)),
             last_stop_note=data.get("last_stop_note"),
             study_names=list(data.get("study_names", [])),
@@ -575,7 +584,9 @@ class JobManager:
         if job.trial_budget_est <= 0:
             job.trial_budget_est = estimate_phase12_trial_budget(job.config)
         if job.phase12_trials_per_phase_est <= 0:
-            job.phase12_trials_per_phase_est = estimate_phase12_trial_budget_per_phase(job.config)
+            job.phase12_trials_per_phase_est = estimate_phase12_trial_budget_per_phase(
+                job.config
+            )
         return job
 
     def _load_persisted_jobs(self) -> None:
@@ -634,7 +645,9 @@ class JobManager:
             ended = None
             if log_path.exists():
                 try:
-                    ended = datetime.fromtimestamp(log_path.stat().st_mtime).isoformat(timespec="seconds")
+                    ended = datetime.fromtimestamp(log_path.stat().st_mtime).isoformat(
+                        timespec="seconds"
+                    )
                 except Exception:
                     ended = now_iso()
             else:
@@ -682,7 +695,13 @@ class JobManager:
         if os.name == "nt":
             creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
         return subprocess.Popen(
-            [sys.executable, str(Path(__file__).resolve()), "worker", "--config", str(config_path)],
+            [
+                sys.executable,
+                str(Path(__file__).resolve()),
+                "worker",
+                "--config",
+                str(config_path),
+            ],
             cwd=str(ROOT),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -701,7 +720,9 @@ class JobManager:
         job.phase_jobs.clear()
         job.trials_finished = 0
         job.trial_budget_est = estimate_phase12_trial_budget(job.config)
-        job.phase12_trials_per_phase_est = estimate_phase12_trial_budget_per_phase(job.config)
+        job.phase12_trials_per_phase_est = estimate_phase12_trial_budget_per_phase(
+            job.config
+        )
         job.last_stop_note = None
         job.suppressed_trial_logs = 0
 
@@ -734,7 +755,9 @@ class JobManager:
             if job.current_phase == phase:
                 job.current_phase = None
             if phase in {"phase1", "phase2"} and job.phase12_trials_per_phase_est > 0:
-                completed_phase12 = len([p for p in job.completed_phases if p in {"phase1", "phase2"}])
+                completed_phase12 = len(
+                    [p for p in job.completed_phases if p in {"phase1", "phase2"}]
+                )
                 min_finished = completed_phase12 * job.phase12_trials_per_phase_est
                 if job.trials_finished < min_finished:
                     job.trials_finished = min_finished
@@ -760,7 +783,9 @@ class JobManager:
             if active:
                 raise RuntimeError(f"Job {active.job_id} is still {active.status}")
 
-            job_id = datetime.now().strftime("%Y%m%d_%H%M%S") + "_" + uuid.uuid4().hex[:6]
+            job_id = (
+                datetime.now().strftime("%Y%m%d_%H%M%S") + "_" + uuid.uuid4().hex[:6]
+            )
             job_dir = JOBS_ROOT / job_id
             job_dir.mkdir(parents=True, exist_ok=True)
             config_path = job_dir / "config.json"
@@ -780,7 +805,9 @@ class JobManager:
             self._reset_job_progress(job)
             self.jobs[job_id] = job
             self.order.append(job_id)
-            threading.Thread(target=self._read_logs, args=(job_id,), daemon=True).start()
+            threading.Thread(
+                target=self._read_logs, args=(job_id,), daemon=True
+            ).start()
             threading.Thread(target=self._watch, args=(job_id,), daemon=True).start()
         self._persist_state(force=True)
         return job
@@ -2614,14 +2641,18 @@ async def api_state() -> JSONResponse:
     return JSONResponse(
         {
             "server_time": now_iso(),
-            "active_job": ({**active.summary(), "log_tail": active.tail()} if active else None),
+            "active_job": (
+                {**active.summary(), "log_tail": active.tail()} if active else None
+            ),
             "jobs": JOBS.list_summaries(),
         }
     )
 
 
 @app.get("/api/jobs/{job_id}/logs")
-async def api_job_logs(job_id: str, lines: int = LOG_TAIL_LINES, full: bool = False) -> JSONResponse:
+async def api_job_logs(
+    job_id: str, lines: int = LOG_TAIL_LINES, full: bool = False
+) -> JSONResponse:
     try:
         job = JOBS.get(job_id)
     except KeyError as exc:
@@ -2634,7 +2665,9 @@ async def api_job_logs(job_id: str, lines: int = LOG_TAIL_LINES, full: bool = Fa
         n = max(1, min(int(lines), LOG_MEMORY_LINES))
         out = job.tail()[-n:]
 
-    return JSONResponse({"job_id": job_id, "mode": ("full" if full else "compact"), "lines": out})
+    return JSONResponse(
+        {"job_id": job_id, "mode": ("full" if full else "compact"), "lines": out}
+    )
 
 
 @app.get("/api/db/health")
@@ -2650,7 +2683,9 @@ async def api_db_health() -> JSONResponse:
         table_counts: dict[str, int] = {}
         for table in table_names:
             try:
-                sql.safe_execute(sql.cursor, f"SELECT COUNT(*) FROM {sqlite_ident(table)}")
+                sql.safe_execute(
+                    sql.cursor, f"SELECT COUNT(*) FROM {sqlite_ident(table)}"
+                )
                 table_counts[table] = int(sql.cursor.fetchone()[0] or 0)
             except Exception:
                 table_counts[table] = -1
@@ -2674,7 +2709,9 @@ async def api_db_health() -> JSONResponse:
                 "exists": db_path.exists(),
                 "size_bytes": (db_path.stat().st_size if db_path.exists() else 0),
                 "modified_at": (
-                    datetime.fromtimestamp(db_path.stat().st_mtime).isoformat(timespec="seconds")
+                    datetime.fromtimestamp(db_path.stat().st_mtime).isoformat(
+                        timespec="seconds"
+                    )
                     if db_path.exists()
                     else None
                 ),
@@ -2714,13 +2751,17 @@ async def api_db_schema() -> JSONResponse:
             ]
             row_count = 0
             try:
-                sql.safe_execute(sql.cursor, f"SELECT COUNT(*) FROM {sqlite_ident(table)}")
+                sql.safe_execute(
+                    sql.cursor, f"SELECT COUNT(*) FROM {sqlite_ident(table)}"
+                )
                 row_count = int(sql.cursor.fetchone()[0] or 0)
             except Exception:
                 row_count = -1
             tables.append({"name": table, "row_count": row_count, "columns": columns})
 
-        return JSONResponse({"tables": tables, "default_table": (tables[0]["name"] if tables else None)})
+        return JSONResponse(
+            {"tables": tables, "default_table": (tables[0]["name"] if tables else None)}
+        )
     finally:
         sql.close_connection()
 
@@ -2850,7 +2891,9 @@ async def api_db_backtest_runs(
             params.append(float(score_max))
         where_sql = (" WHERE " + " AND ".join(where)) if where else ""
 
-        sql.safe_execute(sql.cursor, f"SELECT COUNT(*) {from_sql} {where_sql}", tuple(params))
+        sql.safe_execute(
+            sql.cursor, f"SELECT COUNT(*) {from_sql} {where_sql}", tuple(params)
+        )
         total = int((sql.cursor.fetchone() or [0])[0] or 0)
 
         sort_map = {
@@ -2958,7 +3001,9 @@ async def api_db_studies(
             params.append(float(max_best_score))
         where_sql = (" WHERE " + " AND ".join(where)) if where else ""
 
-        sql.safe_execute(sql.cursor, f"SELECT COUNT(*) FROM StudyMetadata {where_sql}", tuple(params))
+        sql.safe_execute(
+            sql.cursor, f"SELECT COUNT(*) FROM StudyMetadata {where_sql}", tuple(params)
+        )
         total = int((sql.cursor.fetchone() or [0])[0] or 0)
 
         sort_map = {
@@ -2973,7 +3018,9 @@ async def api_db_studies(
             "n_pruned": "N_Pruned",
             "total_time_sec": "Total_Time_Sec",
         }
-        order_col, order_dir = safe_sort_clause(sort_by, sort_dir, sort_map, "best_score")
+        order_col, order_dir = safe_sort_clause(
+            sort_by, sort_dir, sort_map, "best_score"
+        )
         offset = (p - 1) * s
         q = f"""
             SELECT
@@ -3059,7 +3106,9 @@ async def api_db_composite_scores(
             params.append(float(score_max))
         where_sql = (" WHERE " + " AND ".join(where)) if where else ""
 
-        sql.safe_execute(sql.cursor, f"SELECT COUNT(*) {from_sql} {where_sql}", tuple(params))
+        sql.safe_execute(
+            sql.cursor, f"SELECT COUNT(*) {from_sql} {where_sql}", tuple(params)
+        )
         total = int((sql.cursor.fetchone() or [0])[0] or 0)
 
         sort_map = {
@@ -3152,9 +3201,15 @@ async def api_db_trades(
         )
         run = fetchone_dict(sql.cursor)
         if not run:
-            raise HTTPException(status_code=404, detail=f"Unknown backtest_id: {backtest_id}")
+            raise HTTPException(
+                status_code=404, detail=f"Unknown backtest_id: {backtest_id}"
+            )
 
-        sql.safe_execute(sql.cursor, "SELECT COUNT(*) FROM Trades WHERE Backtest_ID = ?", (int(backtest_id),))
+        sql.safe_execute(
+            sql.cursor,
+            "SELECT COUNT(*) FROM Trades WHERE Backtest_ID = ?",
+            (int(backtest_id),),
+        )
         total = int((sql.cursor.fetchone() or [0])[0] or 0)
 
         sort_map = {
@@ -3168,7 +3223,9 @@ async def api_db_trades(
             "entry": "Entry_Price",
             "exit": "Exit_Price",
         }
-        order_col, order_dir = safe_sort_clause(sort_by, sort_dir, sort_map, "timestamp")
+        order_col, order_dir = safe_sort_clause(
+            sort_by, sort_dir, sort_map, "timestamp"
+        )
         offset = (p - 1) * s
         q = f"""
             SELECT
@@ -3220,7 +3277,9 @@ async def api_db_strategy(strategy_id: int, limit_runs: int = 100) -> JSONRespon
         )
         row = sql.cursor.fetchone()
         if not row:
-            raise HTTPException(status_code=404, detail=f"Unknown strategy_id: {strategy_id}")
+            raise HTTPException(
+                status_code=404, detail=f"Unknown strategy_id: {strategy_id}"
+            )
         strategy = {
             "id": row[0],
             "name": row[1],
@@ -3318,7 +3377,9 @@ async def api_db_run_config(backtest_id: int) -> JSONResponse:
         )
         row = fetchone_dict(sql.cursor)
         if not row:
-            raise HTTPException(status_code=404, detail=f"Unknown backtest_id: {backtest_id}")
+            raise HTTPException(
+                status_code=404, detail=f"Unknown backtest_id: {backtest_id}"
+            )
 
         d = UI_DEFAULTS.get("default", {})
         trials = dict(d.get("trials_by_timeframe", {}))
@@ -3368,7 +3429,9 @@ async def api_db_trace(job_id: str) -> JSONResponse:
 
     study_names = list(job.study_names)
     if not study_names:
-        return JSONResponse({"job_id": job_id, "study_names": [], "studies": [], "backtests": []})
+        return JSONResponse(
+            {"job_id": job_id, "study_names": [], "studies": [], "backtests": []}
+        )
 
     sql = get_backtest_sql(read_only=True)
     try:
@@ -3556,7 +3619,9 @@ def run_main_cycle(config_path: Path) -> int:
                 kwargs["top_percent"] = phase["top_percent"]
                 study_args = main_module.build_study_args_phase2(**kwargs)
             print(f"[UI WORKER] {name} jobs={len(study_args)}", flush=True)
-            main_module.run_all_studies(study_args, max_parallel_studies=main_module.N_PROCESSES)
+            main_module.run_all_studies(
+                study_args, max_parallel_studies=main_module.N_PROCESSES
+            )
         elif name == "phase3":
             main_module.run_phase3(phase)
         else:
