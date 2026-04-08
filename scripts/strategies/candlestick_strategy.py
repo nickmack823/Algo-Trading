@@ -137,6 +137,41 @@ class CandlestickFilteredStrategy(BaseStrategy):
             return True
         return own_strength >= other_strength * ratio
 
+    @staticmethod
+    def _strip_prefix_columns(
+        data: pd.DataFrame | pd.Series, prefix: str
+    ) -> pd.DataFrame | pd.Series:
+        """
+        Convert prefixed indicator output (e.g. Trend_Trend) back to its native
+        signal-function column names (e.g. Trend) before calling signal functions.
+        """
+        if isinstance(data, pd.Series):
+            return data
+        out = data.copy()
+        pre = f"{prefix}_"
+        out.columns = [
+            c[len(pre) :] if isinstance(c, str) and c.startswith(pre) else c
+            for c in out.columns
+        ]
+        return out
+
+    @staticmethod
+    def _trend_bias_from_numeric(
+        trend_df_or_series: pd.DataFrame | pd.Series,
+    ) -> int:
+        """
+        Fallback trend bias from raw numeric values when signal interpretation is
+        unavailable or incompatible. Returns {-1, 0, 1}.
+        """
+        if isinstance(trend_df_or_series, pd.Series):
+            last_vals = [trend_df_or_series.iloc[-1]]
+        else:
+            last_vals = list(trend_df_or_series.iloc[-1].values)
+        m = np.nanmean(last_vals)
+        if not np.isfinite(m):
+            return 0
+        return 1 if m > 0 else (-1 if m < 0 else 0)
+
     # ───────────────────────────── Data Prep & Cache Parity ─────────────────────────────
 
     def prepare_data(self, historical_data: pd.DataFrame, use_cache: bool = True):
@@ -358,30 +393,30 @@ class CandlestickFilteredStrategy(BaseStrategy):
         if self.trend_cfg is not None:
             try:
                 trend_df_or_series = self._reconstruct_df(data, "Trend")
+                trend_native = self._strip_prefix_columns(trend_df_or_series, "Trend")
                 # Prefer signal function if provided (NNFX-style). :contentReference[oaicite:6]{index=6}
                 sig_fn = self.trend_cfg.get("signal_function")
                 if callable(sig_fn):
-                    trend_signals = self._get_indicator_signals(
-                        sig_fn, trend_df_or_series, close_series
-                    )
-                    if any(s in trend_signals for s in (BULLISH_TREND, BULLISH_SIGNAL)):
-                        trend_bias = 1
-                    elif any(
-                        s in trend_signals for s in (BEARISH_TREND, BEARISH_SIGNAL)
-                    ):
-                        trend_bias = -1
-                    else:
-                        trend_bias = 0
+                    try:
+                        trend_signals = self._get_indicator_signals(
+                            sig_fn, trend_native, close_series
+                        )
+                        if any(
+                            s in trend_signals for s in (BULLISH_TREND, BULLISH_SIGNAL)
+                        ):
+                            trend_bias = 1
+                        elif any(
+                            s in trend_signals for s in (BEARISH_TREND, BEARISH_SIGNAL)
+                        ):
+                            trend_bias = -1
+                        else:
+                            trend_bias = 0
+                    except Exception:
+                        trend_bias = self._trend_bias_from_numeric(trend_native)
                 else:
-                    # fallback: sign of last value(s)
-                    if isinstance(trend_df_or_series, pd.Series):
-                        last_vals = [trend_df_or_series.iloc[-1]]
-                    else:
-                        last_vals = list(trend_df_or_series.iloc[-1].values)
-                    m = np.nanmean(last_vals)
-                    trend_bias = 1 if m > 0 else (-1 if m < 0 else 0)
-            except KeyError:
-                trend_bias = None  # no Trend_ columns present
+                    trend_bias = self._trend_bias_from_numeric(trend_native)
+            except Exception:
+                trend_bias = None  # unavailable/incompatible trend filter
 
         # Evaluate selected candlestick patterns on the latest bar.
         # We keep both vote counts and cumulative strengths.

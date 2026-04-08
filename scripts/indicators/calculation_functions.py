@@ -35,302 +35,302 @@ from scripts.utilities import convert_np_to_pd
 
 
 def candle_2crows_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDL2CROWS(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDL2CROWS(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_3blackcrows_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDL3BLACKCROWS(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDL3BLACKCROWS(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_3inside_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDL3INSIDE(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDL3INSIDE(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_3linestrike_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDL3LINESTRIKE(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDL3LINESTRIKE(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_3starsinsouth_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDL3STARSINSOUTH(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDL3STARSINSOUTH(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_3whitesoldiers_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDL3WHITESOLDIERS(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDL3WHITESOLDIERS(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_abandonedbaby_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLABANDONEDBABY(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLABANDONEDBABY(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_advanceblock_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLADVANCEBLOCK(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLADVANCEBLOCK(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_belthold_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLBELTHOLD(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLBELTHOLD(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_breakaway_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLBREAKAWAY(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLBREAKAWAY(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_closingmarubozu_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLCLOSINGMARUBOZU(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLCLOSINGMARUBOZU(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_concealbabyswall_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLCONCEALBABYSWALL(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLCONCEALBABYSWALL(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_counterattack_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLCOUNTERATTACK(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLCOUNTERATTACK(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_darkcloudcover_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLDARKCLOUDCOVER(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLDARKCLOUDCOVER(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_doji_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLDOJI(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLDOJI(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_dojistar_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLDOJISTAR(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLDOJISTAR(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_dragonflydoji_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLDRAGONFLYDOJI(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLDRAGONFLYDOJI(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_engulfing_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLENGULFING(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLENGULFING(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_eveningdojistar_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLEVENINGDOJISTAR(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLEVENINGDOJISTAR(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_eveningstar_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLEVENINGSTAR(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLEVENINGSTAR(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_gapsidesidewhite_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLGAPSIDESIDEWHITE(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLGAPSIDESIDEWHITE(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_gravestonedoji_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLGRAVESTONEDOJI(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLGRAVESTONEDOJI(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_hammer_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLHAMMER(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLHAMMER(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_hangingman_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLHANGINGMAN(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLHANGINGMAN(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_harami_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLHARAMI(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLHARAMI(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_haramicross_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLHARAMICROSS(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLHARAMICROSS(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_highwave_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLHIGHWAVE(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLHIGHWAVE(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_hikkake_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLHIKKAKE(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLHIKKAKE(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_hikkakemod_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLHIKKAKEMOD(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLHIKKAKEMOD(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_homingpigeon_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLHOMINGPIGEON(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLHOMINGPIGEON(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_identical3crows_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLIDENTICAL3CROWS(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLIDENTICAL3CROWS(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_inneck_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLINNECK(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLINNECK(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_invertedhammer_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLINVERTEDHAMMER(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLINVERTEDHAMMER(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_kicking_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLKICKING(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLKICKING(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_kickingbylength_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLKICKINGBYLENGTH(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLKICKINGBYLENGTH(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_ladderbottom_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLLADDERBOTTOM(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLLADDERBOTTOM(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_longleggeddoji_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLLONGLEGGEDDOJI(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLLONGLEGGEDDOJI(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_longline_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLLONGLINE(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLLONGLINE(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_marubozu_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLMARUBOZU(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLMARUBOZU(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_matchinglow_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLMATCHINGLOW(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLMATCHINGLOW(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_mathold_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLMATHOLD(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLMATHOLD(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_morningdojistar_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLMORNINGDOJISTAR(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLMORNINGDOJISTAR(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_morningstar_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLMORNINGSTAR(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLMORNINGSTAR(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_onneck_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLONNECK(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLONNECK(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_piercing_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLPIERCING(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLPIERCING(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_rickshawman_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLRICKSHAWMAN(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLRICKSHAWMAN(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_risefall3methods_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLRISEFALL3METHODS(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLRISEFALL3METHODS(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_separatinglines_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLSEPARATINGLINES(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLSEPARATINGLINES(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_shootingstar_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLSHOOTINGSTAR(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLSHOOTINGSTAR(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_shortline_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLSHORTLINE(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLSHORTLINE(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_spinningtop_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLSPINNINGTOP(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLSPINNINGTOP(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_stalledpattern_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLSTALLEDPATTERN(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLSTALLEDPATTERN(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_sticksandwich_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLSTICKSANDWICH(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLSTICKSANDWICH(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_takuri_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLTAKURI(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLTAKURI(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_tasukigap_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLTASUKIGAP(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLTASUKIGAP(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_thrusting_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLTHRUSTING(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLTHRUSTING(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_tristar_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLTRISTAR(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLTRISTAR(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_unique3river_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLUNIQUE3RIVER(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLUNIQUE3RIVER(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_upsidegap2crows_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLUPSIDEGAP2CROWS(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLUPSIDEGAP2CROWS(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 
 def candle_xsidegap3methods_func(df: pd.DataFrame) -> pd.Series:
-    ta_result = ta.CDLXSIDEGAP3METHODS(df["Open"], df["High"], df["low"], df["Close"])
+    ta_result = ta.CDLXSIDEGAP3METHODS(df["Open"], df["High"], df["Low"], df["Close"])
     return convert_np_to_pd(ta_result, df.index)
 
 

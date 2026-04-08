@@ -179,6 +179,197 @@ def _is_candlestick_row(row: dict, key: str) -> bool:
 # Available candlestick pattern names
 ALL_PATTERN_NAMES: List[str] = [c["name"] for c in ta_lib_candlestick]
 
+# Family map used for diversified sampling.
+# Goal: avoid over-concentrating on highly redundant pattern subsets.
+PATTERN_FAMILY_BY_NAME: dict[str, str] = {
+    # Indecision / neutral
+    "CANDLE_DOJI": "indecision",
+    "CANDLE_DOJISTAR": "indecision",
+    "CANDLE_LONGLEGGEDDOJI": "indecision",
+    "CANDLE_RICKSHAWMAN": "indecision",
+    "CANDLE_HIGHWAVE": "indecision",
+    "CANDLE_SPINNINGTOP": "indecision",
+    "CANDLE_SHORTLINE": "indecision",
+    # Bullish reversal
+    "CANDLE_HAMMER": "bullish_reversal",
+    "CANDLE_INVERTEDHAMMER": "bullish_reversal",
+    "CANDLE_TAKURI": "bullish_reversal",
+    "CANDLE_PIERCING": "bullish_reversal",
+    "CANDLE_MORNINGSTAR": "bullish_reversal",
+    "CANDLE_MORNINGDOJISTAR": "bullish_reversal",
+    "CANDLE_3WHITESOLDIERS": "bullish_reversal",
+    "CANDLE_3STARSINSOUTH": "bullish_reversal",
+    "CANDLE_MATCHINGLOW": "bullish_reversal",
+    "CANDLE_HOMINGPIGEON": "bullish_reversal",
+    "CANDLE_LADDERBOTTOM": "bullish_reversal",
+    "CANDLE_UNIQUE3RIVER": "bullish_reversal",
+    "CANDLE_STICKSANDWICH": "bullish_reversal",
+    "CANDLE_DRAGONFLYDOJI": "bullish_reversal",
+    # Bearish reversal
+    "CANDLE_HANGINGMAN": "bearish_reversal",
+    "CANDLE_SHOOTINGSTAR": "bearish_reversal",
+    "CANDLE_DARKCLOUDCOVER": "bearish_reversal",
+    "CANDLE_EVENINGSTAR": "bearish_reversal",
+    "CANDLE_EVENINGDOJISTAR": "bearish_reversal",
+    "CANDLE_3BLACKCROWS": "bearish_reversal",
+    "CANDLE_IDENTICAL3CROWS": "bearish_reversal",
+    "CANDLE_ADVANCEBLOCK": "bearish_reversal",
+    "CANDLE_STALLEDPATTERN": "bearish_reversal",
+    "CANDLE_UPSIDEGAP2CROWS": "bearish_reversal",
+    "CANDLE_2CROWS": "bearish_reversal",
+    "CANDLE_GRAVESTONEDOJI": "bearish_reversal",
+    # Dual-sided reversal (direction depends on sign/context)
+    "CANDLE_ENGULFING": "reversal_dual",
+    "CANDLE_HARAMI": "reversal_dual",
+    "CANDLE_HARAMICROSS": "reversal_dual",
+    "CANDLE_COUNTERATTACK": "reversal_dual",
+    "CANDLE_ABANDONEDBABY": "reversal_dual",
+    "CANDLE_BELTHOLD": "reversal_dual",
+    "CANDLE_BREAKAWAY": "reversal_dual",
+    "CANDLE_KICKING": "reversal_dual",
+    "CANDLE_KICKINGBYLENGTH": "reversal_dual",
+    "CANDLE_TRISTAR": "reversal_dual",
+    "CANDLE_3INSIDE": "reversal_dual",
+    "CANDLE_3LINESTRIKE": "reversal_dual",
+    "CANDLE_CONCEALBABYSWALL": "reversal_dual",
+    # Continuation
+    "CANDLE_RISEFALL3METHODS": "continuation",
+    "CANDLE_XSIDEGAP3METHODS": "continuation",
+    "CANDLE_TASUKIGAP": "continuation",
+    "CANDLE_GAPSIDESIDEWHITE": "continuation",
+    "CANDLE_SEPARATINGLINES": "continuation",
+    "CANDLE_MATHOLD": "continuation",
+    "CANDLE_ONNECK": "continuation",
+    "CANDLE_INNECK": "continuation",
+    "CANDLE_THRUSTING": "continuation",
+    # Momentum / body-strength
+    "CANDLE_MARUBOZU": "momentum_body",
+    "CANDLE_CLOSINGMARUBOZU": "momentum_body",
+    "CANDLE_LONGLINE": "momentum_body",
+    # Trap / false-break
+    "CANDLE_HIKKAKE": "trap_false_break",
+    "CANDLE_HIKKAKEMOD": "trap_false_break",
+}
+
+_pattern_set = set(ALL_PATTERN_NAMES)
+_family_map_set = set(PATTERN_FAMILY_BY_NAME)
+_missing_family_map = sorted(_pattern_set - _family_map_set)
+_extra_family_map = sorted(_family_map_set - _pattern_set)
+if _missing_family_map or _extra_family_map:
+    raise RuntimeError(
+        "Candlestick family map mismatch. "
+        f"missing={_missing_family_map} extra={_extra_family_map}"
+    )
+
+
+def _sample_patterns_family_aware(
+    trial: optuna.Trial,
+    available_patterns: list[str] | tuple[str, ...],
+) -> list[str]:
+    pool = tuple(
+        sorted({name for name in available_patterns if name in PATTERN_FAMILY_BY_NAME})
+    )
+    if not pool:
+        raise optuna.exceptions.TrialPruned("No valid candlestick patterns in pool.")
+
+    max_patterns = min(6, len(pool))
+    min_patterns = 3 if len(pool) >= 3 else 1
+    k = trial.suggest_int("Patterns.K", min_patterns, max_patterns)
+
+    family_to_patterns: dict[str, tuple[str, ...]] = {}
+    for name in pool:
+        family = PATTERN_FAMILY_BY_NAME[name]
+        family_to_patterns.setdefault(family, [])
+        family_to_patterns[family].append(name)
+    family_to_patterns = {
+        fam: tuple(sorted(names)) for fam, names in family_to_patterns.items()
+    }
+
+    family_pool = tuple(sorted(family_to_patterns.keys()))
+    max_family_count = min(k, len(family_pool))
+    min_family_count = 1 if max_family_count <= 1 else 2
+    family_k = trial.suggest_int(
+        "Patterns.Families.K", min_family_count, max_family_count
+    )
+
+    fam_sig = _space_signature(list(family_pool))
+    sampled_families = [
+        trial.suggest_categorical(f"Patterns.Families.pick.{i}.{fam_sig}", family_pool)
+        for i in range(8)
+    ]
+
+    selected_families: list[str] = []
+    seen_families = set()
+    for fam in sampled_families:
+        if fam in seen_families:
+            continue
+        selected_families.append(fam)
+        seen_families.add(fam)
+        if len(selected_families) >= family_k:
+            break
+    if len(selected_families) < family_k:
+        for fam in family_pool:
+            if fam in seen_families:
+                continue
+            selected_families.append(fam)
+            seen_families.add(fam)
+            if len(selected_families) >= family_k:
+                break
+
+    patterns: list[str] = []
+    seen_patterns = set()
+
+    # Seed one pattern per selected family.
+    for fam in selected_families:
+        choices = family_to_patterns[fam]
+        fam_choice_sig = _space_signature(list(choices))
+        picked = trial.suggest_categorical(
+            f"Patterns.Family.{fam}.seed.{fam_choice_sig}", choices
+        )
+        if picked not in seen_patterns:
+            patterns.append(picked)
+            seen_patterns.add(picked)
+        else:
+            for alt in choices:
+                if alt not in seen_patterns:
+                    patterns.append(alt)
+                    seen_patterns.add(alt)
+                    break
+
+    # Fill remaining slots from the selected-family union.
+    if len(patterns) < k:
+        union_pool = tuple(
+            sorted(
+                {
+                    name
+                    for fam in selected_families
+                    for name in family_to_patterns[fam]
+                }
+            )
+        )
+        union_sig = _space_signature(list(union_pool))
+        for i in range(12):
+            cand = trial.suggest_categorical(
+                f"Patterns.extra.pick.{i}.{union_sig}", union_pool
+            )
+            if cand in seen_patterns:
+                continue
+            patterns.append(cand)
+            seen_patterns.add(cand)
+            if len(patterns) >= k:
+                break
+
+        if len(patterns) < k:
+            for cand in union_pool:
+                if cand in seen_patterns:
+                    continue
+                patterns.append(cand)
+                seen_patterns.add(cand)
+                if len(patterns) >= k:
+                    break
+
+    return patterns
+
 
 class CandlestickAdapter(StrategyTrialAdapter):
     key = "Candlestick"
@@ -206,43 +397,16 @@ class CandlestickAdapter(StrategyTrialAdapter):
 
         trend = None
         if pools.get("Trend"):
-            trend = _sample_indicator(trial, "Trend", pools["Trend"], use_defaults)
+            use_trend_filter = trial.suggest_categorical(
+                "use_trend_filter", [False, True]
+            )
+            if use_trend_filter:
+                trend = _sample_indicator(trial, "Trend", pools["Trend"], use_defaults)
 
         available = (
             ALL_PATTERN_NAMES if "all" in allowed["Patterns"] else allowed["Patterns"]
         )
-        pool = tuple(sorted({name for name in available if name in ALL_PATTERN_NAMES}))
-        if not pool:
-            raise optuna.exceptions.TrialPruned("No valid candlestick patterns in pool.")
-
-        max_patterns = min(6, len(pool))
-        min_patterns = 3 if len(pool) >= 3 else 1
-        k = trial.suggest_int("Patterns.K", min_patterns, max_patterns)
-        pool_sig = _space_signature(list(pool))
-
-        raw_picks: list[str] = []
-        for i in range(10):
-            raw_picks.append(trial.suggest_categorical(f"Patterns.pick.{i}.{pool_sig}", pool))
-
-        patterns: list[str] = []
-        seen = set()
-        for name in raw_picks:
-            if name in seen:
-                continue
-            patterns.append(name)
-            seen.add(name)
-            if len(patterns) >= k:
-                break
-
-        # Rare case: duplicates reduced cardinality below k; fill deterministically.
-        if len(patterns) < k:
-            for name in pool:
-                if name in seen:
-                    continue
-                patterns.append(name)
-                seen.add(name)
-                if len(patterns) >= k:
-                    break
+        patterns = _sample_patterns_family_aware(trial, available)
 
         # thresholds
         min_abs_score = trial.suggest_int("min_abs_score", 40, 80, step=10)

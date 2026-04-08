@@ -4,6 +4,7 @@ import json
 import logging
 import multiprocessing as mp
 import os
+import queue as pyqueue
 import time
 import traceback
 import warnings
@@ -267,161 +268,161 @@ def run_fixed_strategy_evaluation(
     )
 
 
-def db_writer_process(queue: mp.Queue, done_flag, ack_dict: dict):
+def db_writer_process(db_queue: mp.Queue, done_flag, ack_dict: dict):
     sql = BacktestSQLHelper()
     cache_sql = IndicatorCacheSQLHelper()
 
     while True:
-        while not queue.empty():
-            queue_dict: dict = queue.get(timeout=1)
+        try:
+            queue_dict: dict = db_queue.get(timeout=1)
+        except pyqueue.Empty:
+            if done_flag.value is True:
+                logging.info("Closing DB queue connection...")
+                sql.close_connection()
+                cache_sql.close_connection()
+                del sql
+                del cache_sql
+                break
+            continue
 
-            # Determine why queue item was inserted
-            purpose = queue_dict.get("purpose")
+        # Determine why queue item was inserted
+        purpose = queue_dict.get("purpose")
 
-            try:
-                if purpose == "strategy_config":
-                    strategy_config_id = sql.insert_strategy_configuration(
-                        queue_dict.get("strategy_name"),
-                        queue_dict.get("strategy_description"),
-                        queue_dict.get("strategy_parameters"),
-                    )
-                    if ack_dict is not None and queue_dict.get("ack_id"):
-                        ack_dict[queue_dict["ack_id"]] = Acknowledgement(
-                            ok=True, payload={"strategy_config_id": strategy_config_id}
-                        )
-
-                elif purpose == "indicator_cache":
-                    cache_items: list[dict] = queue_dict.get("cache_items")
-                    cache_sql.insert_cache_items(cache_items)
-
-                # Write trial to DB (backtest & score || score)
-                elif purpose == "trial":
-                    # Unpack queue item
-                    pair_id = queue_dict.get("pair_id")
-                    timeframe = queue_dict.get("timeframe")
-                    metrics_df = queue_dict.get("metrics_df")
-                    study_name = queue_dict.get("study_name")
-                    trial_id = queue_dict.get("trial_id")
-                    score = queue_dict.get("score")
-                    exploration_space = queue_dict.get("exploration_space")
-                    trial_start = queue_dict.get("trial_start")
-
-                    # Select strategy configuration
-                    strategy_config_id = sql.select_strategy_configuration(
-                        queue_dict.get("strategy_name"),
-                        queue_dict.get("strategy_description"),
-                        queue_dict.get("strategy_parameters"),
-                    )
-
-                    # Check if run already exists
-                    start_date, end_date = (
-                        metrics_df["Data_Start_Date"].iloc[0],
-                        metrics_df["Data_End_Date"].iloc[0],
-                    )
-                    run_id = sql.select_backtest_run_by_config(
-                        pair_id, strategy_config_id, timeframe, start_date, end_date
-                    )
-
-                    # Insert run if it doesn't exist
-                    if run_id is None and metrics_df is not None:
-                        run_id = sql.insert_backtest_run(
-                            pair_id, strategy_config_id, timeframe, metrics_df
-                        )
-                        # logging.info(f"Inserted new run {run_id}")
-
-                    # Insert composite score
-                    if run_id is not None and score is not None:
-                        sql.insert_composite_score(
-                            run_id,
-                            study_name,
-                            None,
-                            trial_id,
-                            score,
-                            exploration_space,
-                            trial_start,
-                        )
-                        # logging.info("Saved composite score.")
-
-                    if run_id is None and score is not None:
-                        raise ValueError("Run ID is None but score is not None.")
-
-                # Write study metadata and backfill composite scores
-                elif purpose == "study":
-                    # Write study metadata
-                    meta_df = queue_dict.get("meta_df")
-                    sql.insert_study_metadata(meta_df)
-                    study_id = sql.select_study_id(meta_df["Study_Name"][0])
-
-                    # Backfill composite score table to link to study metadata
-                    sql.backfill_composite_scores(study_id)
-
-                # For phase 3 runs
-                elif purpose == "backtest_run":
-                    # Unpack queue item
-                    pair_id = queue_dict.get("pair_id")
-                    strategy_config_id = queue_dict.get("strategy_config_id")
-                    timeframe = queue_dict.get("timeframe")
-                    metrics_df = queue_dict.get("metrics_df")
-                    study_name = queue_dict.get("study_name")
-                    score = queue_dict.get("score")
-                    exploration_space = queue_dict.get("exploration_space")
-
-                    # Check if run already exists
-                    start_date, end_date = (
-                        metrics_df["Data_Start_Date"].iloc[0],
-                        metrics_df["Data_End_Date"].iloc[0],
-                    )
-                    run_id = sql.select_backtest_run_by_config(
-                        pair_id, strategy_config_id, timeframe, start_date, end_date
-                    )
-
-                    # Insert run if it doesn't exist
-                    if run_id is None and metrics_df is not None:
-                        run_id = sql.insert_backtest_run(
-                            pair_id, strategy_config_id, timeframe, metrics_df
-                        )
-                        # logging.info(f"Inserted new run {run_id}")
-
-                    # Insert composite score
-                    if run_id is not None and score is not None:
-                        sql.insert_composite_score(
-                            run_id,
-                            study_name,
-                            -1,
-                            -1,
-                            score,
-                            exploration_space,
-                            None,
-                        )
-                        # logging.info("Saved composite score.")
-
-                    if run_id is None and score is not None:
-                        raise ValueError("Run ID is None but score is not None.")
-
-            except Exception as e:
-                if (
-                    purpose == "strategy_config"
-                    and ack_dict is not None
-                    and queue_dict.get("ack_id")
-                ):
+        try:
+            if purpose == "strategy_config":
+                strategy_config_id = sql.insert_strategy_configuration(
+                    queue_dict.get("strategy_name"),
+                    queue_dict.get("strategy_description"),
+                    queue_dict.get("strategy_parameters"),
+                )
+                if ack_dict is not None and queue_dict.get("ack_id"):
                     ack_dict[queue_dict["ack_id"]] = Acknowledgement(
-                        ok=False, error=str(e)
+                        ok=True, payload={"strategy_config_id": strategy_config_id}
                     )
-                log_error(
-                    "DB write error in db_writer_process.",
-                    category="db_writer",
-                    context={"purpose": purpose},
-                    exception=e,
+
+            elif purpose == "indicator_cache":
+                cache_items: list[dict] = queue_dict.get("cache_items")
+                cache_sql.insert_cache_items(cache_items)
+
+            # Write trial to DB (backtest & score || score)
+            elif purpose == "trial":
+                # Unpack queue item
+                pair_id = queue_dict.get("pair_id")
+                timeframe = queue_dict.get("timeframe")
+                metrics_df = queue_dict.get("metrics_df")
+                study_name = queue_dict.get("study_name")
+                trial_id = queue_dict.get("trial_id")
+                score = queue_dict.get("score")
+                exploration_space = queue_dict.get("exploration_space")
+                trial_start = queue_dict.get("trial_start")
+
+                # Select strategy configuration
+                strategy_config_id = sql.select_strategy_configuration(
+                    queue_dict.get("strategy_name"),
+                    queue_dict.get("strategy_description"),
+                    queue_dict.get("strategy_parameters"),
                 )
 
-        if done_flag.value is True:
-            # Close DB connection
-            logging.info("Closing DB queue connection...")
-            sql.close_connection()
-            cache_sql.close_connection()
-            del sql
-            del cache_sql
-            break
+                # Check if run already exists
+                start_date, end_date = (
+                    metrics_df["Data_Start_Date"].iloc[0],
+                    metrics_df["Data_End_Date"].iloc[0],
+                )
+                run_id = sql.select_backtest_run_by_config(
+                    pair_id, strategy_config_id, timeframe, start_date, end_date
+                )
+
+                # Insert run if it doesn't exist
+                if run_id is None and metrics_df is not None:
+                    run_id = sql.insert_backtest_run(
+                        pair_id, strategy_config_id, timeframe, metrics_df
+                    )
+                    # logging.info(f"Inserted new run {run_id}")
+
+                # Insert composite score
+                if run_id is not None and score is not None:
+                    sql.insert_composite_score(
+                        run_id,
+                        study_name,
+                        None,
+                        trial_id,
+                        score,
+                        exploration_space,
+                        trial_start,
+                    )
+                    # logging.info("Saved composite score.")
+
+                if run_id is None and score is not None:
+                    raise ValueError("Run ID is None but score is not None.")
+
+            # Write study metadata and backfill composite scores
+            elif purpose == "study":
+                # Write study metadata
+                meta_df = queue_dict.get("meta_df")
+                sql.insert_study_metadata(meta_df)
+                study_id = sql.select_study_id(meta_df["Study_Name"][0])
+
+                # Backfill composite score table to link to study metadata
+                sql.backfill_composite_scores(study_id)
+
+            # For phase 3 runs
+            elif purpose == "backtest_run":
+                # Unpack queue item
+                pair_id = queue_dict.get("pair_id")
+                strategy_config_id = queue_dict.get("strategy_config_id")
+                timeframe = queue_dict.get("timeframe")
+                metrics_df = queue_dict.get("metrics_df")
+                study_name = queue_dict.get("study_name")
+                score = queue_dict.get("score")
+                exploration_space = queue_dict.get("exploration_space")
+
+                # Check if run already exists
+                start_date, end_date = (
+                    metrics_df["Data_Start_Date"].iloc[0],
+                    metrics_df["Data_End_Date"].iloc[0],
+                )
+                run_id = sql.select_backtest_run_by_config(
+                    pair_id, strategy_config_id, timeframe, start_date, end_date
+                )
+
+                # Insert run if it doesn't exist
+                if run_id is None and metrics_df is not None:
+                    run_id = sql.insert_backtest_run(
+                        pair_id, strategy_config_id, timeframe, metrics_df
+                    )
+                    # logging.info(f"Inserted new run {run_id}")
+
+                # Insert composite score
+                if run_id is not None and score is not None:
+                    sql.insert_composite_score(
+                        run_id,
+                        study_name,
+                        -1,
+                        -1,
+                        score,
+                        exploration_space,
+                        None,
+                    )
+                    # logging.info("Saved composite score.")
+
+                if run_id is None and score is not None:
+                    raise ValueError("Run ID is None but score is not None.")
+
+        except Exception as e:
+            if (
+                purpose == "strategy_config"
+                and ack_dict is not None
+                and queue_dict.get("ack_id")
+            ):
+                ack_dict[queue_dict["ack_id"]] = Acknowledgement(
+                    ok=False, error=str(e)
+                )
+            log_error(
+                "DB write error in db_writer_process.",
+                category="db_writer",
+                context={"purpose": purpose},
+                exception=e,
+            )
 
 
 def get_study_meta(
@@ -573,6 +574,50 @@ def run_study_wrapper(args) -> dict:
     return meta
 
 
+def summarize_study_args(args: tuple) -> dict:
+    """Build a compact, serializable summary for error logs."""
+    try:
+        (
+            pair,
+            timeframe,
+            n_trials,
+            exploration_space,
+            phase_name,
+            seed,
+            strategy_key,
+            context,
+            *_,
+        ) = args
+    except Exception:
+        return {"args_preview": str(args)[:400]}
+
+    summary = {
+        "pair": pair,
+        "timeframe": timeframe,
+        "n_trials": n_trials,
+        "exploration_space": exploration_space,
+        "phase_name": phase_name,
+        "seed": seed,
+        "strategy_key": strategy_key,
+    }
+
+    if isinstance(context, dict):
+        summary["context_keys"] = sorted(context.keys())
+        allowed = context.get("allowed")
+        if isinstance(allowed, dict):
+            allowed_summary = {}
+            for role, names in allowed.items():
+                if names == ["all"]:
+                    allowed_summary[role] = "all"
+                elif isinstance(names, (list, tuple, set)):
+                    allowed_summary[role] = len(names)
+                else:
+                    allowed_summary[role] = "custom"
+            summary["allowed"] = allowed_summary
+
+    return summary
+
+
 def run_all_studies(
     study_args_list: list[tuple],
     max_parallel_studies: int,
@@ -630,7 +675,7 @@ def run_all_studies(
                     log_error(
                         "[ERROR] Study failed.",
                         category="study_runner",
-                        context={"args": str(args)},
+                        context={"study": summarize_study_args(args)},
                         exception=e,
                     )
     finally:
@@ -779,9 +824,9 @@ if __name__ == "__main__":
 
     # --- Edit these top-level knobs freely ---
     STRATEGY_KEYS_TO_RUN: list[str] = [
-        "NNFX",
+        # "NNFX",
         "Candlestick",
-        "Mabrouk2021",
+        # "Mabrouk2021",
     ]  # use any registered adapters
     N_PROCESSES: int = 5  # mp.cpu_count() - 3 is a decent default
 

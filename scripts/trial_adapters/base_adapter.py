@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import logging
 import multiprocessing as mp
+import os
 import sys
 import time
 import traceback
+import uuid
 from abc import ABC, abstractmethod
 from typing import Callable, Dict
 
@@ -100,8 +102,23 @@ class Acknowledgement:
         self.error = error
 
 
+ACK_TIMEOUT_SECONDS = 30.0
+ACK_POLL_SECONDS = 0.02
+
+
+def build_ack_id(forex_pair: str, timeframe: str, trial_number: int) -> str:
+    pair = str(forex_pair).replace("/", "")
+    return (
+        f"{pair}_{timeframe}_{trial_number}_"
+        f"{os.getpid()}_{time.time_ns()}_{uuid.uuid4().hex[:8]}"
+    )
+
+
 def wait_for_ack(
-    ack_dict: dict, ack_id: str, timeout: float = 10.0, poll: float = 0.02
+    ack_dict: dict,
+    ack_id: str,
+    timeout: float = ACK_TIMEOUT_SECONDS,
+    poll: float = ACK_POLL_SECONDS,
 ) -> Acknowledgement:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -187,7 +204,7 @@ def run_objective_common(
         strategy.NAME, strategy.DESCRIPTION, strategy.PARAMETER_SETTINGS
     )
     if strategy_config_id is None:
-        ack_id = f"{forex_pair}_{timeframe}_{trial.number}_{time.time()}"
+        ack_id = build_ack_id(forex_pair, timeframe, trial.number)
         db_queue.put(
             {
                 "purpose": "strategy_config",
@@ -198,12 +215,18 @@ def run_objective_common(
             }
         )
         ack = wait_for_ack(ack_dict, ack_id)
-        if not ack.ok:
-            raise RuntimeError(f"Strategy config insert failed: {ack.error}")
+        if ack.ok and ack.payload:
+            strategy_config_id = ack.payload.get("strategy_config_id")
 
-        strategy_config_id = backtest_sqlhelper.select_strategy_configuration(
-            strategy.NAME, strategy.DESCRIPTION, strategy.PARAMETER_SETTINGS
-        )
+        # Fallback safety: if ACK is delayed/lost but writer inserted successfully,
+        # continue using DB truth rather than failing the whole study.
+        if strategy_config_id is None:
+            strategy_config_id = backtest_sqlhelper.select_strategy_configuration(
+                strategy.NAME, strategy.DESCRIPTION, strategy.PARAMETER_SETTINGS
+            )
+
+        if strategy_config_id is None:
+            raise RuntimeError(f"Strategy config insert failed: {ack.error}")
 
     # date window
     tf_rng = TIMEFRAME_DATE_RANGES_PHASE_1_AND_2[timeframe]
