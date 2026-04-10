@@ -312,6 +312,52 @@ INTRABAR_LOWER_TIMEFRAME_BY_TIMEFRAME = {
     "5_minute": None,
 }
 
+# === Trading Session Templates (entries) ===
+# Weekday numbers follow Python datetime.weekday():
+# Monday=0 ... Friday=4, Saturday=5, Sunday=6
+SESSION_TEMPLATE_TIMEZONE = "America/New_York"
+SESSION_TEMPLATE_DEFINITIONS = {
+    # Spot FX-style 24x5 with Sunday evening open and Friday evening close (NY time).
+    "full_24x5": [
+        {"days": [0, 1, 2, 3], "start": "00:00", "end": "24:00"},
+        {"days": [4], "start": "00:00", "end": "17:00"},
+        {"days": [6], "start": "17:00", "end": "24:00"},
+    ],
+    "london": [
+        {"days": [0, 1, 2, 3, 4], "start": "03:00", "end": "12:00"},
+    ],
+    "ny": [
+        {"days": [0, 1, 2, 3, 4], "start": "08:00", "end": "17:00"},
+    ],
+    "london_ny_overlap": [
+        {"days": [0, 1, 2, 3, 4], "start": "08:00", "end": "12:00"},
+    ],
+    "asia": [
+        {"days": [6, 0, 1, 2, 3], "start": "19:00", "end": "24:00"},
+        {"days": [0, 1, 2, 3, 4], "start": "00:00", "end": "04:00"},
+    ],
+}
+
+DEFAULT_SESSION_TEMPLATE_BY_TIMEFRAME = {
+    "5_minute": "full_24x5",
+    "15_minute": "full_24x5",
+    "30_minute": "full_24x5",
+    "1_hour": "full_24x5",
+    "2_hour": "full_24x5",
+    "4_hour": "full_24x5",
+    "1_day": "full_24x5",
+}
+
+SESSION_TEMPLATE_SEARCH_SPACE_BY_TIMEFRAME = {
+    "5_minute": ["full_24x5", "london", "ny", "london_ny_overlap", "asia"],
+    "15_minute": ["full_24x5", "london", "ny", "london_ny_overlap", "asia"],
+    "30_minute": ["full_24x5", "london", "ny", "london_ny_overlap", "asia"],
+    "1_hour": ["full_24x5", "london", "ny", "london_ny_overlap", "asia"],
+    "2_hour": ["full_24x5", "london", "ny", "london_ny_overlap", "asia"],
+    "4_hour": ["full_24x5"],
+    "1_day": ["full_24x5"],
+}
+
 
 # === OANDA Config ===
 OANDA_API_KEY = "9dc7d56d2f3c584dcd04947f2c773983-f3c6f66bb43e9f533c910a636908995f"

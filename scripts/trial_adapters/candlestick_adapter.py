@@ -19,7 +19,13 @@ from scripts.indicators.indicator_configs import (
 )
 from scripts.strategies import strategy_core
 
-from .base_adapter import StrategyTrialAdapter, register_adapter, run_objective_common
+from .base_adapter import (
+    StrategyTrialAdapter,
+    apply_execution_config_to_strategy,
+    extract_execution_config_from_parameters,
+    register_adapter,
+    run_objective_common,
+)
 
 
 # Stable signature so Optuna params remain deterministic for a given pool.
@@ -610,6 +616,14 @@ class CandlestickAdapter(StrategyTrialAdapter):
             params = row.get("Parameters")
             if not isinstance(params, dict):
                 continue
+            params_for_exec = (
+                params.get("parameters")
+                if isinstance(params.get("parameters"), dict)
+                else params
+            )
+            execution_cfg = extract_execution_config_from_parameters(
+                params_for_exec, row.get("Timeframe")
+            )
             if "parameters" in params and isinstance(params["parameters"], dict):
                 params = params["parameters"]
 
@@ -648,10 +662,6 @@ class CandlestickAdapter(StrategyTrialAdapter):
 
             for pair in pairs:
                 for timeframe in timeframes:
-                    combo = (row["StrategyConfig_ID"], pair, timeframe)
-                    if combo in existing_combos:
-                        continue
-
                     strategy_obj = strategy_core.create_strategy_from_kwargs(
                         self.key,
                         atr=atr_cfg,
@@ -669,6 +679,20 @@ class CandlestickAdapter(StrategyTrialAdapter):
                         forex_pair=pair,
                         timeframe=timeframe,
                     )
+                    apply_execution_config_to_strategy(
+                        strategy_obj, execution_cfg, timeframe=timeframe
+                    )
+                    resolved_strategy_id = db.select_strategy_configuration(
+                        strategy_obj.NAME,
+                        strategy_obj.DESCRIPTION,
+                        strategy_obj.PARAMETER_SETTINGS,
+                    )
+                    if resolved_strategy_id is not None and (
+                        resolved_strategy_id,
+                        pair,
+                        timeframe,
+                    ) in existing_combos:
+                        continue
                     jobs.append((pair, timeframe, strategy_obj))
 
         return jobs

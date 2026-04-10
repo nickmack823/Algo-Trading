@@ -19,7 +19,13 @@ from scripts.indicators.indicator_configs import (
 )
 from scripts.strategies import strategy_core
 
-from .base_adapter import StrategyTrialAdapter, register_adapter, run_objective_common
+from .base_adapter import (
+    StrategyTrialAdapter,
+    apply_execution_config_to_strategy,
+    extract_execution_config_from_parameters,
+    register_adapter,
+    run_objective_common,
+)
 
 
 def build_indicator_config_for_trial(
@@ -99,7 +105,13 @@ class NNFXAdapter(StrategyTrialAdapter):
             )
 
         return run_objective_common(
-            build_strategy, trial, forex_pair, timeframe, db_queue, ack_dict
+            build_strategy,
+            trial,
+            forex_pair,
+            timeframe,
+            db_queue,
+            ack_dict,
+            context,
         )
 
     # Phase builders (unchanged logic from your current main.py)
@@ -289,6 +301,9 @@ class NNFXAdapter(StrategyTrialAdapter):
         for strategy_row in top_rows:
             raw_params = strategy_row["Parameters"]
             role_configs: dict[str, dict] = {}
+            execution_cfg = extract_execution_config_from_parameters(
+                raw_params, strategy_row.get("Timeframe")
+            )
 
             # Rebuild IndicatorConfigs
             for raw_key, full_str in raw_params.items():
@@ -310,9 +325,6 @@ class NNFXAdapter(StrategyTrialAdapter):
 
             for pair in pairs:
                 for timeframe in timeframes:
-                    combo = (strategy_row["StrategyConfig_ID"], pair, timeframe)
-                    if combo in existing_combos:  # exact original skip rule
-                        continue
                     strategy_obj = strategy_core.create_strategy_from_kwargs(
                         "NNFX",
                         atr=role_configs["ATR"],
@@ -324,6 +336,20 @@ class NNFXAdapter(StrategyTrialAdapter):
                         forex_pair=pair,
                         timeframe=timeframe,
                     )
+                    apply_execution_config_to_strategy(
+                        strategy_obj, execution_cfg, timeframe=timeframe
+                    )
+                    resolved_strategy_id = db.select_strategy_configuration(
+                        strategy_obj.NAME,
+                        strategy_obj.DESCRIPTION,
+                        strategy_obj.PARAMETER_SETTINGS,
+                    )
+                    if resolved_strategy_id is not None and (
+                        resolved_strategy_id,
+                        pair,
+                        timeframe,
+                    ) in existing_combos:
+                        continue
                     args.append((pair, timeframe, strategy_obj))
         return args
 

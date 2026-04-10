@@ -8,6 +8,7 @@ import pandas as pd
 from scripts import config
 from scripts.data.sql import BacktestSQLHelper, HistoricalDataSQLHelper
 from scripts.strategies import strategy_core
+from scripts.trading_hours import build_entry_allowed_mask
 
 
 class Trade:
@@ -135,6 +136,7 @@ class Backtester:
         intrabar_mode: str = "hybrid_ohlc",
         intrabar_timeframe: str | None = None,
         intrabar_data: pd.DataFrame | None = None,
+        session_config: dict | None = None,
     ):
         """
         Initializes the backtester with historical data and trading parameters.
@@ -203,6 +205,7 @@ class Backtester:
         self.peak_balance = initial_balance  # Highest account balance observed
         self.equity_samples: list[tuple[pd.Timestamp, float]] = []
         self._parent_bar_delta = self._timeframe_to_timedelta(self.timeframe)
+        self.session_config = session_config
 
         # Lower-timeframe arrays used only when intrabar_mode == "lower_timeframe".
         self._intrabar_timestamps: np.ndarray | None = None
@@ -210,6 +213,9 @@ class Backtester:
         self._intrabar_lows: np.ndarray | None = None
         self._intrabar_closes: np.ndarray | None = None
         self._prepare_intrabar_data(intrabar_data)
+        self._entry_allowed_mask = build_entry_allowed_mask(
+            self.data["Timestamp"], self.session_config, timeframe=self.timeframe
+        )
 
         if self.quote_currency != "USD":
             self._prepare_intrabar_quote_to_usd_data()
@@ -956,6 +962,11 @@ class Backtester:
             current_high = highs[index]
             current_low = lows[index]
             timestamp = timestamps[index]
+            entry_allowed_on_bar = (
+                True
+                if self._entry_allowed_mask is None
+                else bool(self._entry_allowed_mask[index])
+            )
 
             quote_to_usd_rate = None
             if quote_to_usd_rates is not None:
@@ -970,13 +981,20 @@ class Backtester:
                     )
 
             # Generate zero or more trade plans (entries and/or exits) using strategy logic
-            plans: list[strategy_core.TradePlan] = self.strategy.generate_trade_plan(
-                # Slice precomputed dataset up to current index to mimic real-time data
-                index,
-                self.position,
-                self.balance,
-                quote_to_usd_rate,
-            )
+            # Out of entry-session windows, skip strategy calls only when flat to avoid
+            # mutating strategy entry-state on bars where entries cannot execute.
+            if entry_allowed_on_bar or self.open_trades:
+                plans: list[strategy_core.TradePlan] = (
+                    self.strategy.generate_trade_plan(
+                        # Slice precomputed dataset up to current index to mimic real-time data
+                        index,
+                        self.position,
+                        self.balance,
+                        quote_to_usd_rate,
+                    )
+                )
+            else:
+                plans = []
 
             # --- Step 1: Check SL/TP exit for open trades BEFORE executing any strategy ENTRY/EXIT ---
             exited_trades = []
@@ -1051,6 +1069,8 @@ class Backtester:
                 # entries are only allowed if the bar started flat and no strategy EXIT
                 # has already been consumed on this bar.
                 if position_at_bar_start != 0 or exited_by_strategy_plan:
+                    continue
+                if not entry_allowed_on_bar:
                     continue
 
                 # Skip if any critical values are missing or invalid

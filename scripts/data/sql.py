@@ -1081,7 +1081,12 @@ class BacktestSQLHelper(SQLHelper):
         rows = self.cursor.fetchall()
         columns = [desc[0] for desc in self.cursor.description]
 
-        def parse_indicator_field(value: str):
+        def parse_indicator_field(value):
+            if not isinstance(value, str):
+                if isinstance(value, dict):
+                    return {"name": "OBJECT", "parameters": value}
+                return {"name": str(value), "parameters": {}}
+
             match = re.match(r"^(.*?)_\{(.*)\}$", value)
             if not match:
                 return {"name": value, "parameters": {}}
@@ -1109,8 +1114,11 @@ class BacktestSQLHelper(SQLHelper):
                 continue
 
             indicators = {
-                k.upper(): parse_indicator_field(v) for k, v in raw_params.items()
+                str(k).upper(): parse_indicator_field(v)
+                for k, v in raw_params.items()
+                if not str(k).startswith("__")
             }
+            execution = raw_params.get("__execution__")
 
             # Remove duplicate fields and raw parameter string
             del row_dict["parameters"]
@@ -1122,6 +1130,7 @@ class BacktestSQLHelper(SQLHelper):
                 "score": row_dict.pop("Score"),
                 "timeframe": row_dict.get("Timeframe"),
                 "indicators": indicators,
+                "execution": execution if isinstance(execution, dict) else None,
                 "metrics": row_dict,  # everything from BacktestRuns
             }
 

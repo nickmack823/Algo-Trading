@@ -52,6 +52,8 @@ from scripts.trial_adapters.base_adapter import (
     ADAPTER_REGISTRY,
     Acknowledgement,
     _resolve_evaluation_window,
+    apply_execution_config_to_strategy,
+    extract_execution_config_from_parameters,
     objective,
 )
 
@@ -180,6 +182,12 @@ def run_fixed_strategy_evaluation(
 ):
     sql = BacktestSQLHelper(read_only=True)
     pair_id = sql.select_forex_pair_id(pair)
+    execution_config = extract_execution_config_from_parameters(
+        strategy.PARAMETER_SETTINGS, timeframe
+    )
+    execution_config = apply_execution_config_to_strategy(
+        strategy, execution_config, timeframe=timeframe
+    )
     strategy_config_id = sql.select_strategy_configuration(
         strategy.NAME, strategy.DESCRIPTION, strategy.PARAMETER_SETTINGS
     )
@@ -209,6 +217,7 @@ def run_fixed_strategy_evaluation(
             intrabar_mode = "hybrid_ohlc"
     elif intrabar_mode == "lower_timeframe":
         intrabar_mode = "hybrid_ohlc"
+    data_sqlhelper.close_connection()
 
     strategy.prepare_data(data)
     cache_items = strategy.get_cache_jobs()
@@ -226,6 +235,7 @@ def run_fixed_strategy_evaluation(
         intrabar_mode=intrabar_mode,
         intrabar_timeframe=intrabar_timeframe,
         intrabar_data=intrabar_data,
+        session_config=execution_config,
     )
 
     try:
@@ -237,6 +247,7 @@ def run_fixed_strategy_evaluation(
             context={"pair": pair, "timeframe": timeframe, "phase": phase_name},
             exception=e,
         )
+        sql.close_connection()
         return
 
     metrics_df = backtester.get_metrics_df()
@@ -252,6 +263,7 @@ def run_fixed_strategy_evaluation(
                 "study_name": study_name,
             },
         )
+        sql.close_connection()
         return
 
     db_queue.put(
@@ -259,6 +271,9 @@ def run_fixed_strategy_evaluation(
             "purpose": "backtest_run",
             "pair_id": pair_id,
             "strategy_config_id": strategy_config_id,
+            "strategy_name": strategy.NAME,
+            "strategy_description": strategy.DESCRIPTION,
+            "strategy_parameters": strategy.PARAMETER_SETTINGS,
             "timeframe": timeframe,
             "metrics_df": metrics_df,
             "study_name": study_name,
@@ -266,6 +281,7 @@ def run_fixed_strategy_evaluation(
             "exploration_space": exploration_space,
         }
     )
+    sql.close_connection()
 
 
 def db_writer_process(db_queue: mp.Queue, done_flag, ack_dict: dict):
@@ -370,11 +386,31 @@ def db_writer_process(db_queue: mp.Queue, done_flag, ack_dict: dict):
                 # Unpack queue item
                 pair_id = queue_dict.get("pair_id")
                 strategy_config_id = queue_dict.get("strategy_config_id")
+                strategy_name = queue_dict.get("strategy_name")
+                strategy_description = queue_dict.get("strategy_description")
+                strategy_parameters = queue_dict.get("strategy_parameters")
                 timeframe = queue_dict.get("timeframe")
                 metrics_df = queue_dict.get("metrics_df")
                 study_name = queue_dict.get("study_name")
                 score = queue_dict.get("score")
                 exploration_space = queue_dict.get("exploration_space")
+
+                if (
+                    strategy_config_id is None
+                    and strategy_name
+                    and strategy_parameters is not None
+                ):
+                    strategy_config_id = sql.select_strategy_configuration(
+                        strategy_name, strategy_description, strategy_parameters
+                    )
+                    if strategy_config_id is None:
+                        strategy_config_id = sql.insert_strategy_configuration(
+                            strategy_name, strategy_description, strategy_parameters
+                        )
+                if strategy_config_id is None:
+                    raise ValueError(
+                        "Missing strategy_config_id for backtest_run and unable to resolve from strategy metadata."
+                    )
 
                 # Check if run already exists
                 start_date, end_date = (
@@ -414,9 +450,7 @@ def db_writer_process(db_queue: mp.Queue, done_flag, ack_dict: dict):
                 and ack_dict is not None
                 and queue_dict.get("ack_id")
             ):
-                ack_dict[queue_dict["ack_id"]] = Acknowledgement(
-                    ok=False, error=str(e)
-                )
+                ack_dict[queue_dict["ack_id"]] = Acknowledgement(ok=False, error=str(e))
             log_error(
                 "DB write error in db_writer_process.",
                 category="db_writer",
@@ -824,9 +858,9 @@ if __name__ == "__main__":
 
     # --- Edit these top-level knobs freely ---
     STRATEGY_KEYS_TO_RUN: list[str] = [
-        # "NNFX",
+        "NNFX",
         "Candlestick",
-        # "Mabrouk2021",
+        "Mabrouk2021",
     ]  # use any registered adapters
     N_PROCESSES: int = 5  # mp.cpu_count() - 3 is a decent default
 

@@ -15,15 +15,21 @@ import pandas as pd
 
 from scripts.backtester import Backtester
 from scripts.config import (
+    DEFAULT_SESSION_TEMPLATE_BY_TIMEFRAME,
     DATA_FOLDER,
     END_DATE,
     INTRABAR_MODE_PHASE_1_AND_2,
     MIN_TRADES_PER_DAY,
     PRUNE_THRESHOLD_FACTOR,
+    SESSION_TEMPLATE_SEARCH_SPACE_BY_TIMEFRAME,
     TIMEFRAME_DATE_RANGES_PHASE_1_AND_2,
 )
 from scripts.data.sql import BacktestSQLHelper, HistoricalDataSQLHelper
 from scripts.strategies import strategy_core
+from scripts.trading_hours import (
+    default_execution_config_for_timeframe,
+    sanitize_execution_config,
+)
 
 
 def _resolve_date_window(
@@ -92,6 +98,106 @@ def _resolve_evaluation_window(
         return frm, to_
 
     return default_from, default_to
+
+
+EXECUTION_CONFIG_KEY = "__execution__"
+
+
+def _dedupe_preserve_order(values: list) -> list:
+    out = []
+    seen = set()
+    for value in values:
+        if value in seen:
+            continue
+        out.append(value)
+        seen.add(value)
+    return out
+
+
+def _resolve_execution_config_for_trial(
+    trial: optuna.Trial,
+    timeframe: str,
+    context: dict | None,
+) -> dict:
+    session_ctx = (context or {}).get("session") or {}
+
+    # Hard disable hook if needed in context.
+    if session_ctx.get("enabled") is False:
+        return sanitize_execution_config(
+            {
+                "session_template": "none",
+                "session_timezone": session_ctx.get("session_timezone"),
+                "entry_session_only": session_ctx.get("entry_session_only", True),
+            },
+            timeframe,
+        )
+
+    default_cfg = default_execution_config_for_timeframe(timeframe)
+
+    # Optional explicit template override from context.
+    explicit_template = session_ctx.get("session_template")
+
+    # Optional list override from context, else timeframe defaults.
+    options = session_ctx.get("template_options")
+    if not isinstance(options, (list, tuple)) or not options:
+        options = SESSION_TEMPLATE_SEARCH_SPACE_BY_TIMEFRAME.get(
+            timeframe,
+            [DEFAULT_SESSION_TEMPLATE_BY_TIMEFRAME.get(timeframe, "full_24x5")],
+        )
+    options = _dedupe_preserve_order([str(v) for v in options if v is not None])
+    if not options:
+        options = [default_cfg["session_template"]]
+
+    if explicit_template:
+        selected_template = str(explicit_template)
+    elif len(options) == 1:
+        selected_template = options[0]
+    else:
+        selected_template = trial.suggest_categorical(
+            "Execution.session_template", options
+        )
+
+    resolved = sanitize_execution_config(
+        {
+            "session_template": selected_template,
+            "session_timezone": session_ctx.get("session_timezone")
+            or default_cfg.get("session_timezone"),
+            "entry_session_only": session_ctx.get(
+                "entry_session_only", default_cfg.get("entry_session_only", True)
+            ),
+        },
+        timeframe,
+    )
+    return resolved
+
+
+def apply_execution_config_to_strategy(
+    strategy: "strategy_core.BaseStrategy",
+    execution_config: dict | None,
+    *,
+    timeframe: str | None = None,
+) -> dict:
+    resolved = sanitize_execution_config(execution_config, timeframe or strategy.TIMEFRAME)
+    params = dict(getattr(strategy, "PARAMETER_SETTINGS", {}) or {})
+    params[EXECUTION_CONFIG_KEY] = {
+        "session_template": resolved.get("session_template"),
+        "session_timezone": resolved.get("session_timezone"),
+        "entry_session_only": bool(resolved.get("entry_session_only", True)),
+    }
+    strategy.PARAMETER_SETTINGS = strategy_core.canonicalize_params(params)
+    return resolved
+
+
+def extract_execution_config_from_parameters(
+    parameters: dict | None, timeframe: str | None
+) -> dict:
+    if isinstance(parameters, dict):
+        if isinstance(parameters.get("parameters"), dict):
+            parameters = parameters["parameters"]
+        raw = parameters.get(EXECUTION_CONFIG_KEY)
+        if isinstance(raw, dict):
+            return sanitize_execution_config(raw, timeframe)
+    return default_execution_config_for_timeframe(timeframe)
 
 
 # ---- simple dataclass substitute for cross-process acks
@@ -198,6 +304,13 @@ def run_objective_common(
 
     backtest_sqlhelper = BacktestSQLHelper(read_only=True)
     strategy = build_strategy()
+    execution_config = _resolve_execution_config_for_trial(trial, timeframe, context)
+    execution_config = apply_execution_config_to_strategy(
+        strategy, execution_config, timeframe=timeframe
+    )
+    trial.set_user_attr(
+        "execution_session_template", execution_config.get("session_template")
+    )
 
     # ensure strategy_config row exists (writer ACK)
     strategy_config_id = backtest_sqlhelper.select_strategy_configuration(
@@ -259,6 +372,7 @@ def run_objective_common(
         metrics_start_date=eval_from,
         metrics_end_date=eval_to,
         intrabar_mode=INTRABAR_MODE_PHASE_1_AND_2,
+        session_config=execution_config,
     )
 
     pair_id = None

@@ -38,7 +38,13 @@ from scripts.config import TIMEFRAME_DATE_RANGES_PHASE_1_AND_2
 from scripts.data.sql import BacktestSQLHelper
 from scripts.strategies import strategy_core
 
-from .base_adapter import StrategyTrialAdapter, register_adapter, run_objective_common
+from .base_adapter import (
+    StrategyTrialAdapter,
+    apply_execution_config_to_strategy,
+    extract_execution_config_from_parameters,
+    register_adapter,
+    run_objective_common,
+)
 
 # ----------------------------- Feature pools -----------------------------------
 # Paper list for fixed replication
@@ -591,6 +597,9 @@ class MabroukAdapter(StrategyTrialAdapter):
                 continue
 
             params = row.get("Parameters") or {}
+            execution_cfg = extract_execution_config_from_parameters(
+                params, row.get("Timeframe")
+            )
             model_key = params.get("model_key")
             model_params = _as_dict(params.get("model_params"))
             thresholds = _as_dict(params.get("thresholds"))
@@ -614,10 +623,6 @@ class MabroukAdapter(StrategyTrialAdapter):
 
             for pair in pairs:
                 for timeframe in timeframes:
-                    combo = (row["StrategyConfig_ID"], pair, timeframe)
-                    if combo in existing:
-                        continue
-
                     strategy_obj = strategy_core.create_strategy_from_kwargs(
                         MabroukAdapter.key,
                         forex_pair=pair,
@@ -629,6 +634,20 @@ class MabroukAdapter(StrategyTrialAdapter):
                         risk=risk,
                         same_bar_flip_entry=False,
                     )
+                    apply_execution_config_to_strategy(
+                        strategy_obj, execution_cfg, timeframe=timeframe
+                    )
+                    resolved_strategy_id = db.select_strategy_configuration(
+                        strategy_obj.NAME,
+                        strategy_obj.DESCRIPTION,
+                        strategy_obj.PARAMETER_SETTINGS,
+                    )
+                    if resolved_strategy_id is not None and (
+                        resolved_strategy_id,
+                        pair,
+                        timeframe,
+                    ) in existing:
+                        continue
                     jobs.append((pair, timeframe, strategy_obj))
 
         return jobs
